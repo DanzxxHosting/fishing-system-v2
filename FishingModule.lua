@@ -1,5 +1,6 @@
 -- FishingModule.lua (ModuleScript) - put in ReplicatedStorage as 'FishingModule'
-local FishingModule = {}
+local FishingModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/DanzxxHosting/fishing-system-v2/refs/heads/main/FishingClient.lua"))()
+
 
 -- Config
 FishingModule.Config = {
