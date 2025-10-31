@@ -1,7 +1,5 @@
 repeat wait() until game:IsLoaded() and game.Players.LocalPlayer
-
 _G.Version = "Lite"
-
 getgenv().Kaitun = {
     ["Start Kaitun"] = {
         ["Enable"] = true,
