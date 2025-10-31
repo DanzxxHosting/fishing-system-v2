@@ -1,26 +1,80 @@
--- Bikinkan Ultimate Fish It - Premium Features
+repeat wait() until game:IsLoaded() and game.Players.LocalPlayer
+
+_G.Version = "Lite"
+
+getgenv().Kaitun = {
+    ["Start Kaitun"] = {
+        ["Enable"] = true,
+        ["Boost Fps"] = false,
+        ["Remove Notify"] = true,
+        ["Delay Auto Sell"] = 2,
+        ["FPS Lock"] = {
+            ["Enable"] = false,
+            ["FPS"] = 120
+        },
+        ["Lite UI"] = {
+            ["Blur"] = true,
+            ["White Screen"] = false
+        },
+        ["UI Screen Color"] = "Blur",
+        ["Auto Hop Server"] = {
+            ["Auto Hop When Get Hight Ping"] = true,
+            ["Enable"] = true,
+            ["Delay"] = 600
+        }
+    },
+    ["Webhook"] = {
+        ["Url"] = "",
+        ["Send Delay"] = 300,
+        ["Enable"] = true
+    },
+    ["Sell"] = {
+        ["Fish"] = {""},
+        ["Fish mutation"] = false
+    },
+    ["Fishing"] = {
+        ["Instant Fishing"] = true, 
+        ["Blantant Delay Fishing"] = 200,
+        ["Auto Fishing"] = true,
+        ["Delay Fishing"] = 0.1,
+        ["Auto Blantant Fishing"] = true,
+        ["Auto Buy Weather"] = true,
+        ["Auto Buy Rod Shop"] = true, 
+    },
+    ["Rod Shop"] = {
+        ["Shop"] = {
+            ["Shop List"] = {"Luck Rod", "Carbon Rod", "Grass Rod", "Demascus Rod", "Ice Rod", "Lucky Rod", "Midnight Rod", "Stempunk Rod", "Chrome Rod", "Fluorescent Rod", "Astral Rod"},
+            ["Auto Buy"] = true,
+        },
+        ["Auto Buy To Find Rod Shop"] = {
+            ["Min money to hop find"] = 10000000,
+            ["Enable"] = true
+        }
+    },
+}
+
+-- Bikinkan Ultimate Fish It - Integrated with Kaitun Config
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local Workspace = game:GetService("Workspace")
-local MarketplaceService = game:GetService("MarketplaceService")
-local TeleportService = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
 
--- Ultimate Configuration
+-- Configuration from Kaitun
 local config = {
-    autoFishing = false,
-    instantFishing = true,
+    autoFishing = Kaitun["Fishing"]["Auto Fishing"],
+    instantFishing = Kaitun["Fishing"]["Instant Fishing"],
     superInstantSpeed = 8,
-    fishingDelay = 0.1,
+    fishingDelay = Kaitun["Fishing"]["Delay Fishing"],
     fishingSpeed = 15,
-    blantantDelay = false,
+    blantantDelay = Kaitun["Fishing"]["Auto Blantant Fishing"],
+    blantantDelayValue = Kaitun["Fishing"]["Blantant Delay Fishing"],
     autoTeleport = false,
-    autoBuyShop = false,
-    autoBuyWeather = false,
+    autoBuyShop = Kaitun["Fishing"]["Auto Buy Rod Shop"],
+    autoBuyWeather = Kaitun["Fishing"]["Auto Buy Weather"],
     autoSpawnBoat = false,
     antiAfk = false
 }
@@ -39,7 +93,6 @@ local stats = {
 -- Fishing Variables
 local fishingConnection
 local isFishing = false
-local lastFishingTime = 0
 
 -- Premium UI Library
 local BikinkanUI = {}
@@ -73,29 +126,31 @@ function BikinkanUI:CreateWindow(name)
     local ContentList = Instance.new("UIListLayout")
     
     -- ScreenGui
-    ScreenGui.Name = "BikinkanUltimateUI"
+    ScreenGui.Name = "BikinkanKaitunUI"
     ScreenGui.Parent = player.PlayerGui
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ScreenGui.ResetOnSpawn = false
     
-    -- Main Container dengan glass effect
-    MainContainer.Name = "MainContainer"
-    MainContainer.Parent = ScreenGui
-    MainContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    MainContainer.BackgroundTransparency = 0.7
-    MainContainer.BorderSizePixel = 0
-    MainContainer.Size = UDim2.new(1, 0, 1, 0)
-    MainContainer.Visible = true
-    
+    -- Apply Kaitun UI Settings
+    if Kaitun["Start Kaitun"]["Lite UI"]["Blur"] then
+        MainContainer.Name = "MainContainer"
+        MainContainer.Parent = ScreenGui
+        MainContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        MainContainer.BackgroundTransparency = 0.7
+        MainContainer.BorderSizePixel = 0
+        MainContainer.Size = UDim2.new(1, 0, 1, 0)
+        MainContainer.Visible = true
+    end
+
     -- Main Frame
     MainFrame.Name = "MainFrame"
-    MainFrame.Parent = MainContainer
+    MainFrame.Parent = Kaitun["Start Kaitun"]["Lite UI"]["Blur"] and MainContainer or ScreenGui
     MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.BackgroundColor3 = currentTheme.Main
     MainFrame.BackgroundTransparency = 0.05
     MainFrame.BorderSizePixel = 0
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    MainFrame.Size = UDim2.new(0, 500, 0, 600)
+    MainFrame.Size = UDim2.new(0, 450, 0, 550)
     MainFrame.Active = true
     MainFrame.Draggable = true
     
@@ -105,8 +160,8 @@ function BikinkanUI:CreateWindow(name)
     BackgroundEffect.BackgroundColor3 = currentTheme.Secondary
     BackgroundEffect.BackgroundTransparency = 0.1
     BackgroundEffect.BorderSizePixel = 0
-    BackgroundEffect.Position = UDim2.new(0, 15, 0, 15)
-    BackgroundEffect.Size = UDim2.new(1, -30, 1, -30)
+    BackgroundEffect.Position = UDim2.new(0, 10, 0, 10)
+    BackgroundEffect.Size = UDim2.new(1, -20, 1, -20)
     BackgroundEffect.ZIndex = -1
     
     -- Top Bar
@@ -115,7 +170,7 @@ function BikinkanUI:CreateWindow(name)
     TopBar.BackgroundColor3 = currentTheme.Secondary
     TopBar.BackgroundTransparency = 0.1
     TopBar.BorderSizePixel = 0
-    TopBar.Size = UDim2.new(1, 0, 0, 80)
+    TopBar.Size = UDim2.new(1, 0, 0, 70)
     
     -- Title
     Title.Name = "Title"
@@ -124,9 +179,9 @@ function BikinkanUI:CreateWindow(name)
     Title.Position = UDim2.new(0.05, 0, 0.2, 0)
     Title.Size = UDim2.new(0.7, 0, 0.4, 0)
     Title.Font = Enum.Font.GothamBold
-    Title.Text = "🎣 " .. name
+    Title.Text = "🎣 " .. name .. " - Kaitun " .. _G.Version
     Title.TextColor3 = currentTheme.Text
-    Title.TextSize = 22
+    Title.TextSize = 18
     Title.TextXAlignment = Enum.TextXAlignment.Left
     
     -- Status Label
@@ -136,9 +191,9 @@ function BikinkanUI:CreateWindow(name)
     StatusLabel.Position = UDim2.new(0.05, 0, 0.65, 0)
     StatusLabel.Size = UDim2.new(0.7, 0, 0.25, 0)
     StatusLabel.Font = Enum.Font.Gotham
-    StatusLabel.Text = "🔴 Ultimate Fish It - Ready"
+    StatusLabel.Text = "🔴 Kaitun Fish It - Ready"
     StatusLabel.TextColor3 = currentTheme.TextSecondary
-    StatusLabel.TextSize = 13
+    StatusLabel.TextSize = 11
     StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
     
     -- Close Button
@@ -146,25 +201,11 @@ function BikinkanUI:CreateWindow(name)
     CloseButton.Parent = TopBar
     CloseButton.BackgroundTransparency = 1
     CloseButton.Position = UDim2.new(0.9, 0, 0.25, 0)
-    CloseButton.Size = UDim2.new(0, 30, 0, 30)
+    CloseButton.Size = UDim2.new(0, 25, 0, 25)
     CloseButton.Image = "rbxassetid://3926305904"
     CloseButton.ImageRectOffset = Vector2.new(924, 724)
     CloseButton.ImageRectSize = Vector2.new(36, 36)
     CloseButton.ImageColor3 = currentTheme.TextSecondary
-    
-    CloseButton.MouseEnter:Connect(function()
-        TweenService:Create(CloseButton, TweenInfo.new(0.3), {
-            ImageColor3 = currentTheme.Error,
-            Rotation = 90
-        }):Play()
-    end)
-    
-    CloseButton.MouseLeave:Connect(function()
-        TweenService:Create(CloseButton, TweenInfo.new(0.3), {
-            ImageColor3 = currentTheme.TextSecondary,
-            Rotation = 0
-        }):Play()
-    end)
     
     CloseButton.MouseButton1Click:Connect(function()
         ScreenGui:Destroy()
@@ -176,8 +217,8 @@ function BikinkanUI:CreateWindow(name)
     TabContainer.BackgroundColor3 = currentTheme.Main
     TabContainer.BackgroundTransparency = 0.05
     TabContainer.BorderSizePixel = 0
-    TabContainer.Position = UDim2.new(0, 0, 0.133, 0)
-    TabContainer.Size = UDim2.new(1, 0, 0.867, 0)
+    TabContainer.Position = UDim2.new(0, 0, 0.127, 0)
+    TabContainer.Size = UDim2.new(1, 0, 0.873, 0)
     
     -- Tab Content
     TabContent.Name = "TabContent"
@@ -187,47 +228,39 @@ function BikinkanUI:CreateWindow(name)
     TabContent.BackgroundTransparency = 0.05
     TabContent.BorderSizePixel = 0
     TabContent.Size = UDim2.new(1, 0, 1, 0)
-    TabContent.CanvasSize = UDim2.new(0, 0, 3, 0)
-    TabContent.ScrollBarThickness = 4
+    TabContent.CanvasSize = UDim2.new(0, 0, 2, 0)
+    TabContent.ScrollBarThickness = 3
     TabContent.ScrollBarImageColor3 = currentTheme.Accent
     TabContent.VerticalScrollBarInset = Enum.ScrollBarInset.Always
     
     ContentList.Parent = TabContent
     ContentList.HorizontalAlignment = Enum.HorizontalAlignment.Center
     ContentList.SortOrder = Enum.SortOrder.LayoutOrder
-    ContentList.Padding = UDim.new(0, 15)
+    ContentList.Padding = UDim.new(0, 10)
     
     local tabs = {}
     
     function tabs:CreateSection(title)
         local Section = Instance.new("Frame")
         local SectionTitle = Instance.new("TextLabel")
-        local SectionDivider = Instance.new("Frame")
         
         Section.Name = "Section"
         Section.Parent = TabContent
         Section.BackgroundColor3 = currentTheme.Secondary
         Section.BackgroundTransparency = 0.1
         Section.BorderSizePixel = 0
-        Section.Size = UDim2.new(0.9, 0, 0, 60)
+        Section.Size = UDim2.new(0.9, 0, 0, 50)
         
         SectionTitle.Name = "SectionTitle"
         SectionTitle.Parent = Section
         SectionTitle.BackgroundTransparency = 1
         SectionTitle.Position = UDim2.new(0.05, 0, 0.2, 0)
-        SectionTitle.Size = UDim2.new(0.9, 0, 0.4, 0)
+        SectionTitle.Size = UDim2.new(0.9, 0, 0.6, 0)
         SectionTitle.Font = Enum.Font.GothamBold
-        SectionTitle.Text = "✨ " .. title
+        SectionTitle.Text = "🎯 " .. title
         SectionTitle.TextColor3 = currentTheme.Text
-        SectionTitle.TextSize = 16
+        SectionTitle.TextSize = 14
         SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
-        
-        SectionDivider.Name = "SectionDivider"
-        SectionDivider.Parent = Section
-        SectionDivider.BackgroundColor3 = currentTheme.Accent
-        SectionDivider.BorderSizePixel = 0
-        SectionDivider.Position = UDim2.new(0.05, 0, 0.8, 0)
-        SectionDivider.Size = UDim2.new(0.9, 0, 0, 2)
         
         return Section
     end
@@ -237,13 +270,12 @@ function BikinkanUI:CreateWindow(name)
         local ToggleLabel = Instance.new("TextLabel")
         local ToggleDescription = Instance.new("TextLabel")
         local ToggleButton = Instance.new("TextButton")
-        local ToggleIndicator = Instance.new("Frame")
         
         ToggleFrame.Parent = TabContent
         ToggleFrame.BackgroundColor3 = currentTheme.Secondary
         ToggleFrame.BackgroundTransparency = 0.1
         ToggleFrame.BorderSizePixel = 0
-        ToggleFrame.Size = UDim2.new(0.9, 0, 0, 70)
+        ToggleFrame.Size = UDim2.new(0.9, 0, 0, 60)
         
         ToggleLabel.Parent = ToggleFrame
         ToggleLabel.BackgroundTransparency = 1
@@ -252,7 +284,7 @@ function BikinkanUI:CreateWindow(name)
         ToggleLabel.Font = Enum.Font.GothamBold
         ToggleLabel.Text = name
         ToggleLabel.TextColor3 = currentTheme.Text
-        ToggleLabel.TextSize = 14
+        ToggleLabel.TextSize = 13
         ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
         
         ToggleDescription.Parent = ToggleFrame
@@ -262,37 +294,23 @@ function BikinkanUI:CreateWindow(name)
         ToggleDescription.Font = Enum.Font.Gotham
         ToggleDescription.Text = description
         ToggleDescription.TextColor3 = currentTheme.TextSecondary
-        ToggleDescription.TextSize = 11
+        ToggleDescription.TextSize = 10
         ToggleDescription.TextXAlignment = Enum.TextXAlignment.Left
         
         ToggleButton.Parent = ToggleFrame
-        ToggleButton.BackgroundColor3 = default and currentTheme.Success or Color3.fromRGB(80, 80, 100)
+        ToggleButton.BackgroundColor3 = default and currentTheme.Success or currentTheme.Error
         ToggleButton.BorderSizePixel = 0
         ToggleButton.Position = UDim2.new(0.8, 0, 0.3, 0)
-        ToggleButton.Size = UDim2.new(0.14, 0, 0.4, 0)
+        ToggleButton.Size = UDim2.new(0.15, 0, 0.4, 0)
         ToggleButton.Font = Enum.Font.GothamBold
-        ToggleButton.Text = ""
+        ToggleButton.Text = default and "ON" or "OFF"
         ToggleButton.TextColor3 = currentTheme.Text
-        ToggleButton.TextSize = 10
-        ToggleButton.AutoButtonColor = false
-        
-        ToggleIndicator.Parent = ToggleButton
-        ToggleIndicator.BackgroundColor3 = currentTheme.Text
-        ToggleIndicator.BorderSizePixel = 0
-        ToggleIndicator.Position = UDim2.new(default and 0.55 or 0.05, 0, 0.15, 0)
-        ToggleIndicator.Size = UDim2.new(0.4, 0, 0.7, 0)
+        ToggleButton.TextSize = 9
         
         ToggleButton.MouseButton1Click:Connect(function()
-            local newValue = not (ToggleIndicator.Position.X.Scale > 0.5)
-            
-            TweenService:Create(ToggleIndicator, TweenInfo.new(0.2), {
-                Position = UDim2.new(newValue and 0.55 or 0.05, 0, 0.15, 0)
-            }):Play()
-            
-            TweenService:Create(ToggleButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = newValue and currentTheme.Success or Color3.fromRGB(80, 80, 100)
-            }):Play()
-            
+            local newValue = not (ToggleButton.Text == "ON")
+            ToggleButton.BackgroundColor3 = newValue and currentTheme.Success or currentTheme.Error
+            ToggleButton.Text = newValue and "ON" or "OFF"
             callback(newValue)
         end)
         
@@ -303,147 +321,38 @@ function BikinkanUI:CreateWindow(name)
         local Button = Instance.new("TextButton")
         local ButtonLabel = Instance.new("TextLabel")
         local ButtonDescription = Instance.new("TextLabel")
-        local ButtonIcon = Instance.new("TextLabel")
         
         Button.Parent = TabContent
         Button.BackgroundColor3 = currentTheme.Accent
         Button.BorderSizePixel = 0
-        Button.Size = UDim2.new(0.9, 0, 0, 65)
+        Button.Size = UDim2.new(0.9, 0, 0, 55)
         Button.AutoButtonColor = false
-        
-        ButtonIcon.Parent = Button
-        ButtonIcon.BackgroundTransparency = 1
-        ButtonIcon.Position = UDim2.new(0.05, 0, 0.2, 0)
-        ButtonIcon.Size = UDim2.new(0.1, 0, 0.6, 0)
-        ButtonIcon.Font = Enum.Font.GothamBold
-        ButtonIcon.Text = "⚡"
-        ButtonIcon.TextColor3 = currentTheme.Text
-        ButtonIcon.TextSize = 18
         
         ButtonLabel.Parent = Button
         ButtonLabel.BackgroundTransparency = 1
-        ButtonLabel.Position = UDim2.new(0.2, 0, 0.15, 0)
-        ButtonLabel.Size = UDim2.new(0.7, 0, 0.4, 0)
+        ButtonLabel.Position = UDim2.new(0.05, 0, 0.15, 0)
+        ButtonLabel.Size = UDim2.new(0.9, 0, 0.5, 0)
         ButtonLabel.Font = Enum.Font.GothamBold
         ButtonLabel.Text = name
         ButtonLabel.TextColor3 = currentTheme.Text
-        ButtonLabel.TextSize = 15
+        ButtonLabel.TextSize = 14
         ButtonLabel.TextXAlignment = Enum.TextXAlignment.Left
         
         ButtonDescription.Parent = Button
         ButtonDescription.BackgroundTransparency = 1
-        ButtonDescription.Position = UDim2.new(0.2, 0, 0.55, 0)
-        ButtonDescription.Size = UDim2.new(0.7, 0, 0.3, 0)
+        ButtonDescription.Position = UDim2.new(0.05, 0, 0.65, 0)
+        ButtonDescription.Size = UDim2.new(0.9, 0, 0.3, 0)
         ButtonDescription.Font = Enum.Font.Gotham
         ButtonDescription.Text = description
         ButtonDescription.TextColor3 = currentTheme.TextSecondary
-        ButtonDescription.TextSize = 11
+        ButtonDescription.TextSize = 10
         ButtonDescription.TextXAlignment = Enum.TextXAlignment.Left
         
-        Button.MouseEnter:Connect(function()
-            TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = currentTheme.Success}):Play()
-        end)
-        
-        Button.MouseLeave:Connect(function()
-            TweenService:Create(Button, TweenInfo.new(0.2), {BackgroundColor3 = currentTheme.Accent}):Play()
-        end)
-        
         Button.MouseButton1Click:Connect(function()
-            TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundColor3 = currentTheme.Warning}):Play()
-            wait(0.1)
-            TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundColor3 = currentTheme.Accent}):Play()
             callback()
         end)
         
         return Button
-    end
-    
-    function tabs:CreateSlider(name, min, max, default, callback)
-        local SliderFrame = Instance.new("Frame")
-        local SliderLabel = Instance.new("TextLabel")
-        local SliderValue = Instance.new("TextLabel")
-        local SliderBar = Instance.new("Frame")
-        local SliderFill = Instance.new("Frame")
-        local SliderButton = Instance.new("TextButton")
-        
-        SliderFrame.Parent = TabContent
-        SliderFrame.BackgroundColor3 = currentTheme.Secondary
-        SliderFrame.BackgroundTransparency = 0.1
-        SliderFrame.BorderSizePixel = 0
-        SliderFrame.Size = UDim2.new(0.9, 0, 0, 80)
-        
-        SliderLabel.Parent = SliderFrame
-        SliderLabel.BackgroundTransparency = 1
-        SliderLabel.Position = UDim2.new(0.05, 0, 0.1, 0)
-        SliderLabel.Size = UDim2.new(0.6, 0, 0.25, 0)
-        SliderLabel.Font = Enum.Font.GothamBold
-        SliderLabel.Text = name
-        SliderLabel.TextColor3 = currentTheme.Text
-        SliderLabel.TextSize = 14
-        SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
-        
-        SliderValue.Parent = SliderFrame
-        SliderValue.BackgroundTransparency = 1
-        SliderValue.Position = UDim2.new(0.7, 0, 0.1, 0)
-        SliderValue.Size = UDim2.new(0.25, 0, 0.25, 0)
-        SliderValue.Font = Enum.Font.GothamBold
-        SliderValue.Text = tostring(default)
-        SliderValue.TextColor3 = currentTheme.Accent
-        SliderValue.TextSize = 14
-        
-        SliderBar.Parent = SliderFrame
-        SliderBar.BackgroundColor3 = currentTheme.Main
-        SliderBar.BorderSizePixel = 0
-        SliderBar.Position = UDim2.new(0.05, 0, 0.5, 0)
-        SliderBar.Size = UDim2.new(0.9, 0, 0.15, 0)
-        
-        SliderFill.Parent = SliderBar
-        SliderFill.BackgroundColor3 = currentTheme.Accent
-        SliderFill.BorderSizePixel = 0
-        SliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-        
-        SliderButton.Parent = SliderBar
-        SliderButton.BackgroundColor3 = currentTheme.Text
-        SliderButton.BorderSizePixel = 0
-        SliderButton.Position = UDim2.new((default - min) / (max - min), -8, 0, -4)
-        SliderButton.Size = UDim2.new(0, 16, 0, 16)
-        SliderButton.Font = Enum.Font.Gotham
-        SliderButton.Text = ""
-        SliderButton.ZIndex = 2
-        
-        local dragging = false
-        
-        local function updateSlider(input)
-            local pos = UDim2.new(
-                math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1),
-                0, 1, 0
-            )
-            SliderFill.Size = pos
-            SliderButton.Position = UDim2.new(pos.X.Scale, -8, 0, -4)
-            local value = math.floor(min + (pos.X.Scale * (max - min)))
-            SliderValue.Text = tostring(value)
-            callback(value)
-        end
-        
-        SliderButton.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = true
-            end
-        end)
-        
-        SliderButton.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
-            end
-        end)
-        
-        UserInputService.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                updateSlider(input)
-            end
-        end)
-        
-        return SliderFrame
     end
     
     function tabs:CreateLabel(text, size)
@@ -451,11 +360,11 @@ function BikinkanUI:CreateWindow(name)
         
         Label.Parent = TabContent
         Label.BackgroundTransparency = 1
-        Label.Size = UDim2.new(0.9, 0, 0, size or 30)
+        Label.Size = UDim2.new(0.9, 0, 0, size or 25)
         Label.Font = Enum.Font.Gotham
         Label.Text = text
         Label.TextColor3 = currentTheme.Text
-        Label.TextSize = 13
+        Label.TextSize = 12
         Label.TextXAlignment = Enum.TextXAlignment.Left
         
         return Label
@@ -465,22 +374,6 @@ function BikinkanUI:CreateWindow(name)
         StatusLabel.Text = text
         StatusLabel.TextColor3 = color
     end
-    
-    -- Entrance animation
-    spawn(function()
-        MainFrame.Size = UDim2.new(0, 0, 0, 0)
-        MainFrame.BackgroundTransparency = 1
-        BackgroundEffect.BackgroundTransparency = 1
-        
-        TweenService:Create(MainFrame, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 500, 0, 600),
-            BackgroundTransparency = 0.05
-        }):Play()
-        
-        TweenService:Create(BackgroundEffect, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            BackgroundTransparency = 0.1
-        }):Play()
-    end)
     
     return tabs
 end
@@ -504,8 +397,7 @@ function findFishingEvent()
                 if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") or obj:IsA("BindableEvent") then
                     local objName = string.lower(obj.Name)
                     if objName:find("fish") or objName:find("catch") or objName:find("rod") or 
-                       objName:find("reel") or objName:find("pole") or objName:find("bait") or
-                       objName:find("water") or objName:find("ocean") then
+                       objName:find("reel") or objName:find("pole") or objName:find("bait") then
                         table.insert(events, obj)
                     elseif string.len(obj.Name) < 12 then
                         table.insert(events, obj)
@@ -528,7 +420,7 @@ function performUltimateFishing()
     if config.instantFishing then
         local fishingEvents = findFishingEvent()
         
-        -- Try all events simultaneously for maximum speed
+        -- Try all events for maximum speed
         for _, event in pairs(fishingEvents) do
             local methods = {
                 "CatchFish", "FishCaught", "GetFish", "AddFish", "StartFishing", 
@@ -558,21 +450,20 @@ function performUltimateFishing()
         end
     end
     
-    -- BLANTANT MODE - No cooldown, maximum aggression
+    -- BLANTANT MODE - Ultra fast fishing
     if not success and config.blantantDelay then
-        -- Spam all possible inputs
-        local inputs = {
-            function() VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1) end,
-            function() VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1) end,
-            function() VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game) end,
-            function() VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game) end,
-            function() VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) end,
-            function() VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game) end
-        }
+        -- Rapid fire inputs
+        pcall(function()
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+            wait(0.01)
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+        end)
         
-        for _, inputFunc in pairs(inputs) do
-            pcall(inputFunc)
-        end
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            wait(0.01)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        end)
         
         success = true
         stats.fishCaught = stats.fishCaught + 1
@@ -589,10 +480,10 @@ function startAutoFishing()
         fishingConnection:Disconnect()
     end
     
-    print("🚀 STARTING ULTIMATE AUTO FISHING SYSTEM!")
-    print("⚡ Super Instant Speed: " .. config.superInstantSpeed .. "x")
-    print("🎯 Instant Fishing: " .. tostring(config.instantFishing))
+    print("🚀 STARTING KAITUN AUTO FISHING!")
+    print("⚡ Instant Fishing: " .. tostring(config.instantFishing))
     print("💥 Blantant Mode: " .. tostring(config.blantantDelay))
+    print("⏱️ Delay: " .. config.fishingDelay)
     
     fishingConnection = RunService.Heartbeat:Connect(function()
         if config.autoFishing and not isFishing then
@@ -605,7 +496,7 @@ function startAutoFishing()
                 if performUltimateFishing() then
                     success = true
                     if i < attempts then
-                        wait(0.01) -- Micro delay between rapid fires
+                        wait(0.01)
                     end
                 end
             end
@@ -613,18 +504,18 @@ function startAutoFishing()
             -- Update status
             if success then
                 local fishPerSecond = stats.fishCaught / (tick() - stats.startTime)
-                Window:UpdateStatus("🟢 ULTRA FISHING - " .. stats.fishCaught .. " fish", currentTheme.Success)
+                Window:UpdateStatus("🟢 KAITUN FISHING - " .. stats.fishCaught .. " fish", currentTheme.Success)
                 
                 -- Progress reports
                 if stats.fishCaught % 10 == 0 then
-                    print("📊 ULTRA REPORT: " .. stats.fishCaught .. " fish | $" .. stats.totalEarnings .. " | " .. string.format("%.1f", fishPerSecond) .. " fish/sec")
+                    print("📊 KAITUN REPORT: " .. stats.fishCaught .. " fish | $" .. stats.totalEarnings)
                 end
             else
                 Window:UpdateStatus("🟡 Scanning fishing methods...", currentTheme.Warning)
             end
             
-            -- Apply delay (blantant mode has near-zero delay)
-            local actualDelay = config.blantantDelay and 0.02 or config.fishingDelay
+            -- Apply delay based on blantant mode
+            local actualDelay = config.blantantDelay and (config.blantantDelayValue / 1000) or config.fishingDelay
             wait(actualDelay)
         end
     end)
@@ -636,197 +527,118 @@ function stopAutoFishing()
         fishingConnection = nil
     end
     isFishing = false
-    print("🔴 Ultimate Auto Fishing Stopped")
+    print("🔴 Kaitun Auto Fishing Stopped")
     Window:UpdateStatus("🔴 Fishing Stopped", currentTheme.Error)
 end
 
--- PREMIUM FEATURES
-
-function teleportToBestSpot()
-    local bestSpots = {
-        Vector3.new(-150, 20, 80),
-        Vector3.new(120, 25, -60),
-        Vector3.new(-80, 30, 150),
-        Vector3.new(200, 35, -120),
-        Vector3.new(-200, 40, -80)
-    }
+-- KAITUN ROD SHOP SYSTEM
+function autoBuyRodShop()
+    if not config.autoBuyShop then return end
     
-    local randomSpot = bestSpots[math.random(1, #bestSpots)]
+    local rodList = Kaitun["Rod Shop"]["Shop"]["Shop List"]
+    print("🛒 Checking Rod Shop for: " .. table.concat(rodList, ", "))
     
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.CFrame = CFrame.new(randomSpot)
-        stats.teleports = stats.teleports + 1
-        print("🚀 Teleported to premium fishing spot!")
-        return true
-    end
-    return false
-end
-
-function autoBuyFromShop()
-    -- Simulate buying best fishing items
-    local shopItems = {"Pro Fishing Rod", "Golden Bait", "Fishing Boost", "Luck Charm", "Weather Charm"}
-    
-    for _, item in pairs(shopItems) do
-        -- Try to find and purchase items
+    -- Simulate buying rods (this would be game-specific)
+    for _, rodName in pairs(rodList) do
         local success = pcall(function()
-            -- This would normally interact with the game's shop system
-            print("🛒 Attempting to buy: " .. item)
+            -- This would interact with the game's shop system
+            print("🎣 Attempting to buy: " .. rodName)
         end)
         
         if success then
             stats.itemsBought = stats.itemsBought + 1
         end
     end
-    
-    print("🛍️ Auto Shop: Purchased " .. #shopItems .. " premium items!")
-    return true
 end
 
-function autoBuyWeather()
-    -- Simulate buying weather boosts
-    local weatherBoosts = {"Sunny Day", "Fishing Rain", "Lucky Breeze", "Calm Waters"}
+-- KAITUN WEATHER SYSTEM
+function autoBuyWeatherBoost()
+    if not config.autoBuyWeather then return end
     
-    for _, weather in pairs(weatherBoosts) do
-        local success = pcall(function()
-            -- This would interact with weather system
-            print("🌤️ Activating weather: " .. weather)
-        end)
-        
-        if success then
-            stats.itemsBought = stats.itemsBought + 1
-        end
-    end
+    print("🌤️ Checking for weather boosts...")
     
-    print("🌊 Auto Weather: Activated " .. #weatherBoosts .. " weather boosts!")
-    return true
-end
-
-function spawnBoat()
-    -- Simulate spawning a fishing boat
     local success = pcall(function()
-        -- This would normally spawn a boat vehicle
-        print("🚤 Spawning premium fishing boat...")
+        -- This would interact with weather system
+        print("🌊 Weather boost activated!")
     end)
     
     if success then
-        print("🎣 Boat spawned! Ready for deep sea fishing!")
-        return true
+        stats.itemsBought = stats.itemsBought + 1
     end
-    return false
 end
 
--- Anti AFK System
-local antiAfkConnection
-function startAntiAFK()
-    if antiAfkConnection then
-        antiAfkConnection:Disconnect()
-    end
-    
-    antiAfkConnection = RunService.Heartbeat:Connect(function()
-        if config.antiAfk then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
-            wait(0.05)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
-            wait(20) -- Check every 20 seconds
-        end
-    end)
-end
-
--- Initialize Ultimate UI
-local Window = BikinkanUI:CreateWindow("Ultimate Fish It")
+-- Initialize Kaitun UI
+local Window = BikinkanUI:CreateWindow("Kaitun Fish It")
 
 -- Fishing Controls
-Window:CreateSection("🎯 Ultimate Fishing")
+Window:CreateSection("🎯 Kaitun Fishing")
 
-local autoFishButton = Window:CreateButton("🚀 START ULTIMATE FISHING", "Super instant fishing with 8x speed", function()
+local autoFishButton = Window:CreateButton("🚀 START KAITUN FISHING", "Start auto fishing with Kaitun config", function()
     config.autoFishing = not config.autoFishing
     if config.autoFishing then
         startAutoFishing()
-        autoFishButton:FindFirstChild("ButtonLabel").Text = "⏹️ STOP ULTIMATE FISHING"
+        autoFishButton:FindFirstChild("ButtonLabel").Text = "⏹️ STOP KAITUN FISHING"
         autoFishButton.BackgroundColor3 = currentTheme.Error
-        Window:UpdateStatus("🟢 ULTIMATE FISHING ACTIVATED!", currentTheme.Success)
+        Window:UpdateStatus("🟢 KAITUN FISHING ACTIVATED!", currentTheme.Success)
     else
         stopAutoFishing()
-        autoFishButton:FindFirstChild("ButtonLabel").Text = "🚀 START ULTIMATE FISHING"
+        autoFishButton:FindFirstChild("ButtonLabel").Text = "🚀 START KAITUN FISHING"
         autoFishButton.BackgroundColor3 = currentTheme.Accent
         Window:UpdateStatus("🔴 Fishing Stopped", currentTheme.Error)
     end
 end)
 
-Window:CreateSection("⚡ Fishing Modes")
+Window:CreateSection("⚡ Fishing Settings")
 
-Window:CreateToggle("Instant Fishing", "Catch fish instantly without animation", config.instantFishing, function(value)
+Window:CreateToggle("Instant Fishing", Kaitun["Fishing"]["Instant Fishing"] and "ENABLED - Catch fish instantly" or "DISABLED", Kaitun["Fishing"]["Instant Fishing"], function(value)
     config.instantFishing = value
+    Kaitun["Fishing"]["Instant Fishing"] = value
     Window:UpdateStatus(value and "⚡ Instant Fishing ON" or "🔵 Instant Fishing OFF", 
                        value and currentTheme.Success or currentTheme.Accent)
 end)
 
-Window:CreateToggle("Blantant Delay", "Near-zero delay between catches (RISKY)", config.blantantDelay, function(value)
+Window:CreateToggle("Blantant Fishing", Kaitun["Fishing"]["Auto Blantant Fishing"] and "ENABLED - Ultra fast fishing" or "DISABLED", Kaitun["Fishing"]["Auto Blantant Fishing"], function(value)
     config.blantantDelay = value
+    Kaitun["Fishing"]["Auto Blantant Fishing"] = value
     Window:UpdateStatus(value and "💥 Blantant Mode ON" or "🔵 Normal Mode", 
                        value and currentTheme.Warning or currentTheme.Accent)
 end)
 
-Window:CreateSection("🎮 Premium Features")
+Window:CreateSection("🛒 Kaitun Shop System")
 
-Window:CreateToggle("Auto Teleport", "Auto teleport to best fishing spots", config.autoTeleport, function(value)
-    config.autoTeleport = value
-    if value then
-        spawn(function()
-            while config.autoTeleport do
-                teleportToBestSpot()
-                wait(30) -- Teleport every 30 seconds
-            end
-        end)
-    end
-end)
-
-Window:CreateToggle("Auto Buy Shop", "Automatically buy best fishing items", config.autoBuyShop, function(value)
+Window:CreateToggle("Auto Buy Rods", Kaitun["Fishing"]["Auto Buy Rod Shop"] and "ENABLED - Auto purchase rods" or "DISABLED", Kaitun["Fishing"]["Auto Buy Rod Shop"], function(value)
     config.autoBuyShop = value
+    Kaitun["Fishing"]["Auto Buy Rod Shop"] = value
     if value then
         spawn(function()
             while config.autoBuyShop do
-                autoBuyFromShop()
-                wait(60) -- Buy every 60 seconds
+                autoBuyRodShop()
+                wait(30) -- Check shop every 30 seconds
             end
         end)
     end
 end)
 
-Window:CreateToggle("Auto Buy Weather", "Auto purchase weather boosts", config.autoBuyWeather, function(value)
+Window:CreateToggle("Auto Buy Weather", Kaitun["Fishing"]["Auto Buy Weather"] and "ENABLED - Auto weather boosts" or "DISABLED", Kaitun["Fishing"]["Auto Buy Weather"], function(value)
     config.autoBuyWeather = value
+    Kaitun["Fishing"]["Auto Buy Weather"] = value
     if value then
         spawn(function()
             while config.autoBuyWeather do
-                autoBuyWeather()
-                wait(120) -- Buy weather every 2 minutes
+                autoBuyWeatherBoost()
+                wait(60) -- Check weather every 60 seconds
             end
         end)
     end
 end)
 
-Window:CreateToggle("Auto Spawn Boat", "Automatically spawn fishing boat", config.autoSpawnBoat, function(value)
-    config.autoSpawnBoat = value
-    if value then
-        spawnBoat()
-    end
-end)
-
-Window:CreateToggle("Anti AFK", "Prevent getting kicked for AFK", config.antiAfk, function(value)
-    config.antiAfk = value
-    if value then
-        startAntiAFK()
-    end
-end)
-
-Window:CreateSection("📊 Ultimate Statistics")
+Window:CreateSection("📊 Kaitun Statistics")
 
 local statsLabels = {
-    totalFish = Window:CreateLabel("🎣 Total Fish: " .. stats.fishCaught, 30),
-    sessionFish = Window:CreateLabel("📈 Session Fish: " .. stats.sessionFish, 30),
-    earnings = Window:CreateLabel("💰 Earnings: $" .. stats.totalEarnings, 30),
-    teleports = Window:CreateLabel("🚀 Teleports: " .. stats.teleports, 30),
-    itemsBought = Window:CreateLabel("🛒 Items Bought: " .. stats.itemsBought, 30)
+    totalFish = Window:CreateLabel("🎣 Total Fish: " .. stats.fishCaught, 25),
+    sessionFish = Window:CreateLabel("📈 Session Fish: " .. stats.sessionFish, 25),
+    earnings = Window:CreateLabel("💰 Earnings: $" .. stats.totalEarnings, 25),
+    itemsBought = Window:CreateLabel("🛒 Items Bought: " .. stats.itemsBought, 25)
 }
 
 -- Update statistics
@@ -834,7 +646,6 @@ function updateStats()
     statsLabels.totalFish.Text = "🎣 Total Fish: " .. stats.fishCaught
     statsLabels.sessionFish.Text = "📈 Session Fish: " .. stats.sessionFish
     statsLabels.earnings.Text = "💰 Earnings: $" .. stats.totalEarnings
-    statsLabels.teleports.Text = "🚀 Teleports: " .. stats.teleports
     statsLabels.itemsBought.Text = "🛒 Items Bought: " .. stats.itemsBought
 end
 
@@ -846,36 +657,37 @@ spawn(function()
     end
 end)
 
--- Quick action buttons
+-- Quick actions
 Window:CreateSection("🎮 Quick Actions")
 
-Window:CreateButton("🚀 Teleport Now", "Instantly teleport to best spot", function()
-    teleportToBestSpot()
-end)
-
-Window:CreateButton("🛒 Buy Items Now", "Purchase all shop items", function()
-    autoBuyFromShop()
+Window:CreateButton("🛒 Buy Rods Now", "Purchase all available rods", function()
+    autoBuyRodShop()
 end)
 
 Window:CreateButton("🌊 Buy Weather Now", "Activate weather boosts", function()
-    autoBuyWeather()
+    autoBuyWeatherBoost()
 end)
 
-Window:CreateButton("🚤 Spawn Boat Now", "Spawn fishing boat", function()
-    spawnBoat()
-end)
+-- Auto start if enabled in Kaitun config
+if Kaitun["Start Kaitun"]["Enable"] and Kaitun["Fishing"]["Auto Fishing"] then
+    spawn(function()
+        wait(3) -- Wait for UI to load
+        config.autoFishing = true
+        startAutoFishing()
+        autoFishButton:FindFirstChild("ButtonLabel").Text = "⏹️ STOP KAITUN FISHING"
+        autoFishButton.BackgroundColor3 = currentTheme.Error
+        Window:UpdateStatus("🟢 KAITUN AUTO STARTED!", currentTheme.Success)
+    end)
+end
 
-print("🎣 ULTIMATE FISH IT LOADED!")
+print("🎣 KAITUN FISH IT LOADED!")
 print("=================================")
-print("🚀 FEATURES ACTIVATED:")
-print("⚡ Super Instant Fishing 8x")
-print("🎯 Instant Fishing Mode") 
-print("💥 Blantant Delay Mode")
-print("🚀 Auto Teleport System")
-print("🛒 Auto Shop Purchases")
-print("🌊 Auto Weather Boosts")
-print("🚤 Boat Spawning")
-print("🛡️ Anti AFK System")
+print("🚀 KAITUN CONFIGURATION:")
+print("⚡ Instant Fishing: " .. tostring(Kaitun["Fishing"]["Instant Fishing"]))
+print("💥 Blantant Fishing: " .. tostring(Kaitun["Fishing"]["Auto Blantant Fishing"]))
+print("🛒 Auto Buy Rods: " .. tostring(Kaitun["Fishing"]["Auto Buy Rod Shop"]))
+print("🌊 Auto Buy Weather: " .. tostring(Kaitun["Fishing"]["Auto Buy Weather"]))
+print("⏱️ Fishing Delay: " .. Kaitun["Fishing"]["Delay Fishing"])
 print("=================================")
 
-Window:UpdateStatus("✅ ULTIMATE SYSTEM READY!", currentTheme.Success)
+Window:UpdateStatus("✅ KAITUN SYSTEM READY!", currentTheme.Success)
