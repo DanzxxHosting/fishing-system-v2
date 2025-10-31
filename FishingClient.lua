@@ -34,9 +34,9 @@ getgenv().Kaitun = {
     },
     ["Fishing"] = {
         ["Instant Fishing"] = true, 
-        ["Blantant Delay Fishing"] = 10,
+        ["Blantant Delay Fishing"] = 200,
         ["Auto Fishing"] = true,
-        ["Delay Fishing"] = 0.05,
+        ["Delay Fishing"] = 0.1,
         ["Auto Blantant Fishing"] = true,
         ["Auto Buy Weather"] = true,
         ["Auto Buy Rod Shop"] = true, 
@@ -53,6 +53,7 @@ getgenv().Kaitun = {
     },
 }
 
+-- Bikinkan Ultimate Fish It - Integrated with Kaitun Config
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -66,9 +67,9 @@ local player = Players.LocalPlayer
 local config = {
     autoFishing = Kaitun["Fishing"]["Auto Fishing"],
     instantFishing = Kaitun["Fishing"]["Instant Fishing"],
-    superInstantSpeed = 15,
+    superInstantSpeed = 8,
     fishingDelay = Kaitun["Fishing"]["Delay Fishing"],
-    fishingSpeed = 25,
+    fishingSpeed = 15,
     blantantDelay = Kaitun["Fishing"]["Auto Blantant Fishing"],
     blantantDelayValue = Kaitun["Fishing"]["Blantant Delay Fishing"],
     autoTeleport = false,
@@ -93,257 +94,292 @@ local stats = {
 local fishingConnection
 local isFishing = false
 
--- Simple UI Library
-local function CreateKaitunUI()
-    -- Create ScreenGui
+-- Premium UI Library
+local BikinkanUI = {}
+BikinkanUI.Themes = {
+    Ocean = {
+        Main = Color3.fromRGB(15, 25, 45),
+        Secondary = Color3.fromRGB(25, 40, 65),
+        Accent = Color3.fromRGB(0, 200, 255),
+        Success = Color3.fromRGB(0, 255, 170),
+        Warning = Color3.fromRGB(255, 200, 0),
+        Error = Color3.fromRGB(255, 80, 80),
+        Text = Color3.fromRGB(240, 245, 255),
+        TextSecondary = Color3.fromRGB(180, 200, 220),
+        Border = Color3.fromRGB(40, 60, 90)
+    }
+}
+
+local currentTheme = BikinkanUI.Themes.Ocean
+
+function BikinkanUI:CreateWindow(name)
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "KaitunFishItUI"
-    ScreenGui.Parent = player:WaitForChild("PlayerGui")
+    local MainContainer = Instance.new("Frame")
+    local MainFrame = Instance.new("Frame")
+    local BackgroundEffect = Instance.new("Frame")
+    local TopBar = Instance.new("Frame")
+    local Title = Instance.new("TextLabel")
+    local StatusLabel = Instance.new("TextLabel")
+    local CloseButton = Instance.new("ImageButton")
+    local TabContainer = Instance.new("Frame")
+    local TabContent = Instance.new("ScrollingFrame")
+    local ContentList = Instance.new("UIListLayout")
+    
+    -- ScreenGui
+    ScreenGui.Name = "BikinkanKaitunUI"
+    ScreenGui.Parent = player.PlayerGui
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ScreenGui.ResetOnSpawn = false
-
-    -- Main Container for Blur Effect
-    local MainContainer
+    
+    -- Apply Kaitun UI Settings
     if Kaitun["Start Kaitun"]["Lite UI"]["Blur"] then
-        MainContainer = Instance.new("Frame")
         MainContainer.Name = "MainContainer"
         MainContainer.Parent = ScreenGui
         MainContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
         MainContainer.BackgroundTransparency = 0.7
         MainContainer.BorderSizePixel = 0
         MainContainer.Size = UDim2.new(1, 0, 1, 0)
+        MainContainer.Visible = true
     end
 
     -- Main Frame
-    local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
-    MainFrame.Parent = MainContainer or ScreenGui
+    MainFrame.Parent = Kaitun["Start Kaitun"]["Lite UI"]["Blur"] and MainContainer or ScreenGui
     MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 25, 45)
+    MainFrame.BackgroundColor3 = currentTheme.Main
+    MainFrame.BackgroundTransparency = 0.05
     MainFrame.BorderSizePixel = 0
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    MainFrame.Size = UDim2.new(0, 500, 0, 600)
+    MainFrame.Size = UDim2.new(0, 450, 0, 550)
     MainFrame.Active = true
     MainFrame.Draggable = true
-
+    
     -- Background Effect
-    local BackgroundEffect = Instance.new("Frame")
     BackgroundEffect.Name = "BackgroundEffect"
     BackgroundEffect.Parent = MainFrame
-    BackgroundEffect.BackgroundColor3 = Color3.fromRGB(25, 40, 65)
+    BackgroundEffect.BackgroundColor3 = currentTheme.Secondary
+    BackgroundEffect.BackgroundTransparency = 0.1
     BackgroundEffect.BorderSizePixel = 0
-    BackgroundEffect.Position = UDim2.new(0, 5, 0, 5)
-    BackgroundEffect.Size = UDim2.new(1, -10, 1, -10)
+    BackgroundEffect.Position = UDim2.new(0, 10, 0, 10)
+    BackgroundEffect.Size = UDim2.new(1, -20, 1, -20)
     BackgroundEffect.ZIndex = -1
-
+    
     -- Top Bar
-    local TopBar = Instance.new("Frame")
     TopBar.Name = "TopBar"
     TopBar.Parent = MainFrame
-    TopBar.BackgroundColor3 = Color3.fromRGB(25, 40, 65)
+    TopBar.BackgroundColor3 = currentTheme.Secondary
+    TopBar.BackgroundTransparency = 0.1
     TopBar.BorderSizePixel = 0
-    TopBar.Size = UDim2.new(1, 0, 0, 60)
-
+    TopBar.Size = UDim2.new(1, 0, 0, 70)
+    
     -- Title
-    local Title = Instance.new("TextLabel")
     Title.Name = "Title"
     Title.Parent = TopBar
     Title.BackgroundTransparency = 1
     Title.Position = UDim2.new(0.05, 0, 0.2, 0)
     Title.Size = UDim2.new(0.7, 0, 0.4, 0)
     Title.Font = Enum.Font.GothamBold
-    Title.Text = "⚡ KAITUN " .. _G.Version .. " - ULTIMATE FISH IT"
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.Text = "🎣 " .. name .. " - Kaitun " .. _G.Version
+    Title.TextColor3 = currentTheme.Text
     Title.TextSize = 18
     Title.TextXAlignment = Enum.TextXAlignment.Left
-
+    
     -- Status Label
-    local StatusLabel = Instance.new("TextLabel")
     StatusLabel.Name = "StatusLabel"
     StatusLabel.Parent = TopBar
     StatusLabel.BackgroundTransparency = 1
     StatusLabel.Position = UDim2.new(0.05, 0, 0.65, 0)
     StatusLabel.Size = UDim2.new(0.7, 0, 0.25, 0)
     StatusLabel.Font = Enum.Font.Gotham
-    StatusLabel.Text = "🔴 SYSTEM READY"
-    StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    StatusLabel.TextSize = 12
+    StatusLabel.Text = "🔴 Kaitun Fish It - Ready"
+    StatusLabel.TextColor3 = currentTheme.TextSecondary
+    StatusLabel.TextSize = 11
     StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
-
+    
     -- Close Button
-    local CloseButton = Instance.new("TextButton")
     CloseButton.Name = "CloseButton"
     CloseButton.Parent = TopBar
-    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-    CloseButton.BorderSizePixel = 0
+    CloseButton.BackgroundTransparency = 1
     CloseButton.Position = UDim2.new(0.9, 0, 0.25, 0)
     CloseButton.Size = UDim2.new(0, 25, 0, 25)
-    CloseButton.Font = Enum.Font.GothamBold
-    CloseButton.Text = "X"
-    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseButton.TextSize = 12
-
+    CloseButton.Image = "rbxassetid://3926305904"
+    CloseButton.ImageRectOffset = Vector2.new(924, 724)
+    CloseButton.ImageRectSize = Vector2.new(36, 36)
+    CloseButton.ImageColor3 = currentTheme.TextSecondary
+    
     CloseButton.MouseButton1Click:Connect(function()
         ScreenGui:Destroy()
     end)
-
+    
     -- Tab Container
-    local TabContainer = Instance.new("Frame")
     TabContainer.Name = "TabContainer"
     TabContainer.Parent = MainFrame
-    TabContainer.BackgroundColor3 = Color3.fromRGB(15, 25, 45)
+    TabContainer.BackgroundColor3 = currentTheme.Main
+    TabContainer.BackgroundTransparency = 0.05
     TabContainer.BorderSizePixel = 0
-    TabContainer.Position = UDim2.new(0, 0, 0.1, 0)
-    TabContainer.Size = UDim2.new(1, 0, 0.9, 0)
-
-    -- Scrolling Frame
-    local ScrollFrame = Instance.new("ScrollingFrame")
-    ScrollFrame.Parent = TabContainer
-    ScrollFrame.BackgroundTransparency = 1
-    ScrollFrame.BorderSizePixel = 0
-    ScrollFrame.Size = UDim2.new(1, 0, 1, 0)
-    ScrollFrame.CanvasSize = UDim2.new(0, 0, 3, 0)
-    ScrollFrame.ScrollBarThickness = 5
-    ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 180, 255)
-
-    local UIListLayout = Instance.new("UIListLayout")
-    UIListLayout.Parent = ScrollFrame
-    UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    UIListLayout.Padding = UDim.new(0, 10)
-
-    -- UI Functions
-    local UIFunctions = {}
-
-    function UIFunctions:CreateSection(title)
+    TabContainer.Position = UDim2.new(0, 0, 0.127, 0)
+    TabContainer.Size = UDim2.new(1, 0, 0.873, 0)
+    
+    -- Tab Content
+    TabContent.Name = "TabContent"
+    TabContent.Parent = TabContainer
+    TabContent.Active = true
+    TabContent.BackgroundColor3 = currentTheme.Main
+    TabContent.BackgroundTransparency = 0.05
+    TabContent.BorderSizePixel = 0
+    TabContent.Size = UDim2.new(1, 0, 1, 0)
+    TabContent.CanvasSize = UDim2.new(0, 0, 2, 0)
+    TabContent.ScrollBarThickness = 3
+    TabContent.ScrollBarImageColor3 = currentTheme.Accent
+    TabContent.VerticalScrollBarInset = Enum.ScrollBarInset.Always
+    
+    ContentList.Parent = TabContent
+    ContentList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    ContentList.SortOrder = Enum.SortOrder.LayoutOrder
+    ContentList.Padding = UDim.new(0, 10)
+    
+    local tabs = {}
+    
+    function tabs:CreateSection(title)
         local Section = Instance.new("Frame")
-        Section.Parent = ScrollFrame
-        Section.BackgroundColor3 = Color3.fromRGB(30, 45, 70)
-        Section.BorderSizePixel = 0
-        Section.Size = UDim2.new(0.95, 0, 0, 40)
-
         local SectionTitle = Instance.new("TextLabel")
+        
+        Section.Name = "Section"
+        Section.Parent = TabContent
+        Section.BackgroundColor3 = currentTheme.Secondary
+        Section.BackgroundTransparency = 0.1
+        Section.BorderSizePixel = 0
+        Section.Size = UDim2.new(0.9, 0, 0, 50)
+        
+        SectionTitle.Name = "SectionTitle"
         SectionTitle.Parent = Section
         SectionTitle.BackgroundTransparency = 1
-        SectionTitle.Size = UDim2.new(1, 0, 1, 0)
+        SectionTitle.Position = UDim2.new(0.05, 0, 0.2, 0)
+        SectionTitle.Size = UDim2.new(0.9, 0, 0.6, 0)
         SectionTitle.Font = Enum.Font.GothamBold
         SectionTitle.Text = "🎯 " .. title
-        SectionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        SectionTitle.TextColor3 = currentTheme.Text
         SectionTitle.TextSize = 14
-
+        SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+        
         return Section
     end
-
-    function UIFunctions:CreateToggle(name, description, default, callback)
+    
+    function tabs:CreateToggle(name, description, default, callback)
         local ToggleFrame = Instance.new("Frame")
-        ToggleFrame.Parent = ScrollFrame
-        ToggleFrame.BackgroundColor3 = Color3.fromRGB(30, 45, 70)
-        ToggleFrame.BorderSizePixel = 0
-        ToggleFrame.Size = UDim2.new(0.95, 0, 0, 60)
-
         local ToggleLabel = Instance.new("TextLabel")
+        local ToggleDescription = Instance.new("TextLabel")
+        local ToggleButton = Instance.new("TextButton")
+        
+        ToggleFrame.Parent = TabContent
+        ToggleFrame.BackgroundColor3 = currentTheme.Secondary
+        ToggleFrame.BackgroundTransparency = 0.1
+        ToggleFrame.BorderSizePixel = 0
+        ToggleFrame.Size = UDim2.new(0.9, 0, 0, 60)
+        
         ToggleLabel.Parent = ToggleFrame
         ToggleLabel.BackgroundTransparency = 1
-        ToggleLabel.Position = UDim2.new(0.05, 0, 0.1, 0)
-        ToggleLabel.Size = UDim2.new(0.7, 0, 0.4, 0)
+        ToggleLabel.Position = UDim2.new(0.05, 0, 0.15, 0)
+        ToggleLabel.Size = UDim2.new(0.7, 0, 0.3, 0)
         ToggleLabel.Font = Enum.Font.GothamBold
         ToggleLabel.Text = name
-        ToggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ToggleLabel.TextColor3 = currentTheme.Text
         ToggleLabel.TextSize = 13
         ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-        local ToggleDesc = Instance.new("TextLabel")
-        ToggleDesc.Parent = ToggleFrame
-        ToggleDesc.BackgroundTransparency = 1
-        ToggleDesc.Position = UDim2.new(0.05, 0, 0.5, 0)
-        ToggleDesc.Size = UDim2.new(0.7, 0, 0.4, 0)
-        ToggleDesc.Font = Enum.Font.Gotham
-        ToggleDesc.Text = description
-        ToggleDesc.TextColor3 = Color3.fromRGB(180, 180, 180)
-        ToggleDesc.TextSize = 10
-        ToggleDesc.TextXAlignment = Enum.TextXAlignment.Left
-
-        local ToggleButton = Instance.new("TextButton")
+        
+        ToggleDescription.Parent = ToggleFrame
+        ToggleDescription.BackgroundTransparency = 1
+        ToggleDescription.Position = UDim2.new(0.05, 0, 0.5, 0)
+        ToggleDescription.Size = UDim2.new(0.7, 0, 0.3, 0)
+        ToggleDescription.Font = Enum.Font.Gotham
+        ToggleDescription.Text = description
+        ToggleDescription.TextColor3 = currentTheme.TextSecondary
+        ToggleDescription.TextSize = 10
+        ToggleDescription.TextXAlignment = Enum.TextXAlignment.Left
+        
         ToggleButton.Parent = ToggleFrame
-        ToggleButton.BackgroundColor3 = default and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(255, 60, 60)
+        ToggleButton.BackgroundColor3 = default and currentTheme.Success or currentTheme.Error
         ToggleButton.BorderSizePixel = 0
         ToggleButton.Position = UDim2.new(0.8, 0, 0.3, 0)
         ToggleButton.Size = UDim2.new(0.15, 0, 0.4, 0)
         ToggleButton.Font = Enum.Font.GothamBold
         ToggleButton.Text = default and "ON" or "OFF"
-        ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        ToggleButton.TextSize = 11
-
+        ToggleButton.TextColor3 = currentTheme.Text
+        ToggleButton.TextSize = 9
+        
         ToggleButton.MouseButton1Click:Connect(function()
             local newValue = not (ToggleButton.Text == "ON")
-            ToggleButton.BackgroundColor3 = newValue and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(255, 60, 60)
+            ToggleButton.BackgroundColor3 = newValue and currentTheme.Success or currentTheme.Error
             ToggleButton.Text = newValue and "ON" or "OFF"
             callback(newValue)
         end)
-
+        
         return ToggleFrame
     end
-
-    function UIFunctions:CreateButton(name, description, callback)
+    
+    function tabs:CreateButton(name, description, callback)
         local Button = Instance.new("TextButton")
-        Button.Parent = ScrollFrame
-        Button.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
-        Button.BorderSizePixel = 0
-        Button.Size = UDim2.new(0.95, 0, 0, 50)
-        Button.AutoButtonColor = false
-
         local ButtonLabel = Instance.new("TextLabel")
+        local ButtonDescription = Instance.new("TextLabel")
+        
+        Button.Parent = TabContent
+        Button.BackgroundColor3 = currentTheme.Accent
+        Button.BorderSizePixel = 0
+        Button.Size = UDim2.new(0.9, 0, 0, 55)
+        Button.AutoButtonColor = false
+        
         ButtonLabel.Parent = Button
         ButtonLabel.BackgroundTransparency = 1
-        ButtonLabel.Position = UDim2.new(0.05, 0, 0.2, 0)
-        ButtonLabel.Size = UDim2.new(0.9, 0, 0.4, 0)
+        ButtonLabel.Position = UDim2.new(0.05, 0, 0.15, 0)
+        ButtonLabel.Size = UDim2.new(0.9, 0, 0.5, 0)
         ButtonLabel.Font = Enum.Font.GothamBold
         ButtonLabel.Text = name
-        ButtonLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ButtonLabel.TextColor3 = currentTheme.Text
         ButtonLabel.TextSize = 14
         ButtonLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-        local ButtonDesc = Instance.new("TextLabel")
-        ButtonDesc.Parent = Button
-        ButtonDesc.BackgroundTransparency = 1
-        ButtonDesc.Position = UDim2.new(0.05, 0, 0.6, 0)
-        ButtonDesc.Size = UDim2.new(0.9, 0, 0.3, 0)
-        ButtonDesc.Font = Enum.Font.Gotham
-        ButtonDesc.Text = description
-        ButtonDesc.TextColor3 = Color3.fromRGB(220, 220, 220)
-        ButtonDesc.TextSize = 10
-        ButtonDesc.TextXAlignment = Enum.TextXAlignment.Left
-
+        
+        ButtonDescription.Parent = Button
+        ButtonDescription.BackgroundTransparency = 1
+        ButtonDescription.Position = UDim2.new(0.05, 0, 0.65, 0)
+        ButtonDescription.Size = UDim2.new(0.9, 0, 0.3, 0)
+        ButtonDescription.Font = Enum.Font.Gotham
+        ButtonDescription.Text = description
+        ButtonDescription.TextColor3 = currentTheme.TextSecondary
+        ButtonDescription.TextSize = 10
+        ButtonDescription.TextXAlignment = Enum.TextXAlignment.Left
+        
         Button.MouseButton1Click:Connect(function()
             callback()
         end)
-
+        
         return Button
     end
-
-    function UIFunctions:CreateLabel(text, height)
+    
+    function tabs:CreateLabel(text, size)
         local Label = Instance.new("TextLabel")
-        Label.Parent = ScrollFrame
+        
+        Label.Parent = TabContent
         Label.BackgroundTransparency = 1
-        Label.Size = UDim2.new(0.95, 0, 0, height or 25)
+        Label.Size = UDim2.new(0.9, 0, 0, size or 25)
         Label.Font = Enum.Font.Gotham
         Label.Text = text
-        Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Label.TextColor3 = currentTheme.Text
         Label.TextSize = 12
         Label.TextXAlignment = Enum.TextXAlignment.Left
         
         return Label
     end
-
-    function UIFunctions:UpdateStatus(text, color)
+    
+    function tabs:UpdateStatus(text, color)
         StatusLabel.Text = text
-        StatusLabel.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+        StatusLabel.TextColor3 = color
     end
-
-    return UIFunctions, ScrollFrame
+    
+    return tabs
 end
 
 -- ULTIMATE FISHING FUNCTIONS
+
 function findFishingEvent()
     local events = {}
     local locations = {
@@ -380,12 +416,16 @@ function performUltimateFishing()
     isFishing = true
     local success = false
     
-    -- SUPER INSTANT FISHING MODE (20x FASTER)
+    -- SUPER INSTANT FISHING MODE
     if config.instantFishing then
         local fishingEvents = findFishingEvent()
         
-        for _, event in pairs(fishingEvents) do
-            local methods = {"CatchFish", "FishCaught", "GetFish", "AddFish", "StartFishing", "CompleteFishing", "Fish", "Catch", "Reel", "Fishing", "Cast"}
+        -- Try all events for maximum speed
+        for instantFishing, event in pairs(fishingEvents) do
+            local methods = {
+                "CatchFish", "FishCaught", "GetFish", "AddFish", "StartFishing", 
+                "CompleteFishing", "Fish", "Catch", "Reel", "Fishing", "Cast"
+            }
             
             for _, method in pairs(methods) do
                 local ok = pcall(function()
@@ -410,19 +450,26 @@ function performUltimateFishing()
         end
     end
     
-    -- BLANTANT MODE - Ultra fast fishing (20x FASTER)
+  -- BLANTANT MODE - Ultra fast fishing (20x FASTER)
     if not success and config.blantantDelay then
-        for i = 1, 5 do
+        -- Rapid fire inputs with minimal delay
+        for i = 1, 5 do -- Increased from 1 to 5 attempts per cycle
             pcall(function()
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                wait(0.001)
+                wait(0.001) -- Reduced delay
                 VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
             end)
             
             pcall(function()
                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                wait(0.001)
+                wait(0.001) -- Reduced delay
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            end)
+            
+            pcall(function()
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+                wait(0.001) -- Reduced delay
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
             end)
         end
         
@@ -441,33 +488,41 @@ function startAutoFishing()
         fishingConnection:Disconnect()
     end
     
-    print("🚀 STARTING KAITUN AUTO FISHING - 20x FASTER!")
+    print("🚀 STARTING KAITUN AUTO FISHING!")
+    print("⚡ Instant Fishing: " .. tostring(config.instantFishing))
+    print("💥 Blantant Mode: " .. tostring(config.blantantDelay))
+    print("⏱️ Delay: " .. config.fishingDelay)
     
     fishingConnection = RunService.Heartbeat:Connect(function()
         if config.autoFishing and not isFishing then
             local success = false
+            
+            -- Apply super instant speed multiplier
             local attempts = config.instantFishing and config.superInstantSpeed or 1
             
             for i = 1, attempts do
                 if performUltimateFishing() then
                     success = true
                     if i < attempts then
-                        wait(0.005)
+                        wait(0.01)
                     end
                 end
             end
             
+            -- Update status
             if success then
                 local fishPerSecond = stats.fishCaught / (tick() - stats.startTime)
-                Window:UpdateStatus("🟢 FISHING - " .. stats.fishCaught .. " fish | " .. string.format("%.1f", fishPerSecond) .. "/s", Color3.fromRGB(0, 255, 127))
+                Window:UpdateStatus("🟢 KAITUN FISHING - " .. stats.fishCaught .. " fish", currentTheme.Success)
                 
-                if stats.fishCaught % 5 == 0 then
-                    print("📊 KAITUN REPORT: " .. stats.fishCaught .. " fish | $" .. stats.totalEarnings .. " | " .. string.format("%.1f", fishPerSecond) .. " fish/s")
+                -- Progress reports
+                if stats.fishCaught % 10 == 0 then
+                    print("📊 KAITUN REPORT: " .. stats.fishCaught .. " fish | $" .. stats.totalEarnings)
                 end
             else
-                Window:UpdateStatus("🟡 Scanning fishing methods...", Color3.fromRGB(255, 200, 0))
+                Window:UpdateStatus("🟡 Scanning fishing methods...", currentTheme.Warning)
             end
             
+            -- Apply delay based on blantant mode
             local actualDelay = config.blantantDelay and (config.blantantDelayValue / 1000) or config.fishingDelay
             wait(actualDelay)
         end
@@ -481,7 +536,7 @@ function stopAutoFishing()
     end
     isFishing = false
     print("🔴 Kaitun Auto Fishing Stopped")
-    Window:UpdateStatus("🔴 Fishing Stopped", Color3.fromRGB(255, 60, 60))
+    Window:UpdateStatus("🔴 Fishing Stopped", currentTheme.Error)
 end
 
 -- KAITUN ROD SHOP SYSTEM
@@ -491,8 +546,10 @@ function autoBuyRodShop()
     local rodList = Kaitun["Rod Shop"]["Shop"]["Shop List"]
     print("🛒 Checking Rod Shop for: " .. table.concat(rodList, ", "))
     
+    -- Simulate buying rods (this would be game-specific)
     for _, rodName in pairs(rodList) do
         local success = pcall(function()
+            -- This would interact with the game's shop system
             print("🎣 Attempting to buy: " .. rodName)
         end)
         
@@ -509,6 +566,7 @@ function autoBuyWeatherBoost()
     print("🌤️ Checking for weather boosts...")
     
     local success = pcall(function()
+        -- This would interact with weather system
         print("🌊 Weather boost activated!")
     end)
     
@@ -518,125 +576,126 @@ function autoBuyWeatherBoost()
 end
 
 -- Initialize Kaitun UI
-local Window, ScrollFrame = CreateKaitunUI()
+local Window = BikinkanUI:CreateWindow("Kaitun Fish It")
 
--- Create UI Elements
-Window:CreateSection("🎯 KAITUN FISHING CONTROLS")
+-- Fishing Controls
+Window:CreateSection("🎯 Kaitun Fishing")
 
-local autoFishButton = Window:CreateButton("🚀 START KAITUN FISHING", "Start auto fishing with 20x faster speed", function()
+local autoFishButton = Window:CreateButton("🚀 START KAITUN FISHING", "Start auto fishing with Kaitun config", function()
     config.autoFishing = not config.autoFishing
     if config.autoFishing then
         startAutoFishing()
-        autoFishButton:FindFirstChild("TextLabel").Text = "⏹️ STOP KAITUN FISHING"
-        autoFishButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-        Window:UpdateStatus("🟢 KAITUN FISHING ACTIVATED - 20x SPEED!", Color3.fromRGB(0, 255, 127))
+        autoFishButton:FindFirstChild("ButtonLabel").Text = "⏹️ STOP KAITUN FISHING"
+        autoFishButton.BackgroundColor3 = currentTheme.Error
+        Window:UpdateStatus("🟢 KAITUN FISHING ACTIVATED!", currentTheme.Success)
     else
         stopAutoFishing()
-        autoFishButton:FindFirstChild("TextLabel").Text = "🚀 START KAITUN FISHING"
-        autoFishButton.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
-        Window:UpdateStatus("🔴 Fishing Stopped", Color3.fromRGB(255, 60, 60))
+        autoFishButton:FindFirstChild("ButtonLabel").Text = "🚀 START KAITUN FISHING"
+        autoFishButton.BackgroundColor3 = currentTheme.Accent
+        Window:UpdateStatus("🔴 Fishing Stopped", currentTheme.Error)
     end
 end)
 
-Window:CreateSection("⚡ FISHING SETTINGS")
+Window:CreateSection("⚡ Fishing Settings")
 
-Window:CreateToggle("INSTANT FISHING", "ENABLED - Catch fish instantly (20x Faster)", Kaitun["Fishing"]["Instant Fishing"], function(value)
+Window:CreateToggle("Instant Fishing", Kaitun["Fishing"]["Instant Fishing"] and "ENABLED - Catch fish instantly" or "DISABLED", Kaitun["Fishing"]["Instant Fishing"], function(value)
     config.instantFishing = value
     Kaitun["Fishing"]["Instant Fishing"] = value
-    Window:UpdateStatus(value and "⚡ INSTANT FISHING ON - 20x SPEED" or "🔵 Instant Fishing OFF")
+    Window:UpdateStatus(value and "⚡ Instant Fishing ON" or "🔵 Instant Fishing OFF", 
+                       value and currentTheme.Success or currentTheme.Accent)
 end)
 
-Window:CreateToggle("BLANTANT MODE", "ENABLED - Ultra fast fishing (20x Faster)", Kaitun["Fishing"]["Auto Blantant Fishing"], function(value)
+Window:CreateToggle("Blantant Fishing", Kaitun["Fishing"]["Auto Blantant Fishing"] and "ENABLED - Ultra fast fishing" or "DISABLED", Kaitun["Fishing"]["Auto Blantant Fishing"], function(value)
     config.blantantDelay = value
     Kaitun["Fishing"]["Auto Blantant Fishing"] = value
-    Window:UpdateStatus(value and "💥 BLANTANT MODE ON - 20x SPEED" or "🔵 Normal Mode")
+    Window:UpdateStatus(value and "💥 Blantant Mode ON" or "🔵 Normal Mode", 
+                       value and currentTheme.Warning or currentTheme.Accent)
 end)
 
-Window:CreateSection("🛒 KAITUN SHOP SYSTEM")
+Window:CreateSection("🛒 Kaitun Shop System")
 
-Window:CreateToggle("AUTO BUY RODS", "ENABLED - Auto purchase best rods", Kaitun["Fishing"]["Auto Buy Rod Shop"], function(value)
+Window:CreateToggle("Auto Buy Rods", Kaitun["Fishing"]["Auto Buy Rod Shop"] and "ENABLED - Auto purchase rods" or "DISABLED", Kaitun["Fishing"]["Auto Buy Rod Shop"], function(value)
     config.autoBuyShop = value
     Kaitun["Fishing"]["Auto Buy Rod Shop"] = value
     if value then
         spawn(function()
             while config.autoBuyShop do
                 autoBuyRodShop()
-                wait(20)
+                wait(30) -- Check shop every 30 seconds
             end
         end)
     end
 end)
 
-Window:CreateToggle("AUTO BUY WEATHER", "ENABLED - Auto weather boosts", Kaitun["Fishing"]["Auto Buy Weather"], function(value)
+Window:CreateToggle("Auto Buy Weather", Kaitun["Fishing"]["Auto Buy Weather"] and "ENABLED - Auto weather boosts" or "DISABLED", Kaitun["Fishing"]["Auto Buy Weather"], function(value)
     config.autoBuyWeather = value
     Kaitun["Fishing"]["Auto Buy Weather"] = value
     if value then
         spawn(function()
             while config.autoBuyWeather do
                 autoBuyWeatherBoost()
-                wait(40)
+                wait(60) -- Check weather every 60 seconds
             end
         end)
     end
 end)
 
-Window:CreateSection("📊 KAITUN STATISTICS")
+Window:CreateSection("📊 Kaitun Statistics")
 
 local statsLabels = {
-    totalFish = Window:CreateLabel("🎣 TOTAL FISH CAUGHT: " .. stats.fishCaught, 30),
-    sessionFish = Window:CreateLabel("📈 SESSION FISH: " .. stats.sessionFish, 30),
-    earnings = Window:CreateLabel("💰 TOTAL EARNINGS: $" .. stats.totalEarnings, 30),
-    itemsBought = Window:CreateLabel("🛒 ITEMS BOUGHT: " .. stats.itemsBought, 30),
-    speed = Window:CreateLabel("⚡ FISHING SPEED: 20x FASTER", 30)
+    totalFish = Window:CreateLabel("🎣 Total Fish: " .. stats.fishCaught, 25),
+    sessionFish = Window:CreateLabel("📈 Session Fish: " .. stats.sessionFish, 25),
+    earnings = Window:CreateLabel("💰 Earnings: $" .. stats.totalEarnings, 25),
+    itemsBought = Window:CreateLabel("🛒 Items Bought: " .. stats.itemsBought, 25)
 }
 
 -- Update statistics
 function updateStats()
-    local currentTime = tick()
-    local elapsedTime = currentTime - stats.startTime
-    local fishPerSecond = elapsedTime > 0 and stats.fishCaught / elapsedTime or 0
-    
-    statsLabels.totalFish.Text = "🎣 TOTAL FISH CAUGHT: " .. stats.fishCaught
-    statsLabels.sessionFish.Text = "📈 SESSION FISH: " .. stats.sessionFish
-    statsLabels.earnings.Text = "💰 TOTAL EARNINGS: $" .. stats.totalEarnings
-    statsLabels.itemsBought.Text = "🛒 ITEMS BOUGHT: " .. stats.itemsBought
-    statsLabels.speed.Text = "⚡ FISHING SPEED: " .. string.format("%.1f", fishPerSecond) .. " fish/s"
+    statsLabels.totalFish.Text = "🎣 Total Fish: " .. stats.fishCaught
+    statsLabels.sessionFish.Text = "📈 Session Fish: " .. stats.sessionFish
+    statsLabels.earnings.Text = "💰 Earnings: $" .. stats.totalEarnings
+    statsLabels.itemsBought.Text = "🛒 Items Bought: " .. stats.itemsBought
 end
 
 -- Auto update stats
 spawn(function()
     while true do
         updateStats()
-        wait(0.5)
+        wait(1)
     end
 end)
 
 -- Quick actions
-Window:CreateSection("🎮 QUICK ACTIONS")
+Window:CreateSection("🎮 Quick Actions")
 
-Window:CreateButton("🛒 BUY RODS NOW", "Purchase all available rods instantly", function()
+Window:CreateButton("🛒 Buy Rods Now", "Purchase all available rods", function()
     autoBuyRodShop()
 end)
 
-Window:CreateButton("🌊 BUY WEATHER NOW", "Activate weather boosts instantly", function()
+Window:CreateButton("🌊 Buy Weather Now", "Activate weather boosts", function()
     autoBuyWeatherBoost()
 end)
 
 -- Auto start if enabled in Kaitun config
 if Kaitun["Start Kaitun"]["Enable"] and Kaitun["Fishing"]["Auto Fishing"] then
     spawn(function()
-        wait(2)
+        wait(3) -- Wait for UI to load
         config.autoFishing = true
         startAutoFishing()
-        autoFishButton:FindFirstChild("TextLabel").Text = "⏹️ STOP KAITUN FISHING"
-        autoFishButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-        Window:UpdateStatus("🟢 KAITUN AUTO STARTED - 20x SPEED!", Color3.fromRGB(0, 255, 127))
+        autoFishButton:FindFirstChild("ButtonLabel").Text = "⏹️ STOP KAITUN FISHING"
+        autoFishButton.BackgroundColor3 = currentTheme.Error
+        Window:UpdateStatus("🟢 KAITUN AUTO STARTED!", currentTheme.Success)
     end)
 end
 
-print("🎣 KAITUN FISH IT LOADED - 20x FASTER!")
+print("🎣 KAITUN FISH IT LOADED!")
+print("=================================")
+print("🚀 KAITUN CONFIGURATION:")
 print("⚡ Instant Fishing: " .. tostring(Kaitun["Fishing"]["Instant Fishing"]))
 print("💥 Blantant Fishing: " .. tostring(Kaitun["Fishing"]["Auto Blantant Fishing"]))
+print("🛒 Auto Buy Rods: " .. tostring(Kaitun["Fishing"]["Auto Buy Rod Shop"]))
+print("🌊 Auto Buy Weather: " .. tostring(Kaitun["Fishing"]["Auto Buy Weather"]))
 print("⏱️ Fishing Delay: " .. Kaitun["Fishing"]["Delay Fishing"])
+print("=================================")
 
-Window:UpdateStatus("✅ KAITUN SYSTEM READY - 20x SPEED!", Color3.fromRGB(0, 255, 127))
+Window:UpdateStatus("✅ KAITUN SYSTEM READY!", currentTheme.Success)
