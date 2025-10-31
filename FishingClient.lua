@@ -1,73 +1,14 @@
--- Bikinkan Premium Fish It - With Instant Fishing
+-- Bikinkan Premium UI Template - Fixed Errors
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
 
--- Configuration
-local config = {
-    autoFishing = false,
-    instantFishing = false,
-    fishingSpeed = 10,
-    fishingDelay = 0.5,
-    autoCollect = true
-}
-
--- Statistics
-local stats = {
-    fishCaught = 0,
-    perfectCatches = 0,
-    totalEarnings = 0,
-    startTime = tick()
-}
-
--- Fishing Variables
-local fishingConnection
-local isFishing = false
-
--- Create fishing bobber
-local function createBobber()
-    local bobber = Instance.new("Part")
-    bobber.Name = "FishingBobber"
-    bobber.Size = Vector3.new(0.5, 0.5, 0.5)
-    bobber.Shape = Enum.PartType.Ball
-    bobber.Material = Enum.Material.Neon
-    bobber.BrickColor = BrickColor.new("Bright blue")
-    bobber.Anchored = true
-    bobber.CanCollide = false
-    bobber.Parent = workspace
-    
-    -- Text label for bobber
-    local billboard = Instance.new("BillboardGui")
-    billboard.Size = UDim2.new(0, 100, 0, 40)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-    billboard.AlwaysOnTop = true
-    billboard.Parent = bobber
-    
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Ready 🎣"
-    textLabel.TextColor3 = Color3.new(1, 1, 1)
-    textLabel.TextScaled = true
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.Parent = billboard
-    
-    -- Point light
-    local pointLight = Instance.new("PointLight")
-    pointLight.Color = Color3.new(0, 0.5, 1)
-    pointLight.Range = 8
-    pointLight.Brightness = 2
-    pointLight.Parent = bobber
-    
-    return bobber, textLabel
+-- Pastikan PlayerGui ada
+if not player:FindFirstChild("PlayerGui") then
+    Instance.new("PlayerGui").Parent = player
 end
-
--- Initialize bobber
-local bobber, bobText = createBobber()
 
 -- Premium UI Library
 local BikinkanUI = {}
@@ -86,6 +27,12 @@ BikinkanUI.Themes = {
 local currentTheme = BikinkanUI.Themes.DeepOcean
 
 function BikinkanUI:CreateWindow(name)
+    -- Pastikan tidak ada UI sebelumnya
+    local existingUI = player.PlayerGui:FindFirstChild("BikinkanPremiumUI")
+    if existingUI then
+        existingUI:Destroy()
+    end
+
     local ScreenGui = Instance.new("ScreenGui")
     local MainContainer = Instance.new("Frame")
     local MainFrame = Instance.new("Frame")
@@ -121,11 +68,11 @@ function BikinkanUI:CreateWindow(name)
     MainFrame.BackgroundTransparency = 0.05
     MainFrame.BorderSizePixel = 0
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    MainFrame.Size = UDim2.new(0, 450, 0, 600)
+    MainFrame.Size = UDim2.new(0, 450, 0, 550)
     MainFrame.Active = true
     MainFrame.Draggable = true
     
-    -- Background Effect dengan gradient
+    -- Background Effect
     BackgroundEffect.Name = "BackgroundEffect"
     BackgroundEffect.Parent = MainFrame
     BackgroundEffect.BackgroundColor3 = currentTheme.Secondary
@@ -135,7 +82,7 @@ function BikinkanUI:CreateWindow(name)
     BackgroundEffect.Size = UDim2.new(1, -30, 1, -30)
     BackgroundEffect.ZIndex = -1
     
-    -- Top Bar dengan elegant design
+    -- Top Bar
     TopBar.Name = "TopBar"
     TopBar.Parent = MainFrame
     TopBar.BackgroundColor3 = currentTheme.Secondary
@@ -143,14 +90,14 @@ function BikinkanUI:CreateWindow(name)
     TopBar.BorderSizePixel = 0
     TopBar.Size = UDim2.new(1, 0, 0, 100)
     
-    -- Title dengan elegant typography
+    -- Title
     Title.Name = "Title"
     Title.Parent = TopBar
     Title.BackgroundTransparency = 1
     Title.Position = UDim2.new(0.08, 0, 0.2, 0)
     Title.Size = UDim2.new(0.7, 0, 0.3, 0)
     Title.Font = Enum.Font.GothamBold
-    Title.Text = "🎣 Premium Fish It"
+    Title.Text = "✨ " .. name
     Title.TextColor3 = currentTheme.Text
     Title.TextSize = 24
     Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -162,12 +109,12 @@ function BikinkanUI:CreateWindow(name)
     Subtitle.Position = UDim2.new(0.08, 0, 0.55, 0)
     Subtitle.Size = UDim2.new(0.7, 0, 0.25, 0)
     Subtitle.Font = Enum.Font.Gotham
-    Subtitle.Text = "Instant Fishing System"
+    Subtitle.Text = "Premium UI Template"
     Subtitle.TextColor3 = currentTheme.TextSecondary
     Subtitle.TextSize = 14
     Subtitle.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Close Button yang elegant
+    -- Close Button
     CloseButton.Name = "CloseButton"
     CloseButton.Parent = TopBar
     CloseButton.BackgroundTransparency = 1
@@ -194,7 +141,6 @@ function BikinkanUI:CreateWindow(name)
     
     CloseButton.MouseButton1Click:Connect(function()
         ScreenGui:Destroy()
-        bobber:Destroy()
     end)
     
     -- Tab Container
@@ -203,8 +149,8 @@ function BikinkanUI:CreateWindow(name)
     TabContainer.BackgroundColor3 = currentTheme.Main
     TabContainer.BackgroundTransparency = 0.05
     TabContainer.BorderSizePixel = 0
-    TabContainer.Position = UDim2.new(0, 0, 0.167, 0)
-    TabContainer.Size = UDim2.new(1, 0, 0.833, 0)
+    TabContainer.Position = UDim2.new(0, 0, 0.18, 0)
+    TabContainer.Size = UDim2.new(1, 0, 0.82, 0)
     
     -- Tab Content Area
     TabContent.Name = "TabContent"
@@ -505,179 +451,64 @@ function BikinkanUI:CreateWindow(name)
         return Label
     end
     
-    function tabs:UpdateStatus(text, color)
-        Subtitle.Text = text
-        Subtitle.TextColor3 = color
+    function tabs:CreateDivider()
+        local Divider = Instance.new("Frame")
+        
+        Divider.Parent = TabContent
+        Divider.BackgroundColor3 = currentTheme.Border
+        Divider.BorderSizePixel = 0
+        Divider.Size = UDim2.new(0.9, 0, 0, 2)
+        
+        return Divider
     end
+    
+    -- Entrance animation
+    spawn(function()
+        MainFrame.Size = UDim2.new(0, 0, 0, 0)
+        MainFrame.BackgroundTransparency = 1
+        BackgroundEffect.BackgroundTransparency = 1
+        
+        TweenService:Create(MainFrame, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 450, 0, 550),
+            BackgroundTransparency = 0.05
+        }):Play()
+        
+        TweenService:Create(BackgroundEffect, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundTransparency = 0.1
+        }):Play()
+    end)
     
     return tabs
 end
 
--- === INSTANT FISHING SYSTEM ===
-function InstantFishing()
-    if isFishing then return end
-    isFishing = true
-
-    bobText.Text = "Instant Cast 🎣"
-    bobber.BrickColor = BrickColor.new("Bright red")
-
-    local cam = workspace.CurrentCamera
-    local start = cam.CFrame * CFrame.new(0, -1.5, -2)
-    local target = cam.CFrame * CFrame.new(0, -1.5, -8)
-    bobber.CFrame = target
-
-    -- efek splash glow
-    local splash = Instance.new("ParticleEmitter")
-    splash.Texture = "rbxassetid://30119215"
-    splash.Lifetime = NumberRange.new(0.3)
-    splash.Speed = NumberRange.new(6,10)
-    splash.Rate = 100
-    splash.Rotation = NumberRange.new(0,360)
-    splash.Parent = bobber
-    splash:Emit(25)
-    game:GetService("Debris"):AddItem(splash, 1)
-
-    task.wait(0.15)
-
-    -- langsung hasil
-    bobText.Text = "🐟 Perfect Catch!"
-    if config.autoCollect then
-        bobText.Text = "🐟 Perfect Catch! + Collected 💰"
-    end
-
-    -- efek sukses (pop glow)
-    local successGlow = Instance.new("PointLight")
-    successGlow.Color = Color3.fromRGB(255, 0, 0)
-    successGlow.Range = 12
-    successGlow.Brightness = 3
-    successGlow.Parent = bobber
-    game:GetService("Debris"):AddItem(successGlow, 0.4)
-
-    -- Update statistics
-    stats.fishCaught = stats.fishCaught + 1
-    stats.perfectCatches = stats.perfectCatches + 1
-    stats.totalEarnings = stats.totalEarnings + math.random(100, 500)
-
-    -- balikin posisi bobber
-    TweenService:Create(bobber, TweenInfo.new(0.2), {
-        CFrame = cam.CFrame * CFrame.new(0, -1.5, -2)
-    }):Play()
-
-    isFishing = false
-end
-
 -- Initialize Premium UI
-local Window = BikinkanUI:CreateWindow("Premium Fish It")
+local Window = BikinkanUI:CreateWindow("Premium UI")
 
--- Fishing Controls Section
-Window:CreateSection("Fishing Controls")
+-- Demo Content (bisa dihapus)
+Window:CreateSection("Welcome")
+Window:CreateLabel("✨ Welcome to Premium UI Template", 40)
+Window:CreateLabel("This is a clean and beautiful UI template", 30)
+Window:CreateLabel("You can add your own features here", 30)
 
--- Instant Fishing Button
-local instantFishButton = Window:CreateButton("⚡ INSTANT FISHING: OFF", "Click to toggle instant fishing mode", function()
-    config.instantFishing = not config.instantFishing
-    
-    if config.instantFishing then
-        instantFishButton:FindFirstChild("ButtonLabel").Text = "⚡ INSTANT FISHING: ON"
-        instantFishButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-        instantFishButton:FindFirstChild("ButtonIcon").Text = "🎣"
-        Window:UpdateStatus("⚡ Instant Fishing ACTIVATED", Color3.fromRGB(255, 100, 100))
-        
-        -- Jalankan instant fishing
-        InstantFishing()
-    else
-        instantFishButton:FindFirstChild("ButtonLabel").Text = "⚡ INSTANT FISHING: OFF"
-        instantFishButton.BackgroundColor3 = currentTheme.Accent
-        instantFishButton:FindFirstChild("ButtonIcon").Text = "⚡"
-        Window:UpdateStatus("Instant Fishing System", currentTheme.TextSecondary)
-    end
+Window:CreateSection("Demo Controls")
+Window:CreateToggle("Sample Toggle", "This is a sample toggle switch", false, function(value)
+    print("Toggle changed to:", value)
 end)
 
--- Auto Fishing Toggle
-Window:CreateToggle("Auto Fishing", "Automatically fish continuously", config.autoFishing, function(value)
-    config.autoFishing = value
-    if value then
-        Window:UpdateStatus("🤖 Auto Fishing ACTIVATED", currentTheme.Success)
-    else
-        Window:UpdateStatus("Instant Fishing System", currentTheme.TextSecondary)
-    end
+Window:CreateButton("Sample Button", "This is a sample button with icon", function()
+    print("Button clicked!")
 end)
 
--- Auto Collect Toggle
-Window:CreateToggle("Auto Collect", "Automatically collect fish and rewards", config.autoCollect, function(value)
-    config.autoCollect = value
-    if value then
-        Window:UpdateStatus("💰 Auto Collect ENABLED", currentTheme.Success)
-    else
-        Window:UpdateStatus("Instant Fishing System", currentTheme.TextSecondary)
-    end
+Window:CreateSlider("Sample Slider", 1, 100, 50, function(value)
+    print("Slider value:", value)
 end)
 
-Window:CreateSection("Fishing Settings")
+Window:CreateSection("Information")
+Window:CreateLabel("🎨 Beautiful Ocean Theme", 30)
+Window:CreateLabel("📱 Responsive Design", 30)
+Window:CreateLabel("⚡ Smooth Animations", 30)
+Window:CreateLabel("🎯 Easy to Customize", 30)
 
-Window:CreateSlider("Fishing Speed", 1, 20, config.fishingSpeed, function(value)
-    config.fishingSpeed = value
-    Window:UpdateStatus("🚀 Speed: " .. value .. "x", currentTheme.Accent)
-end)
-
-Window:CreateSlider("Fishing Delay", 0.1, 3, config.fishingDelay, function(value)
-    config.fishingDelay = value
-    Window:UpdateStatus("⏱️ Delay: " .. value .. "s", currentTheme.Accent)
-end)
-
-Window:CreateSection("Fishing Statistics")
-
-local statsLabels = {
-    fishCount = Window:CreateLabel("🎣 Fish Caught: " .. stats.fishCaught, 35),
-    perfectCount = Window:CreateLabel("⭐ Perfect Catches: " .. stats.perfectCatches, 35),
-    earnings = Window:CreateLabel("💰 Total Earnings: $" .. stats.totalEarnings, 35),
-    time = Window:CreateLabel("⏰ Session Time: 0 minutes", 35)
-}
-
--- Update statistics function
-function updateStats()
-    local minutes = math.floor((tick() - stats.startTime) / 60)
-    statsLabels.fishCount.Text = "🎣 Fish Caught: " .. stats.fishCaught
-    statsLabels.perfectCount.Text = "⭐ Perfect Catches: " .. stats.perfectCatches
-    statsLabels.earnings.Text = "💰 Total Earnings: $" .. stats.totalEarnings
-    statsLabels.time.Text = "⏰ Session Time: " .. minutes .. " minutes"
-end
-
--- Auto update stats
-spawn(function()
-    while true do
-        updateStats()
-        wait(2)
-    end
-end)
-
--- Auto fishing system
-spawn(function()
-    while true do
-        if config.autoFishing and not isFishing then
-            InstantFishing()
-            wait(config.fishingDelay)
-        end
-        wait(0.1)
-    end
-end)
-
--- Entrance animation
-spawn(function()
-    MainFrame.Size = UDim2.new(0, 0, 0, 0)
-    MainFrame.BackgroundTransparency = 1
-    BackgroundEffect.BackgroundTransparency = 1
-    
-    TweenService:Create(MainFrame, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 450, 0, 600),
-        BackgroundTransparency = 0.05
-    }):Play()
-    
-    TweenService:Create(BackgroundEffect, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        BackgroundTransparency = 0.1
-    }):Play()
-end)
-
-print("🎣 Premium Fish It with Instant Fishing Loaded!")
-print("⚡ Instant Fishing System Ready")
-print("🎯 Visual Bobber Effects Active")
-print("📊 Real-time Statistics Enabled")
+print("✨ Premium UI Template Loaded Successfully!")
+print("🎨 Beautiful and Clean Design")
+print("🚀 Ready for Your Features")
