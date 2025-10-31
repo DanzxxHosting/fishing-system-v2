@@ -1,7 +1,8 @@
--- Bikinkan Premium UI Template
+-- Bikinkan Premium UI Template with Teleport Feature
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
@@ -478,3 +479,162 @@ function BikinkanUI:CreateWindow(name)
     
     return tabs
 end
+
+-- === TELEPORT SYSTEM ===
+function TeleportIsland(islandName)
+    local player = game.Players.LocalPlayer
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+    local islands = {
+        ["Starter Island"] = Vector3.new(120, 10, -80),
+        ["Coral Reef"] = Vector3.new(560, 15, 400),
+        ["Pirate Cove"] = Vector3.new(1020, 18, -120),
+        ["Volcano Island"] = Vector3.new(1640, 25, 900),
+        ["Frozen Lake"] = Vector3.new(-480, 12, 670),
+        ["Mystic Falls"] = Vector3.new(2300, 35, -420)
+    }
+
+    local target = islands[islandName]
+    if not target then
+        warn("⚠️ Pulau tidak ditemukan:", islandName)
+        return
+    end
+
+    -- Efek teleport glow
+    local effect = Instance.new("ParticleEmitter")
+    effect.Texture = "rbxassetid://30119215"
+    effect.Lifetime = NumberRange.new(0.5)
+    effect.Rate = 150
+    effect.Speed = NumberRange.new(6)
+    effect.Parent = hrp
+    effect:Emit(30)
+    game.Debris:AddItem(effect, 1)
+
+    -- Teleport player
+    task.wait(0.1)
+    hrp.CFrame = CFrame.new(target + Vector3.new(0, 4, 0))
+    print("🌀 [TeleportIsland] Berhasil ke:", islandName)
+end
+
+-- === TELEPORT UI FUNCTION ===
+function CreateTeleportMenu(Window)
+    local teleportOpen = false
+    local teleportFrame = nil
+    
+    -- Button untuk membuka menu teleport
+    local teleportButton = Window:CreateButton("🌌 OPEN TELEPORT MENU", "Click to open island teleport menu", function()
+        teleportOpen = not teleportOpen
+        
+        if teleportOpen then
+            -- Create teleport frame jika belum ada
+            if not teleportFrame then
+                teleportFrame = Instance.new("Frame")
+                teleportFrame.Name = "TeleportFrame"
+                teleportFrame.Parent = Window:FindFirstAncestorWhichIsA("ScrollingFrame")
+                teleportFrame.BackgroundColor3 = currentTheme.Secondary
+                teleportFrame.BackgroundTransparency = 0.1
+                teleportFrame.BorderSizePixel = 0
+                teleportFrame.Size = UDim2.new(0.9, 0, 0, 250)
+                teleportFrame.LayoutOrder = 999 -- Pasti di bawah
+                
+                local islandsList = {"Starter Island", "Coral Reef", "Pirate Cove", "Volcano Island", "Frozen Lake", "Mystic Falls"}
+                
+                local function createIslandButton(name, index)
+                    local btn = Instance.new("TextButton")
+                    btn.Parent = teleportFrame
+                    btn.Size = UDim2.new(1, -20, 0, 35)
+                    btn.Position = UDim2.new(0, 10, 0, 10 + (index - 1) * 40)
+                    btn.BackgroundColor3 = currentTheme.Main
+                    btn.Text = "▶ " .. name
+                    btn.Font = Enum.Font.GothamBold
+                    btn.TextColor3 = currentTheme.Text
+                    btn.TextSize = 14
+                    btn.BorderSizePixel = 0
+                    btn.AutoButtonColor = false
+                    
+                    btn.MouseEnter:Connect(function()
+                        TweenService:Create(btn, TweenInfo.new(0.15), {
+                            BackgroundColor3 = currentTheme.Accent
+                        }):Play()
+                    end)
+                    
+                    btn.MouseLeave:Connect(function()
+                        TweenService:Create(btn, TweenInfo.new(0.15), {
+                            BackgroundColor3 = currentTheme.Main
+                        }):Play()
+                    end)
+                    
+                    btn.MouseButton1Click:Connect(function()
+                        TeleportIsland(name)
+                        -- Tutup menu setelah teleport
+                        teleportOpen = false
+                        teleportFrame.Visible = false
+                        teleportButton:FindFirstChild("ButtonLabel").Text = "🌌 OPEN TELEPORT MENU"
+                        TweenService:Create(teleportButton, TweenInfo.new(0.2), {
+                            BackgroundColor3 = currentTheme.Accent
+                        }):Play()
+                    end)
+                end
+                
+                for i, name in ipairs(islandsList) do
+                    createIslandButton(name, i)
+                end
+            end
+            
+            teleportFrame.Visible = true
+            teleportButton:FindFirstChild("ButtonLabel").Text = "🚪 CLOSE TELEPORT MENU"
+            TweenService:Create(teleportButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+            }):Play()
+        else
+            if teleportFrame then
+                teleportFrame.Visible = false
+            end
+            teleportButton:FindFirstChild("ButtonLabel").Text = "🌌 OPEN TELEPORT MENU"
+            TweenService:Create(teleportButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = currentTheme.Accent
+            }):Play()
+        end
+    end)
+    
+    return teleportButton
+end
+
+-- Initialize Premium UI
+local Window = BikinkanUI:CreateWindow("Premium UI")
+
+-- Demo Sections
+Window:CreateSection("Welcome")
+Window:CreateLabel("✨ Welcome to Premium UI Template", 40)
+Window:CreateLabel("This is a clean and beautiful UI template", 30)
+Window:CreateLabel("You can add your own features here", 30)
+
+Window:CreateSection("Demo Controls")
+Window:CreateToggle("Sample Toggle", "This is a sample toggle switch", false, function(value)
+    print("Toggle changed to:", value)
+end)
+
+Window:CreateButton("Sample Button", "This is a sample button with icon", function()
+    print("Button clicked!")
+end)
+
+Window:CreateSlider("Sample Slider", 1, 100, 50, function(value)
+    print("Slider value:", value)
+end)
+
+-- Teleport Section
+Window:CreateSection("Island Teleport")
+CreateTeleportMenu(Window)
+
+Window:CreateSection("Information")
+Window:CreateLabel("🎨 Beautiful Ocean Theme", 30)
+Window:CreateLabel("📱 Responsive Design", 30)
+Window:CreateLabel("⚡ Smooth Animations", 30)
+Window:CreateLabel("🎯 Easy to Customize", 30)
+Window:CreateLabel("🌌 Island Teleport System", 30)
+
+print("✨ Premium UI Template Loaded!")
+print("🎨 Beautiful and Clean Design")
+print("🚀 Ready for Your Features")
+print("🌌 Teleport System Integrated")
