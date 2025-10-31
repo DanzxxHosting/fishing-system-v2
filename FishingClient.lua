@@ -1,4 +1,4 @@
--- Bikinkan Premium UI Template with Teleport Feature
+-- Bikinkan Ultra Modern UI
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -6,100 +6,102 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
--- Premium UI Library
+-- Ultra Modern UI Library
 local BikinkanUI = {}
 BikinkanUI.Themes = {
-    DeepOcean = {
-        Main = Color3.fromRGB(15, 25, 45),
-        Secondary = Color3.fromRGB(25, 40, 65),
-        Accent = Color3.fromRGB(0, 200, 255),
-        Success = Color3.fromRGB(0, 255, 170),
-        Text = Color3.fromRGB(240, 245, 255),
-        TextSecondary = Color3.fromRGB(180, 200, 220),
-        Border = Color3.fromRGB(40, 60, 90)
+    CyberPunk = {
+        Main = Color3.fromRGB(10, 15, 30),
+        Secondary = Color3.fromRGB(20, 25, 45),
+        Accent = Color3.fromRGB(0, 255, 255),
+        Neon = Color3.fromRGB(255, 0, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextSecondary = Color3.fromRGB(200, 200, 220),
+        Glow = Color3.fromRGB(0, 150, 255)
     },
-    DarkPurple = {
-        Main = Color3.fromRGB(30, 20, 45),
-        Secondary = Color3.fromRGB(45, 30, 65),
-        Accent = Color3.fromRGB(170, 0, 255),
-        Success = Color3.fromRGB(0, 255, 170),
-        Text = Color3.fromRGB(245, 240, 255),
-        TextSecondary = Color3.fromRGB(200, 180, 220),
-        Border = Color3.fromRGB(60, 40, 80)
+    Matrix = {
+        Main = Color3.fromRGB(0, 20, 0),
+        Secondary = Color3.fromRGB(0, 30, 0),
+        Accent = Color3.fromRGB(0, 255, 0),
+        Neon = Color3.fromRGB(0, 255, 100),
+        Text = Color3.fromRGB(0, 255, 0),
+        TextSecondary = Color3.fromRGB(0, 200, 0),
+        Glow = Color3.fromRGB(0, 255, 50)
     }
 }
 
-local currentTheme = BikinkanUI.Themes.DeepOcean
+local currentTheme = BikinkanUI.Themes.CyberPunk
 
 function BikinkanUI:CreateWindow(name)
     local ScreenGui = Instance.new("ScreenGui")
     local MainContainer = Instance.new("Frame")
     local MainFrame = Instance.new("Frame")
-    local BackgroundEffect = Instance.new("Frame")
+    local GlowEffect = Instance.new("ImageLabel")
     local TopBar = Instance.new("Frame")
     local Title = Instance.new("TextLabel")
     local Subtitle = Instance.new("TextLabel")
     local CloseButton = Instance.new("ImageButton")
-    local TabContainer = Instance.new("Frame")
     local TabContent = Instance.new("ScrollingFrame")
     local ContentList = Instance.new("UIListLayout")
     
     -- ScreenGui
-    ScreenGui.Name = "BikinkanPremiumUI"
+    ScreenGui.Name = "BikinkanUltraUI"
     ScreenGui.Parent = player.PlayerGui
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ScreenGui.ResetOnSpawn = false
     
-    -- Main Container dengan glass effect
+    -- Main Container
     MainContainer.Name = "MainContainer"
     MainContainer.Parent = ScreenGui
     MainContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    MainContainer.BackgroundTransparency = 0.7
+    MainContainer.BackgroundTransparency = 0.8
     MainContainer.BorderSizePixel = 0
     MainContainer.Size = UDim2.new(1, 0, 1, 0)
     MainContainer.Visible = true
+    
+    -- Glow Effect
+    GlowEffect.Name = "GlowEffect"
+    GlowEffect.Parent = MainContainer
+    GlowEffect.AnchorPoint = Vector2.new(0.5, 0.5)
+    GlowEffect.BackgroundTransparency = 1
+    GlowEffect.Position = UDim2.new(0.5, 0, 0.5, 0)
+    GlowEffect.Size = UDim2.new(1, 100, 1, 100)
+    GlowEffect.Image = "rbxassetid://8992230677"
+    GlowEffect.ImageColor3 = currentTheme.Glow
+    GlowEffect.ImageTransparency = 0.8
+    GlowEffect.ScaleType = Enum.ScaleType.Slice
+    GlowEffect.SliceCenter = Rect.new(100, 100, 100, 100)
     
     -- Main Frame
     MainFrame.Name = "MainFrame"
     MainFrame.Parent = MainContainer
     MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.BackgroundColor3 = currentTheme.Main
-    MainFrame.BackgroundTransparency = 0.05
     MainFrame.BorderSizePixel = 0
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    MainFrame.Size = UDim2.new(0, 450, 0, 550)
+    MainFrame.Size = UDim2.new(0, 500, 0, 600)
     MainFrame.Active = true
     MainFrame.Draggable = true
     
-    -- Background Effect dengan gradient
-    BackgroundEffect.Name = "BackgroundEffect"
-    BackgroundEffect.Parent = MainFrame
-    BackgroundEffect.BackgroundColor3 = currentTheme.Secondary
-    BackgroundEffect.BackgroundTransparency = 0.1
-    BackgroundEffect.BorderSizePixel = 0
-    BackgroundEffect.Position = UDim2.new(0, 15, 0, 15)
-    BackgroundEffect.Size = UDim2.new(1, -30, 1, -30)
-    BackgroundEffect.ZIndex = -1
-    
-    -- Top Bar dengan elegant design
+    -- Top Bar dengan gradient effect
     TopBar.Name = "TopBar"
     TopBar.Parent = MainFrame
     TopBar.BackgroundColor3 = currentTheme.Secondary
-    TopBar.BackgroundTransparency = 0.1
     TopBar.BorderSizePixel = 0
-    TopBar.Size = UDim2.new(1, 0, 0, 100)
+    TopBar.Size = UDim2.new(1, 0, 0, 120)
     
-    -- Title dengan elegant typography
+    -- Title dengan neon effect
     Title.Name = "Title"
     Title.Parent = TopBar
     Title.BackgroundTransparency = 1
     Title.Position = UDim2.new(0.08, 0, 0.2, 0)
     Title.Size = UDim2.new(0.7, 0, 0.3, 0)
-    Title.Font = Enum.Font.GothamBold
-    Title.Text = "✨ " .. name
+    Title.Font = Enum.Font.GothamBlack
+    Title.Text = "⚡ " .. name
     Title.TextColor3 = currentTheme.Text
-    Title.TextSize = 24
+    Title.TextSize = 28
     Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.TextStrokeColor3 = currentTheme.Neon
+    Title.TextStrokeTransparency = 0.7
     
     -- Subtitle
     Subtitle.Name = "Subtitle"
@@ -107,208 +109,153 @@ function BikinkanUI:CreateWindow(name)
     Subtitle.BackgroundTransparency = 1
     Subtitle.Position = UDim2.new(0.08, 0, 0.55, 0)
     Subtitle.Size = UDim2.new(0.7, 0, 0.25, 0)
-    Subtitle.Font = Enum.Font.Gotham
-    Subtitle.Text = "Premium UI Template"
-    Subtitle.TextColor3 = currentTheme.TextSecondary
+    Subtitle.Font = Enum.Font.GothamBold
+    Subtitle.Text = "ULTRA MODERN INTERFACE"
+    Subtitle.TextColor3 = currentTheme.Accent
     Subtitle.TextSize = 14
     Subtitle.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Close Button yang elegant
+    -- Close Button futuristik
     CloseButton.Name = "CloseButton"
     CloseButton.Parent = TopBar
-    CloseButton.BackgroundTransparency = 1
+    CloseButton.BackgroundColor3 = currentTheme.Neon
+    CloseButton.BackgroundTransparency = 0.8
+    CloseButton.BorderSizePixel = 0
     CloseButton.Position = UDim2.new(0.9, 0, 0.3, 0)
-    CloseButton.Size = UDim2.new(0, 30, 0, 30)
+    CloseButton.Size = UDim2.new(0, 35, 0, 35)
     CloseButton.Image = "rbxassetid://3926305904"
     CloseButton.ImageRectOffset = Vector2.new(924, 724)
     CloseButton.ImageRectSize = Vector2.new(36, 36)
-    CloseButton.ImageColor3 = currentTheme.TextSecondary
+    CloseButton.ImageColor3 = currentTheme.Text
     
     CloseButton.MouseEnter:Connect(function()
         TweenService:Create(CloseButton, TweenInfo.new(0.3), {
-            ImageColor3 = Color3.fromRGB(255, 100, 100),
-            Rotation = 90
+            BackgroundTransparency = 0.3,
+            Rotation = 180,
+            Size = UDim2.new(0, 40, 0, 40)
         }):Play()
     end)
     
     CloseButton.MouseLeave:Connect(function()
         TweenService:Create(CloseButton, TweenInfo.new(0.3), {
-            ImageColor3 = currentTheme.TextSecondary,
-            Rotation = 0
+            BackgroundTransparency = 0.8,
+            Rotation = 0,
+            Size = UDim2.new(0, 35, 0, 35)
         }):Play()
     end)
     
     CloseButton.MouseButton1Click:Connect(function()
+        TweenService:Create(MainFrame, TweenInfo.new(0.5), {
+            Size = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1
+        }):Play()
+        TweenService:Create(GlowEffect, TweenInfo.new(0.5), {
+            ImageTransparency = 1
+        }):Play()
+        wait(0.5)
         ScreenGui:Destroy()
     end)
     
-    -- Tab Container
-    TabContainer.Name = "TabContainer"
-    TabContainer.Parent = MainFrame
-    TabContainer.BackgroundColor3 = currentTheme.Main
-    TabContainer.BackgroundTransparency = 0.05
-    TabContainer.BorderSizePixel = 0
-    TabContainer.Position = UDim2.new(0, 0, 0.18, 0)
-    TabContainer.Size = UDim2.new(1, 0, 0.82, 0)
-    
     -- Tab Content Area
     TabContent.Name = "TabContent"
-    TabContent.Parent = TabContainer
+    TabContent.Parent = MainFrame
     TabContent.Active = true
     TabContent.BackgroundColor3 = currentTheme.Main
-    TabContent.BackgroundTransparency = 0.05
     TabContent.BorderSizePixel = 0
-    TabContent.Size = UDim2.new(1, 0, 1, 0)
+    TabContent.Position = UDim2.new(0, 0, 0.2, 0)
+    TabContent.Size = UDim2.new(1, 0, 0.8, 0)
     TabContent.CanvasSize = UDim2.new(0, 0, 2, 0)
     TabContent.ScrollBarThickness = 4
-    TabContent.ScrollBarImageColor3 = currentTheme.Accent
+    TabContent.ScrollBarImageColor3 = currentTheme.Neon
     TabContent.VerticalScrollBarInset = Enum.ScrollBarInset.Always
     
     ContentList.Parent = TabContent
     ContentList.HorizontalAlignment = Enum.HorizontalAlignment.Center
     ContentList.SortOrder = Enum.SortOrder.LayoutOrder
-    ContentList.Padding = UDim.new(0, 20)
+    ContentList.Padding = UDim.new(0, 25)
     
     local tabs = {}
     
     function tabs:CreateSection(title)
         local Section = Instance.new("Frame")
         local SectionTitle = Instance.new("TextLabel")
-        local SectionDivider = Instance.new("Frame")
+        local SectionGlow = Instance.new("Frame")
         
         Section.Name = "Section"
         Section.Parent = TabContent
         Section.BackgroundColor3 = currentTheme.Secondary
-        Section.BackgroundTransparency = 0.1
         Section.BorderSizePixel = 0
-        Section.Size = UDim2.new(0.9, 0, 0, 70)
+        Section.Size = UDim2.new(0.9, 0, 0, 80)
+        
+        SectionGlow.Name = "SectionGlow"
+        SectionGlow.Parent = Section
+        SectionGlow.BackgroundColor3 = currentTheme.Neon
+        SectionGlow.BorderSizePixel = 0
+        SectionGlow.Position = UDim2.new(0, 0, 0.9, 0)
+        SectionGlow.Size = UDim2.new(1, 0, 0, 3)
+        SectionGlow.BackgroundTransparency = 0.5
         
         SectionTitle.Name = "SectionTitle"
         SectionTitle.Parent = Section
         SectionTitle.BackgroundTransparency = 1
         SectionTitle.Position = UDim2.new(0.05, 0, 0.2, 0)
-        SectionTitle.Size = UDim2.new(0.9, 0, 0.4, 0)
-        SectionTitle.Font = Enum.Font.GothamBold
-        SectionTitle.Text = "🎯 " .. title
+        SectionTitle.Size = UDim2.new(0.9, 0, 0.6, 0)
+        SectionTitle.Font = Enum.Font.GothamBlack
+        SectionTitle.Text = "🔷 " .. title
         SectionTitle.TextColor3 = currentTheme.Text
-        SectionTitle.TextSize = 18
+        SectionTitle.TextSize = 20
         SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
-        
-        SectionDivider.Name = "SectionDivider"
-        SectionDivider.Parent = Section
-        SectionDivider.BackgroundColor3 = currentTheme.Accent
-        SectionDivider.BorderSizePixel = 0
-        SectionDivider.Position = UDim2.new(0.05, 0, 0.8, 0)
-        SectionDivider.Size = UDim2.new(0.9, 0, 0, 2)
+        SectionTitle.TextStrokeColor3 = currentTheme.Accent
+        SectionTitle.TextStrokeTransparency = 0.8
         
         return Section
-    end
-    
-    function tabs:CreateToggle(name, description, default, callback)
-        local ToggleFrame = Instance.new("Frame")
-        local ToggleLabel = Instance.new("TextLabel")
-        local ToggleDescription = Instance.new("TextLabel")
-        local ToggleButton = Instance.new("TextButton")
-        local ToggleIndicator = Instance.new("Frame")
-        
-        ToggleFrame.Parent = TabContent
-        ToggleFrame.BackgroundColor3 = currentTheme.Secondary
-        ToggleFrame.BackgroundTransparency = 0.1
-        ToggleFrame.BorderSizePixel = 0
-        ToggleFrame.Size = UDim2.new(0.9, 0, 0, 85)
-        
-        ToggleLabel.Parent = ToggleFrame
-        ToggleLabel.BackgroundTransparency = 1
-        ToggleLabel.Position = UDim2.new(0.05, 0, 0.15, 0)
-        ToggleLabel.Size = UDim2.new(0.7, 0, 0.3, 0)
-        ToggleLabel.Font = Enum.Font.GothamBold
-        ToggleLabel.Text = name
-        ToggleLabel.TextColor3 = currentTheme.Text
-        ToggleLabel.TextSize = 16
-        ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
-        
-        ToggleDescription.Parent = ToggleFrame
-        ToggleDescription.BackgroundTransparency = 1
-        ToggleDescription.Position = UDim2.new(0.05, 0, 0.5, 0)
-        ToggleDescription.Size = UDim2.new(0.7, 0, 0.3, 0)
-        ToggleDescription.Font = Enum.Font.Gotham
-        ToggleDescription.Text = description
-        ToggleDescription.TextColor3 = currentTheme.TextSecondary
-        ToggleDescription.TextSize = 12
-        ToggleDescription.TextXAlignment = Enum.TextXAlignment.Left
-        
-        ToggleButton.Parent = ToggleFrame
-        ToggleButton.BackgroundColor3 = default and currentTheme.Success or Color3.fromRGB(80, 80, 100)
-        ToggleButton.BorderSizePixel = 0
-        ToggleButton.Position = UDim2.new(0.8, 0, 0.3, 0)
-        ToggleButton.Size = UDim2.new(0.14, 0, 0.4, 0)
-        ToggleButton.Font = Enum.Font.GothamBold
-        ToggleButton.Text = ""
-        ToggleButton.TextColor3 = currentTheme.Text
-        ToggleButton.TextSize = 10
-        ToggleButton.AutoButtonColor = false
-        
-        ToggleIndicator.Parent = ToggleButton
-        ToggleIndicator.BackgroundColor3 = currentTheme.Text
-        ToggleIndicator.BorderSizePixel = 0
-        ToggleIndicator.Position = UDim2.new(default and 0.55 or 0.05, 0, 0.15, 0)
-        ToggleIndicator.Size = UDim2.new(0.4, 0, 0.7, 0)
-        
-        ToggleButton.MouseButton1Click:Connect(function()
-            local newValue = not (ToggleIndicator.Position.X.Scale > 0.5)
-            
-            TweenService:Create(ToggleIndicator, TweenInfo.new(0.3), {
-                Position = UDim2.new(newValue and 0.55 or 0.05, 0, 0.15, 0)
-            }):Play()
-            
-            TweenService:Create(ToggleButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = newValue and currentTheme.Success or Color3.fromRGB(80, 80, 100)
-            }):Play()
-            
-            if callback then
-                callback(newValue)
-            end
-        end)
-        
-        return ToggleFrame
     end
     
     function tabs:CreateButton(name, description, callback)
         local Button = Instance.new("TextButton")
         local ButtonLabel = Instance.new("TextLabel")
         local ButtonDescription = Instance.new("TextLabel")
+        local ButtonGlow = Instance.new("Frame")
         local ButtonIcon = Instance.new("TextLabel")
         
         Button.Parent = TabContent
-        Button.BackgroundColor3 = currentTheme.Accent
+        Button.BackgroundColor3 = currentTheme.Secondary
         Button.BorderSizePixel = 0
-        Button.Size = UDim2.new(0.9, 0, 0, 75)
+        Button.Size = UDim2.new(0.9, 0, 0, 90)
         Button.AutoButtonColor = false
+        
+        ButtonGlow.Name = "ButtonGlow"
+        ButtonGlow.Parent = Button
+        ButtonGlow.BackgroundColor3 = currentTheme.Neon
+        ButtonGlow.BorderSizePixel = 0
+        ButtonGlow.Position = UDim2.new(0, 0, 0, 0)
+        ButtonGlow.Size = UDim2.new(1, 0, 0, 3)
+        ButtonGlow.BackgroundTransparency = 0.7
         
         ButtonIcon.Parent = Button
         ButtonIcon.BackgroundTransparency = 1
         ButtonIcon.Position = UDim2.new(0.05, 0, 0.2, 0)
         ButtonIcon.Size = UDim2.new(0.1, 0, 0.6, 0)
-        ButtonIcon.Font = Enum.Font.GothamBold
+        ButtonIcon.Font = Enum.Font.GothamBlack
         ButtonIcon.Text = "⚡"
-        ButtonIcon.TextColor3 = currentTheme.Text
-        ButtonIcon.TextSize = 20
+        ButtonIcon.TextColor3 = currentTheme.Accent
+        ButtonIcon.TextSize = 24
         
         ButtonLabel.Parent = Button
         ButtonLabel.BackgroundTransparency = 1
         ButtonLabel.Position = UDim2.new(0.2, 0, 0.15, 0)
         ButtonLabel.Size = UDim2.new(0.7, 0, 0.4, 0)
-        ButtonLabel.Font = Enum.Font.GothamBold
+        ButtonLabel.Font = Enum.Font.GothamBlack
         ButtonLabel.Text = name
         ButtonLabel.TextColor3 = currentTheme.Text
-        ButtonLabel.TextSize = 17
+        ButtonLabel.TextSize = 18
         ButtonLabel.TextXAlignment = Enum.TextXAlignment.Left
         
         ButtonDescription.Parent = Button
         ButtonDescription.BackgroundTransparency = 1
         ButtonDescription.Position = UDim2.new(0.2, 0, 0.55, 0)
         ButtonDescription.Size = UDim2.new(0.7, 0, 0.3, 0)
-        ButtonDescription.Font = Enum.Font.Gotham
+        ButtonDescription.Font = Enum.Font.GothamBold
         ButtonDescription.Text = description
         ButtonDescription.TextColor3 = currentTheme.TextSecondary
         ButtonDescription.TextSize = 12
@@ -316,25 +263,41 @@ function BikinkanUI:CreateWindow(name)
         
         Button.MouseEnter:Connect(function()
             TweenService:Create(Button, TweenInfo.new(0.3), {
-                BackgroundColor3 = currentTheme.Success,
-                Size = UDim2.new(0.91, 0, 0, 77)
+                BackgroundColor3 = currentTheme.Accent,
+                Size = UDim2.new(0.92, 0, 0, 95)
+            }):Play()
+            TweenService:Create(ButtonGlow, TweenInfo.new(0.3), {
+                BackgroundTransparency = 0.3,
+                Size = UDim2.new(1, 0, 0, 5)
             }):Play()
         end)
         
         Button.MouseLeave:Connect(function()
             TweenService:Create(Button, TweenInfo.new(0.3), {
-                BackgroundColor3 = currentTheme.Accent,
-                Size = UDim2.new(0.9, 0, 0, 75)
+                BackgroundColor3 = currentTheme.Secondary,
+                Size = UDim2.new(0.9, 0, 0, 90)
+            }):Play()
+            TweenService:Create(ButtonGlow, TweenInfo.new(0.3), {
+                BackgroundTransparency = 0.7,
+                Size = UDim2.new(1, 0, 0, 3)
             }):Play()
         end)
         
         Button.MouseButton1Click:Connect(function()
             TweenService:Create(Button, TweenInfo.new(0.1), {
-                BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+                BackgroundColor3 = currentTheme.Neon
             }):Play()
+            TweenService:Create(ButtonGlow, TweenInfo.new(0.1), {
+                BackgroundTransparency = 0.1
+            }):Play()
+            
             wait(0.1)
+            
             TweenService:Create(Button, TweenInfo.new(0.2), {
                 BackgroundColor3 = currentTheme.Accent
+            }):Play()
+            TweenService:Create(ButtonGlow, TweenInfo.new(0.2), {
+                BackgroundTransparency = 0.3
             }):Play()
             
             if callback then
@@ -345,118 +308,74 @@ function BikinkanUI:CreateWindow(name)
         return Button
     end
     
-    function tabs:CreateSlider(name, min, max, default, callback)
-        local SliderFrame = Instance.new("Frame")
-        local SliderLabel = Instance.new("TextLabel")
-        local SliderValue = Instance.new("TextLabel")
-        local SliderBar = Instance.new("Frame")
-        local SliderFill = Instance.new("Frame")
-        local SliderButton = Instance.new("TextButton")
+    function tabs:CreateStatusCard(title, value, icon)
+        local Card = Instance.new("Frame")
+        local CardLabel = Instance.new("TextLabel")
+        local CardValue = Instance.new("TextLabel")
+        local CardIcon = Instance.new("TextLabel")
+        local CardGlow = Instance.new("Frame")
         
-        SliderFrame.Parent = TabContent
-        SliderFrame.BackgroundColor3 = currentTheme.Secondary
-        SliderFrame.BackgroundTransparency = 0.1
-        SliderFrame.BorderSizePixel = 0
-        SliderFrame.Size = UDim2.new(0.9, 0, 0, 95)
+        Card.Name = "StatusCard"
+        Card.Parent = TabContent
+        Card.BackgroundColor3 = currentTheme.Secondary
+        Card.BorderSizePixel = 0
+        Card.Size = UDim2.new(0.9, 0, 0, 70)
         
-        SliderLabel.Parent = SliderFrame
-        SliderLabel.BackgroundTransparency = 1
-        SliderLabel.Position = UDim2.new(0.05, 0, 0.1, 0)
-        SliderLabel.Size = UDim2.new(0.6, 0, 0.25, 0)
-        SliderLabel.Font = Enum.Font.GothamBold
-        SliderLabel.Text = name
-        SliderLabel.TextColor3 = currentTheme.Text
-        SliderLabel.TextSize = 15
-        SliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+        CardGlow.Name = "CardGlow"
+        CardGlow.Parent = Card
+        CardGlow.BackgroundColor3 = currentTheme.Accent
+        CardGlow.BorderSizePixel = 0
+        CardGlow.Position = UDim2.new(0, 0, 0.9, 0)
+        CardGlow.Size = UDim2.new(1, 0, 0, 2)
+        CardGlow.BackgroundTransparency = 0.6
         
-        SliderValue.Parent = SliderFrame
-        SliderValue.BackgroundTransparency = 1
-        SliderValue.Position = UDim2.new(0.7, 0, 0.1, 0)
-        SliderValue.Size = UDim2.new(0.25, 0, 0.25, 0)
-        SliderValue.Font = Enum.Font.GothamBold
-        SliderValue.Text = tostring(default)
-        SliderValue.TextColor3 = currentTheme.Accent
-        SliderValue.TextSize = 15
+        CardIcon.Parent = Card
+        CardIcon.BackgroundTransparency = 1
+        CardIcon.Position = UDim2.new(0.05, 0, 0.2, 0)
+        CardIcon.Size = UDim2.new(0.1, 0, 0.6, 0)
+        CardIcon.Font = Enum.Font.GothamBlack
+        CardIcon.Text = icon or "📊"
+        CardIcon.TextColor3 = currentTheme.Accent
+        CardIcon.TextSize = 20
         
-        SliderBar.Parent = SliderFrame
-        SliderBar.BackgroundColor3 = currentTheme.Main
-        SliderBar.BorderSizePixel = 0
-        SliderBar.Position = UDim2.new(0.05, 0, 0.5, 0)
-        SliderBar.Size = UDim2.new(0.9, 0, 0.2, 0)
+        CardLabel.Parent = Card
+        CardLabel.BackgroundTransparency = 1
+        CardLabel.Position = UDim2.new(0.2, 0, 0.2, 0)
+        CardLabel.Size = UDim2.new(0.5, 0, 0.3, 0)
+        CardLabel.Font = Enum.Font.GothamBold
+        CardLabel.Text = title
+        CardLabel.TextColor3 = currentTheme.TextSecondary
+        CardLabel.TextSize = 12
+        CardLabel.TextXAlignment = Enum.TextXAlignment.Left
         
-        SliderFill.Parent = SliderBar
-        SliderFill.BackgroundColor3 = currentTheme.Accent
-        SliderFill.BorderSizePixel = 0
-        SliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+        CardValue.Parent = Card
+        CardValue.BackgroundTransparency = 1
+        CardValue.Position = UDim2.new(0.2, 0, 0.5, 0)
+        CardValue.Size = UDim2.new(0.7, 0, 0.4, 0)
+        CardValue.Font = Enum.Font.GothamBlack
+        CardValue.Text = value
+        CardValue.TextColor3 = currentTheme.Text
+        CardValue.TextSize = 16
+        CardValue.TextXAlignment = Enum.TextXAlignment.Left
         
-        SliderButton.Parent = SliderBar
-        SliderButton.BackgroundColor3 = currentTheme.Text
-        SliderButton.BorderSizePixel = 0
-        SliderButton.Position = UDim2.new((default - min) / (max - min), -8, 0, -4)
-        SliderButton.Size = UDim2.new(0, 16, 0, 16)
-        SliderButton.Font = Enum.Font.Gotham
-        SliderButton.Text = ""
-        SliderButton.ZIndex = 2
-        
-        local dragging = false
-        
-        local function updateSlider(input)
-            local pos = UDim2.new(
-                math.clamp((input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1),
-                0, 1, 0
-            )
-            SliderFill.Size = pos
-            SliderButton.Position = UDim2.new(pos.X.Scale, -8, 0, -4)
-            local value = math.floor(min + (pos.X.Scale * (max - min)))
-            SliderValue.Text = tostring(value)
-            if callback then
-                callback(value)
-            end
-        end
-        
-        SliderButton.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = true
-            end
-        end)
-        
-        SliderButton.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
-            end
-        end)
-        
-        UserInputService.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                updateSlider(input)
-            end
-        end)
-        
-        return SliderFrame
-    end
-    
-    function tabs:CreateLabel(text, size)
-        local Label = Instance.new("TextLabel")
-        
-        Label.Parent = TabContent
-        Label.BackgroundTransparency = 1
-        Label.Size = UDim2.new(0.9, 0, 0, size or 35)
-        Label.Font = Enum.Font.Gotham
-        Label.Text = text
-        Label.TextColor3 = currentTheme.Text
-        Label.TextSize = 14
-        Label.TextXAlignment = Enum.TextXAlignment.Left
-        
-        return Label
+        return CardValue
     end
     
     function tabs:CreateDivider()
         local Divider = Instance.new("Frame")
+        local DividerGlow = Instance.new("Frame")
         
         Divider.Parent = TabContent
-        Divider.BackgroundColor3 = currentTheme.Border
+        Divider.BackgroundColor3 = currentTheme.Secondary
         Divider.BorderSizePixel = 0
-        Divider.Size = UDim2.new(0.9, 0, 0, 2)
+        Divider.Size = UDim2.new(0.9, 0, 0, 5)
+        
+        DividerGlow.Name = "DividerGlow"
+        DividerGlow.Parent = Divider
+        DividerGlow.BackgroundColor3 = currentTheme.Neon
+        DividerGlow.BorderSizePixel = 0
+        DividerGlow.Size = UDim2.new(1, 0, 1, 0)
+        DividerGlow.BackgroundTransparency = 0.5
         
         return Divider
     end
@@ -465,176 +384,69 @@ function BikinkanUI:CreateWindow(name)
     spawn(function()
         MainFrame.Size = UDim2.new(0, 0, 0, 0)
         MainFrame.BackgroundTransparency = 1
-        BackgroundEffect.BackgroundTransparency = 1
+        GlowEffect.ImageTransparency = 1
         
-        TweenService:Create(MainFrame, TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 450, 0, 550),
-            BackgroundTransparency = 0.05
+        TweenService:Create(MainFrame, TweenInfo.new(1, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 500, 0, 600),
+            BackgroundTransparency = 0
         }):Play()
         
-        TweenService:Create(BackgroundEffect, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            BackgroundTransparency = 0.1
+        TweenService:Create(GlowEffect, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            ImageTransparency = 0.8
         }):Play()
     end)
     
     return tabs
 end
 
--- === TELEPORT SYSTEM ===
-function TeleportIsland(islandName)
-    local player = game.Players.LocalPlayer
-    local char = player.Character or player.CharacterAdded:Wait()
-    local hrp = char:WaitForChild("HumanoidRootPart")
+-- Initialize Ultra Modern UI
+local Window = BikinkanUI:CreateWindow("CYBER CONTROL")
 
-    local islands = {
-        ["Starter Island"] = Vector3.new(120, 10, -80),
-        ["Coral Reef"] = Vector3.new(560, 15, 400),
-        ["Pirate Cove"] = Vector3.new(1020, 18, -120),
-        ["Volcano Island"] = Vector3.new(1640, 25, 900),
-        ["Frozen Lake"] = Vector3.new(-480, 12, 670),
-        ["Mystic Falls"] = Vector3.new(2300, 35, -420)
-    }
+-- Demo Content (bisa dihapus atau diganti)
+Window:CreateSection("SYSTEM STATUS")
 
-    local target = islands[islandName]
-    if not target then
-        warn("⚠️ Pulau tidak ditemukan:", islandName)
-        return
+local status1 = Window:CreateStatusCard("CPU USAGE", "24%", "💻")
+local status2 = Window:CreateStatusCard("MEMORY", "1.2GB", "🧠")
+local status3 = Window:CreateStatusCard("NETWORK", "45ms", "🌐")
+
+Window:CreateDivider()
+
+Window:CreateSection("QUICK ACTIONS")
+
+Window:CreateButton("INITIALIZE SYSTEM", "Start all automated processes", function()
+    print("🚀 System Initialized!")
+end)
+
+Window:CreateButton("SECURITY SCAN", "Run comprehensive security check", function()
+    print("🛡️ Security Scan Started!")
+end)
+
+Window:CreateButton("DATA BACKUP", "Create system backup", function()
+    print("💾 Backup Process Started!")
+end)
+
+Window:CreateDivider()
+
+Window:CreateSection("PERFORMANCE")
+
+Window:CreateButton("OPTIMIZE MEMORY", "Clear cache and optimize RAM", function()
+    print("🧹 Memory Optimized!")
+end)
+
+Window:CreateButton("SPEED BOOST", "Increase system performance", function()
+    print("⚡ Speed Boost Activated!")
+end)
+
+-- Animate status values
+spawn(function()
+    while true do
+        status1.Text = math.random(20, 40) .. "%"
+        status2.Text = math.random(1, 2) .. "." .. math.random(0, 9) .. "GB"
+        status3.Text = math.random(30, 60) .. "ms"
+        wait(3)
     end
-
-    -- Efek teleport glow
-    local effect = Instance.new("ParticleEmitter")
-    effect.Texture = "rbxassetid://30119215"
-    effect.Lifetime = NumberRange.new(0.5)
-    effect.Rate = 150
-    effect.Speed = NumberRange.new(6)
-    effect.Parent = hrp
-    effect:Emit(30)
-    game.Debris:AddItem(effect, 1)
-
-    -- Teleport player
-    task.wait(0.1)
-    hrp.CFrame = CFrame.new(target + Vector3.new(0, 4, 0))
-    print("🌀 [TeleportIsland] Berhasil ke:", islandName)
-end
-
--- === TELEPORT UI FUNCTION ===
-function CreateTeleportMenu(Window)
-    local teleportOpen = false
-    local teleportFrame = nil
-    
-    -- Button untuk membuka menu teleport
-    local teleportButton = Window:CreateButton("🌌 OPEN TELEPORT MENU", "Click to open island teleport menu", function()
-        teleportOpen = not teleportOpen
-        
-        if teleportOpen then
-            -- Create teleport frame jika belum ada
-            if not teleportFrame then
-                teleportFrame = Instance.new("Frame")
-                teleportFrame.Name = "TeleportFrame"
-                teleportFrame.Parent = Window:FindFirstAncestorWhichIsA("ScrollingFrame")
-                teleportFrame.BackgroundColor3 = currentTheme.Secondary
-                teleportFrame.BackgroundTransparency = 0.1
-                teleportFrame.BorderSizePixel = 0
-                teleportFrame.Size = UDim2.new(0.9, 0, 0, 250)
-                teleportFrame.LayoutOrder = 999 -- Pasti di bawah
-                
-                local islandsList = {"Starter Island", "Coral Reef", "Pirate Cove", "Volcano Island", "Frozen Lake", "Mystic Falls"}
-                
-                local function createIslandButton(name, index)
-                    local btn = Instance.new("TextButton")
-                    btn.Parent = teleportFrame
-                    btn.Size = UDim2.new(1, -20, 0, 35)
-                    btn.Position = UDim2.new(0, 10, 0, 10 + (index - 1) * 40)
-                    btn.BackgroundColor3 = currentTheme.Main
-                    btn.Text = "▶ " .. name
-                    btn.Font = Enum.Font.GothamBold
-                    btn.TextColor3 = currentTheme.Text
-                    btn.TextSize = 14
-                    btn.BorderSizePixel = 0
-                    btn.AutoButtonColor = false
-                    
-                    btn.MouseEnter:Connect(function()
-                        TweenService:Create(btn, TweenInfo.new(0.15), {
-                            BackgroundColor3 = currentTheme.Accent
-                        }):Play()
-                    end)
-                    
-                    btn.MouseLeave:Connect(function()
-                        TweenService:Create(btn, TweenInfo.new(0.15), {
-                            BackgroundColor3 = currentTheme.Main
-                        }):Play()
-                    end)
-                    
-                    btn.MouseButton1Click:Connect(function()
-                        TeleportIsland(name)
-                        -- Tutup menu setelah teleport
-                        teleportOpen = false
-                        teleportFrame.Visible = false
-                        teleportButton:FindFirstChild("ButtonLabel").Text = "🌌 OPEN TELEPORT MENU"
-                        TweenService:Create(teleportButton, TweenInfo.new(0.2), {
-                            BackgroundColor3 = currentTheme.Accent
-                        }):Play()
-                    end)
-                end
-                
-                for i, name in ipairs(islandsList) do
-                    createIslandButton(name, i)
-                end
-            end
-            
-            teleportFrame.Visible = true
-            teleportButton:FindFirstChild("ButtonLabel").Text = "🚪 CLOSE TELEPORT MENU"
-            TweenService:Create(teleportButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-            }):Play()
-        else
-            if teleportFrame then
-                teleportFrame.Visible = false
-            end
-            teleportButton:FindFirstChild("ButtonLabel").Text = "🌌 OPEN TELEPORT MENU"
-            TweenService:Create(teleportButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = currentTheme.Accent
-            }):Play()
-        end
-    end)
-    
-    return teleportButton
-end
-
--- Initialize Premium UI
-local Window = BikinkanUI:CreateWindow("Premium UI")
-
--- Demo Sections
-Window:CreateSection("Welcome")
-Window:CreateLabel("✨ Welcome to Premium UI Template", 40)
-Window:CreateLabel("This is a clean and beautiful UI template", 30)
-Window:CreateLabel("You can add your own features here", 30)
-
-Window:CreateSection("Demo Controls")
-Window:CreateToggle("Sample Toggle", "This is a sample toggle switch", false, function(value)
-    print("Toggle changed to:", value)
 end)
 
-Window:CreateButton("Sample Button", "This is a sample button with icon", function()
-    print("Button clicked!")
-end)
-
-Window:CreateSlider("Sample Slider", 1, 100, 50, function(value)
-    print("Slider value:", value)
-end)
-
--- Teleport Section
-Window:CreateSection("Island Teleport")
-CreateTeleportMenu(Window)
-
-Window:CreateSection("Information")
-Window:CreateLabel("🎨 Beautiful Ocean Theme", 30)
-Window:CreateLabel("📱 Responsive Design", 30)
-Window:CreateLabel("⚡ Smooth Animations", 30)
-Window:CreateLabel("🎯 Easy to Customize", 30)
-Window:CreateLabel("🌌 Island Teleport System", 30)
-
-print("✨ Premium UI Template Loaded!")
-print("🎨 Beautiful and Clean Design")
-print("🚀 Ready for Your Features")
-print("🌌 Teleport System Integrated")
+print("🎮 Ultra Modern UI Loaded!")
+print("✨ Cyberpunk Design Activated")
+print("🚀 Ready for Action")
