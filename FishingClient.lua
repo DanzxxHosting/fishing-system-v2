@@ -478,35 +478,3 @@ function BikinkanUI:CreateWindow(name)
     
     return tabs
 end
-
--- Initialize Premium UI
-local Window = BikinkanUI:CreateWindow("Premium UI")
-
--- Demo Sections (bisa dihapus atau dimodifikasi)
-Window:CreateSection("Welcome")
-Window:CreateLabel("✨ Welcome to Premium UI Template", 40)
-Window:CreateLabel("This is a clean and beautiful UI template", 30)
-Window:CreateLabel("You can add your own features here", 30)
-
-Window:CreateSection("Demo Controls")
-Window:CreateToggle("Sample Toggle", "This is a sample toggle switch", false, function(value)
-    print("Toggle changed to:", value)
-end)
-
-Window:CreateButton("Sample Button", "This is a sample button with icon", function()
-    print("Button clicked!")
-end)
-
-Window:CreateSlider("Sample Slider", 1, 100, 50, function(value)
-    print("Slider value:", value)
-end)
-
-Window:CreateSection("Information")
-Window:CreateLabel("🎨 Beautiful Ocean Theme", 30)
-Window:CreateLabel("📱 Responsive Design", 30)
-Window:CreateLabel("⚡ Smooth Animations", 30)
-Window:CreateLabel("🎯 Easy to Customize", 30)
-
-print("✨ Premium UI Template Loaded!")
-print("🎨 Beautiful and Clean Design")
-print("🚀 Ready for Your Features")
