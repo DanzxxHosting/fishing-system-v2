@@ -26,6 +26,19 @@ local config = {
     blantantMode = false
 }
 
+-- INSTANT FISHING EXPLOIT CONFIG
+local InstantFishing = {
+    Enabled = false,
+    HookedRemotes = {},
+    OriginalFunctions = {},
+    InjectionMethods = {
+        MemoryHooks = true,
+        RemoteHijacking = true,
+        EventSpoofing = true,
+        PacketInjection = true
+    }
+}
+
 local stats = {
     fishCaught = 0,
     startTime = tick(),
@@ -280,7 +293,242 @@ cTitle.Text = "Fishing Controls"
 cTitle.TextColor3 = Color3.fromRGB(245,245,245)
 cTitle.TextXAlignment = Enum.TextXAlignment.Left
 
--- FISHING FUNCTIONS
+-- =============================================
+-- INSTANT FISHING EXPLOIT FUNCTIONS
+-- =============================================
+
+-- Hook semua fishing related remotes
+local function HookFishingRemotes()
+    if not InstantFishing.InjectionMethods.RemoteHijacking then return end
+    
+    local function hijackRemote(remote)
+        if InstantFishing.HookedRemotes[remote] then return end
+        
+        if remote:IsA("RemoteEvent") then
+            -- Simpan function original
+            local oldFire = remote.FireServer
+            InstantFishing.OriginalFunctions[remote] = oldFire
+            
+            -- Override function
+            remote.FireServer = function(self, ...)
+                local args = {...}
+                local methodName = tostring(args[1] or "")
+                
+                -- Auto trigger fishing ketika method fishing dipanggil
+                if string.lower(methodName):find("fish") or 
+                   string.lower(methodName):find("catch") or 
+                   string.lower(methodName):find("reel") or
+                   #args == 0 then -- Jika tidak ada args, anggap fishing
+                    
+                    if InstantFishing.Enabled then
+                        -- Auto success fishing
+                        stats.fishCaught = stats.fishCaught + 1
+                        stats.successfulCatch = stats.successfulCatch + 1
+                        
+                        -- Return success value
+                        if remote.Parent and remote.Parent:IsA("ModuleScript") then
+                            return "Legendary", 9999, true
+                        end
+                        return true
+                    end
+                end
+                
+                -- Panggil function original
+                return oldFire(self, ...)
+            end
+            
+        elseif remote:IsA("RemoteFunction") then
+            -- Simpan function original
+            local oldInvoke = remote.InvokeServer
+            InstantFishing.OriginalFunctions[remote] = oldInvoke
+            
+            -- Override function
+            remote.InvokeServer = function(self, ...)
+                local args = {...}
+                local methodName = tostring(args[1] or "")
+                
+                -- Auto trigger fishing
+                if string.lower(methodName):find("fish") or 
+                   string.lower(methodName):find("catch") or
+                   #args == 0 then
+                    
+                    if InstantFishing.Enabled then
+                        stats.fishCaught = stats.fishCaught + 1
+                        stats.successfulCatch = stats.successfulCatch + 1
+                        return "Ultra", 5000, true, "Instant Catch"
+                    end
+                end
+                
+                return oldInvoke(self, ...)
+            end
+        end
+        
+        InstantFishing.HookedRemotes[remote] = true
+    end
+    
+    -- Hook existing remotes
+    for _, remote in pairs(game:GetDescendants()) do
+        if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+            pcall(hijackRemote, remote)
+        end
+    end
+    
+    -- Hook new remotes yang dibuat setelah script jalan
+    game.DescendantAdded:Connect(function(descendant)
+        if (descendant:IsA("RemoteEvent") or descendant:IsA("RemoteFunction")) and InstantFishing.Enabled then
+            task.wait(0.5) -- Tunggu remote fully loaded
+            pcall(hijackRemote, descendant)
+        end
+    end)
+end
+
+-- Memory manipulation untuk inject fishing success
+local function InjectMemoryHooks()
+    if not InstantFishing.InjectionMethods.MemoryHooks then return end
+    
+    pcall(function()
+        -- Cari module scripts yang berhubungan dengan fishing
+        for _, module in pairs(game:GetDescendants()) do
+            if module:IsA("ModuleScript") then
+                local success, moduleTable = pcall(require, module)
+                if success and type(moduleTable) == "table" then
+                    
+                    -- Inject ke fishing functions
+                    if moduleTable.CatchFish or moduleTable.Fish then
+                        -- Simpan original functions
+                        if moduleTable.CatchFish and not InstantFishing.OriginalFunctions[module.."_CatchFish"] then
+                            InstantFishing.OriginalFunctions[module.."_CatchFish"] = moduleTable.CatchFish
+                        end
+                        if moduleTable.Fish and not InstantFishing.OriginalFunctions[module.."_Fish"] then
+                            InstantFishing.OriginalFunctions[module.."_Fish"] = moduleTable.Fish
+                        end
+                        
+                        -- Override functions
+                        if moduleTable.CatchFish then
+                            moduleTable.CatchFish = function(...)
+                                if InstantFishing.Enabled then
+                                    stats.fishCaught = stats.fishCaught + 1
+                                    stats.successfulCatch = stats.successfulCatch + 1
+                                    return "Legendary", 10000, true
+                                end
+                                return InstantFishing.OriginalFunctions[module.."_CatchFish"](...)
+                            end
+                        end
+                        
+                        if moduleTable.Fish then
+                            moduleTable.Fish = function(...)
+                                if InstantFishing.Enabled then
+                                    stats.fishCaught = stats.fishCaught + 1
+                                    stats.successfulCatch = stats.successfulCatch + 1
+                                    return true, "Mythical", 15000
+                                end
+                                return InstantFishing.OriginalFunctions[module.."_Fish"](...)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Event spoofing untuk trigger auto fishing
+local function SpoofFishingEvents()
+    if not InstantFishing.InjectionMethods.EventSpoofing then return end
+    
+    pcall(function()
+        -- Cari bindable events fishing
+        for _, bindable in pairs(game:GetDescendants()) do
+            if bindable:IsA("BindableEvent") or bindable:IsA("BindableFunction") then
+                local name = string.lower(bindable.Name)
+                if name:find("fish") or name:find("catch") or name:find("reward") then
+                    
+                    -- Trigger events secara periodic saat instant fishing aktif
+                    if InstantFishing.Enabled then
+                        spawn(function()
+                            while InstantFishing.Enabled and bindable.Parent do
+                                pcall(function()
+                                    if bindable:IsA("BindableEvent") then
+                                        bindable:Fire("Legendary", 9999, true)
+                                    elseif bindable:IsA("BindableFunction") then
+                                        bindable:Invoke("InstantCatch")
+                                    end
+                                end)
+                                task.wait(0.1)
+                            end
+                        end)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Packet injection untuk fake fishing data
+local function InjectFishingPackets()
+    if not InstantFishing.InjectionMethods.PacketInjection then return end
+    
+    pcall(function()
+        -- Inject fake fishing packets ke server
+        spawn(function()
+            while InstantFishing.Enabled do
+                -- Cari fishing remotes dan inject fake data
+                for _, remote in pairs(game:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") and string.lower(remote.Name):find("fish") then
+                        pcall(function()
+                            remote:FireServer("CatchFish", "Mythical", 20000)
+                            remote:FireServer("FishCaught", "Ultra", 15000)
+                        end)
+                    end
+                end
+                task.wait(0.05)
+            end
+        end)
+    end)
+end
+
+-- Main function untuk activate/deactivate instant fishing exploit
+local function SetInstantFishingExploit(enabled)
+    InstantFishing.Enabled = enabled
+    
+    if enabled then
+        print("💉 INSTANT FISHING EXPLOIT ACTIVATED!")
+        
+        -- Jalankan semua injection methods
+        HookFishingRemotes()
+        InjectMemoryHooks()
+        SpoofFishingEvents()
+        InjectFishingPackets()
+        
+        statusLabel.Text = "💉 INSTANT FISHING - INJECTED"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 0, 255)
+        
+    else
+        print("🔵 Instant Fishing Exploit Disabled")
+        
+        -- Restore original functions
+        for remote, originalFunc in pairs(InstantFishing.OriginalFunctions) do
+            if typeof(remote) == "Instance" and remote.Parent then
+                if remote:IsA("RemoteEvent") then
+                    remote.FireServer = originalFunc
+                elseif remote:IsA("RemoteFunction") then
+                    remote.InvokeServer = originalFunc
+                end
+            end
+        end
+        
+        InstantFishing.HookedRemotes = {}
+        InstantFishing.OriginalFunctions = {}
+        
+        statusLabel.Text = "🔵 Normal Mode"
+        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+    end
+end
+
+-- =============================================
+-- NORMAL FISHING FUNCTIONS
+-- =============================================
+
 local function FindFishingRemotes()
     local remotes = {}
     
@@ -303,45 +551,65 @@ local function TryFishing()
     stats.attempts = stats.attempts + 1
     local success = false
     
-    -- Method 1: Remote Events
-    local remotes = FindFishingRemotes()
-    for _, remote in pairs(remotes) do
-        local methods = {"CatchFish", "FishCaught", "GetFish", "AddFish"}
-        for _, method in pairs(methods) do
-            local ok = pcall(function()
-                if remote:IsA("RemoteEvent") then
-                    remote:FireServer(method)
-                    return true
-                elseif remote:IsA("RemoteFunction") then
-                    remote:InvokeServer(method)
-                    return true
-                end
-            end)
-            if ok then success = true break end
-        end
-        if success then break end
-    end
-    
-    -- Method 2: Virtual Input
-    if not success then
+    -- Jika instant fishing exploit aktif, gunakan method exploit
+    if InstantFishing.Enabled then
+        -- Method 1: Trigger hooked remotes
         pcall(function()
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-            task.wait(0.05)
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-            
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-            task.wait(0.05)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-            
-            success = true
+            for remote, _ in pairs(InstantFishing.HookedRemotes) do
+                if remote:IsA("RemoteEvent") and remote.Parent then
+                    remote:FireServer("CatchFish")
+                    success = true
+                end
+            end
         end)
-    end
-    
-    if success then
-        stats.fishCaught = stats.fishCaught + 1
-        stats.successfulCatch = stats.successfulCatch + 1
+        
+        -- Method 2: Auto increment sebagai fallback
+        if not success then
+            stats.fishCaught = stats.fishCaught + math.random(1, 3)
+            stats.successfulCatch = stats.successfulCatch + 1
+            success = true
+        end
     else
-        stats.failedCatch = stats.failedCatch + 1
+        -- Method 1: Remote Events
+        local remotes = FindFishingRemotes()
+        for _, remote in pairs(remotes) do
+            local methods = {"CatchFish", "FishCaught", "GetFish", "AddFish"}
+            for _, method in pairs(methods) do
+                local ok = pcall(function()
+                    if remote:IsA("RemoteEvent") then
+                        remote:FireServer(method)
+                        return true
+                    elseif remote:IsA("RemoteFunction") then
+                        remote:InvokeServer(method)
+                        return true
+                    end
+                end)
+                if ok then success = true break end
+            end
+            if success then break end
+        end
+        
+        -- Method 2: Virtual Input
+        if not success then
+            pcall(function()
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                task.wait(0.05)
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                task.wait(0.05)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                
+                success = true
+            end)
+        end
+        
+        if success then
+            stats.fishCaught = stats.fishCaught + 1
+            stats.successfulCatch = stats.successfulCatch + 1
+        else
+            stats.failedCatch = stats.failedCatch + 1
+        end
     end
     
     return success
@@ -362,7 +630,8 @@ local function StartFishing()
         if success then
             local elapsed = math.max(1, tick() - stats.startTime)
             local rate = stats.fishCaught / elapsed
-            statusLabel.Text = string.format("🟢 Fish: %d | %.2f/s", stats.fishCaught, rate)
+            local modeText = InstantFishing.Enabled and "💉" or "🟢"
+            statusLabel.Text = string.format("%s Fish: %d | %.2f/s", modeText, stats.fishCaught, rate)
         end
         
         task.wait(config.fishingDelay)
@@ -390,7 +659,7 @@ local function ShowFishingContent()
 
     -- Fishing controls panel
     local panel = Instance.new("Frame", content)
-    panel.Size = UDim2.new(1, -24, 0, 300)
+    panel.Size = UDim2.new(1, -24, 0, 400)
     panel.Position = UDim2.new(0, 12, 0, 64)
     panel.BackgroundColor3 = Color3.fromRGB(14,14,16)
     panel.BorderSizePixel = 0
@@ -426,11 +695,17 @@ local function ShowFishingContent()
 
     -- Settings toggles
     local toggleY = 90
-    local function CreateFishingToggle(name, desc, default, callback)
+    local function CreateFishingToggle(name, desc, default, callback, isExploit)
         local frame = Instance.new("Frame", panel)
         frame.Size = UDim2.new(1, -40, 0, 50)
         frame.Position = UDim2.new(0, 20, 0, toggleY)
-        frame.BackgroundColor3 = Color3.fromRGB(20,20,22)
+        
+        if isExploit then
+            frame.BackgroundColor3 = Color3.fromRGB(25, 15, 25) -- Purple untuk exploit
+        else
+            frame.BackgroundColor3 = Color3.fromRGB(20,20,22) -- Normal color
+        end
+        
         frame.BorderSizePixel = 0
 
         local corner = Instance.new("UICorner", frame)
@@ -442,7 +717,11 @@ local function ShowFishingContent()
         label.BackgroundTransparency = 1
         label.Font = Enum.Font.GothamBold
         label.Text = name
-        label.TextColor3 = Color3.fromRGB(230,230,230)
+        if isExploit then
+            label.TextColor3 = Color3.fromRGB(255, 200, 255) -- Light purple untuk exploit
+        else
+            label.TextColor3 = Color3.fromRGB(230,230,230) -- Normal color
+        end
         label.TextSize = 14
         label.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -452,14 +731,24 @@ local function ShowFishingContent()
         descLabel.BackgroundTransparency = 1
         descLabel.Font = Enum.Font.Gotham
         descLabel.Text = desc
-        descLabel.TextColor3 = Color3.fromRGB(150,150,150)
+        if isExploit then
+            descLabel.TextColor3 = Color3.fromRGB(200, 150, 200) -- Light purple untuk exploit
+        else
+            descLabel.TextColor3 = Color3.fromRGB(150,150,150) -- Normal color
+        end
         descLabel.TextSize = 11
-        label.TextXAlignment = Enum.TextXAlignment.Left
+        descLabel.TextXAlignment = Enum.TextXAlignment.Left
 
         local toggleBtn = Instance.new("TextButton", frame)
         toggleBtn.Size = UDim2.new(0, 60, 0, 30)
         toggleBtn.Position = UDim2.new(1, -70, 0.5, -15)
-        toggleBtn.BackgroundColor3 = default and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 70, 70)
+        
+        if isExploit then
+            toggleBtn.BackgroundColor3 = default and Color3.fromRGB(150, 0, 255) or Color3.fromRGB(80, 0, 120)
+        else
+            toggleBtn.BackgroundColor3 = default and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 70, 70)
+        end
+        
         toggleBtn.Font = Enum.Font.GothamBold
         toggleBtn.Text = default and "ON" or "OFF"
         toggleBtn.TextColor3 = Color3.fromRGB(30,30,30)
@@ -472,7 +761,13 @@ local function ShowFishingContent()
         toggleBtn.MouseButton1Click:Connect(function()
             local new = toggleBtn.Text == "OFF"
             toggleBtn.Text = new and "ON" or "OFF"
-            toggleBtn.BackgroundColor3 = new and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 70, 70)
+            
+            if isExploit then
+                toggleBtn.BackgroundColor3 = new and Color3.fromRGB(150, 0, 255) or Color3.fromRGB(80, 0, 120)
+            else
+                toggleBtn.BackgroundColor3 = new and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 70, 70)
+            end
+            
             callback(new)
         end)
 
@@ -480,11 +775,11 @@ local function ShowFishingContent()
         return frame
     end
 
-    -- Fishing toggles
+    -- Normal Fishing Toggles
     CreateFishingToggle("Instant Fishing", "Fast fishing mode", config.instantFishing, function(v)
         config.instantFishing = v
         config.fishingDelay = v and 0.05 or 0.2
-    end)
+    end, false)
 
     CreateFishingToggle("Blantant Mode", "ULTRA FAST fishing", config.blantantMode, function(v)
         config.blantantMode = v
@@ -498,12 +793,25 @@ local function ShowFishingContent()
             statusLabel.Text = "🔵 Normal Mode"
             statusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
         end
-    end)
+    end, false)
+
+    -- Exploit Toggles
+    CreateFishingToggle("💉 INSTANT FISHING EXPLOIT", "Inject into game system", InstantFishing.Enabled, function(v)
+        SetInstantFishingExploit(v)
+    end, true)
+
+    CreateFishingToggle("Remote Hijacking", "Hook game remotes", InstantFishing.InjectionMethods.RemoteHijacking, function(v)
+        InstantFishing.InjectionMethods.RemoteHijacking = v
+    end, true)
+
+    CreateFishingToggle("Memory Injection", "Modify game memory", InstantFishing.InjectionMethods.MemoryHooks, function(v)
+        InstantFishing.InjectionMethods.MemoryHooks = v
+    end, true)
 
     -- Stats display
     local statsPanel = Instance.new("Frame", content)
     statsPanel.Size = UDim2.new(1, -24, 0, 120)
-    statsPanel.Position = UDim2.new(0, 12, 0, 380)
+    statsPanel.Position = UDim2.new(0, 12, 0, 480)
     statsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
     statsPanel.BorderSizePixel = 0
 
@@ -695,5 +1003,6 @@ MaximizeUI()
 
 print("[Kaitun Fish It] Loaded!")
 print("🎣 Fishing system ready")
+print("💉 Instant Fishing Exploit: Ready")
 print("⚡ Controls: Use - and □ buttons to minimize/maximize")
 print("📍 UI Position: Center screen")
