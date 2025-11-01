@@ -36,6 +36,10 @@ local config = {
     ultraSpeed = false
 }
 
+-- Update reference config
+local config = _G.KaitunConfig
+
+
 local stats = {
     fishCaught = 0,
     startTime = tick(),
@@ -449,27 +453,29 @@ local function StartFishing()
     Status.TextColor3 = theme.Success
     
     print("🚀 Starting Kaitun Fishing...")
-    print("⚡ Delay: " .. config.fishingDelay .. "s")
+    print("⚡ Current Delay: " .. config.fishingDelay .. "s")
+    print("🎯 Blantant Mode: " .. tostring(config.blantantMode))
     
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
-        local success = pcall(function()
-            TryFishingMethod()
-        end)
+        local success = PerformFishingAction()
         
-        if not success then
-            Status.Text = "⚠️ Error occurred, retrying..."
-            Status.TextColor3 = theme.Warning
+        if success then
+            local elapsed = math.max(1, tick() - stats.startTime)
+            local rate = stats.fishCaught / elapsed
+            Status.Text = string.format("🟢 Fish: %d | %.2f/s | Delay: %.2fs", 
+                stats.fishCaught, rate, config.fishingDelay)
+            Status.TextColor3 = theme.Success
         else
             local elapsed = math.max(1, tick() - stats.startTime)
             local rate = stats.fishCaught / elapsed
-            Status.Text = string.format("🟢 Fish: %d | %.2f/s | Attempts: %d", 
-                stats.fishCaught, rate, stats.attempts)
-            Status.TextColor3 = theme.Success
+            Status.Text = string.format("🟡 Fish: %d | %.2f/s | Delay: %.2fs", 
+                stats.fishCaught, rate, config.fishingDelay)
+            Status.TextColor3 = theme.Warning
         end
         
-        task.wait(config.fishingDelay)
+        task.wait(config.fishingDelay) -- PASTIKAN menggunakan config.fishingDelay
     end)
 end
 
@@ -525,57 +531,101 @@ CreateToggle("Instant Fishing", "⚡ INSTANT CATCH - No delay fishing", config.i
     end
 end)
 
+
+-- Perbaiki Blantant Mode toggle
 CreateToggle("Blantant Mode", "ULTRA FAST - Extreme speed fishing (20x Faster)", config.blantantMode, function(v)
-    -- Update config langsung
-    getgenv().config.blantantMode = v
+    -- Update config secara langsung
+    _G.KaitunConfig.blantantMode = v
+    config.blantantMode = v
     
     if v then
-        -- Blantant Mode ON - Ultra fast settings
-        getgenv().config.fishingDelay = 0.01
-        getgenv().config.instantFishing = true
-        getgenv().config.ultraSpeed = true
+        -- Blantant Mode ON
+        _G.KaitunConfig.fishingDelay = 0.01
+        _G.KaitunConfig.instantFishing = true
+        _G.KaitunConfig.ultraSpeed = true
         
-        print("💥 BLASTANT MODE ACTIVATED - ULTRA FAST!")
-        print("⚡ Delay: 0.01s | Instant: ON")
+        config.fishingDelay = 0.01
+        config.instantFishing = true
+        config.ultraSpeed = true
+        
+        print("💥 BLASTANT MODE ACTIVATED!")
+        print("⚡ Delay: 0.01s")
+        print("🎯 Instant: ON")
         
         if Status then
-            Status.Text = "💥 BLASTANT MODE - ULTRA FAST"
+            Status.Text = "💥 BLASTANT MODE - 0.01s DELAY"
             Status.TextColor3 = Color3.fromRGB(255, 50, 50)
         end
         
-        -- Force update fishing connection jika sedang aktif
-        if fishingActive and fishingConnection then
-            fishingConnection:Disconnect()
-            task.wait(0.1)
-            StartFishing()
-        end
-        
     else
-        -- Blantant Mode OFF - Normal settings
-        getgenv().config.fishingDelay = 0.15
-        getgenv().config.instantFishing = false
-        getgenv().config.ultraSpeed = false
+        -- Blantant Mode OFF
+        _G.KaitunConfig.fishingDelay = 0.15
+        _G.KaitunConfig.instantFishing = false
+        _G.KaitunConfig.ultraSpeed = false
         
-        print("🔵 Blantant Mode Disabled - Normal Speed")
-        print("⚡ Delay: 0.15s | Instant: OFF")
+        config.fishingDelay = 0.15
+        config.instantFishing = false
+        config.ultraSpeed = false
+        
+        print("🔵 Blantant Mode Disabled")
+        print("⚡ Delay: 0.15s")
+        print("🎯 Instant: OFF")
         
         if Status then
-            Status.Text = "🔵 Normal Mode"
+            Status.Text = "🔵 Normal Mode - 0.15s DELAY"
             Status.TextColor3 = theme.Success
         end
-        
-        -- Force update fishing connection jika sedang aktif
-        if fishingActive and fishingConnection then
-            fishingConnection:Disconnect()
-            task.wait(0.1)
-            StartFishing()
-        end
+    end
+    
+    -- Restart fishing dengan config baru
+    if fishingActive then
+        print("🔄 Restarting fishing with new settings...")
+        StopFishing()
+        task.wait(0.2)
+        StartFishing()
     end
 end)
 
-
 CreateSection("📊 Statistics")
 
+CreateButton("🐛 DEBUG TOGGLE", "Test if toggle is working", function()
+    print("=== TOGGLE DEBUG ===")
+    print("Toggle Value:", config.blantantMode)
+    print("Fishing Delay:", config.fishingDelay)
+    print("Instant Fishing:", config.instantFishing)
+    print("Fishing Active:", fishingActive)
+    
+    -- Test change value
+    local newValue = not config.blantantMode
+    config.blantantMode = newValue
+    _G.KaitunConfig.blantantMode = newValue
+    
+    print("New Toggle Value:", config.blantantMode)
+    print("====================")
+    
+    Status.Text = "🐛 Debug: " .. tostring(config.blantantMode)
+    Status.TextColor3 = theme.Warning
+end)
+
+CreateButton("⚙️ FORCE BLANTANT", "Force enable blantant mode", function()
+    _G.KaitunConfig.blantantMode = true
+    _G.KaitunConfig.fishingDelay = 0.01
+    _G.KaitunConfig.instantFishing = true
+    
+    config.blantantMode = true
+    config.fishingDelay = 0.01
+    config.instantFishing = true
+    
+    print("💥 FORCE BLANTANT ACTIVATED!")
+    Status.Text = "💥 FORCE BLANTANT - 0.01s"
+    Status.TextColor3 = Color3.fromRGB(255, 0, 0)
+    
+    if fishingActive then
+        StopFishing()
+        task.wait(0.3)
+        StartFishing()
+    end
+end)
 
 CreateButton("🎣 Equip Rod", "Manually equip fishing rod", function()
     if EquipRod() then
