@@ -1,11 +1,10 @@
 -- UI-Only: Neon Panel (sidebar + content) — paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
--- Tema: hitam matte + merah neon. Toggle dengan tombol - dan logo. Safe (UI only).
+-- Tema: hitam matte + merah neon. Toggle dengan tombol G. Safe (UI only).
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -18,48 +17,15 @@ local ACCENT = Color3.fromRGB(255, 62, 62) -- neon merah
 local BG = Color3.fromRGB(12,12,12) -- hitam matte
 local SECOND = Color3.fromRGB(24,24,26)
 
--- Theme colors
-local theme = {
-    Accent = ACCENT,
-    Success = Color3.fromRGB(0, 255, 100),
-    Warning = Color3.fromRGB(255, 170, 0),
-    Error = Color3.fromRGB(255, 70, 70),
-    Text = Color3.fromRGB(240, 240, 240),
-    TextSecondary = Color3.fromRGB(180, 180, 180)
-}
-
--- FISHING CONFIG
-local config = {
-    autoFishing = false,
-    instantFishing = true,
-    fishingDelay = 0.1,
-    blantantMode = false,
-    autoEquipRod = true
-}
-
--- INSTANT FISHING EXPLOIT CONFIG
-local InstantFishing = {
-    Enabled = false,
-    HookedRemotes = {},
-    OriginalFunctions = {},
-    InjectionMethods = {
-        MemoryHooks = true,
-        RemoteHijacking = true,
-        EventSpoofing = true,
-        PacketInjection = true
-    }
-}
-
-local stats = {
-    fishCaught = 0,
-    startTime = tick(),
-    attempts = 0,
-    successfulCatch = 0,
-    failedCatch = 0
-}
-
-local fishingActive = false
-local fishingConnection
+-- STATE VARIABLES
+local autoFarmEnabled = false
+local autoCastEnabled = false
+local autoReelEnabled = false
+local autoShakeEnabled = false
+local autoSellEnabled = false
+local selectedIsland = "None"
+local selectedRod = "None"
+local selectedBait = "None"
 
 -- cleanup old if exist
 if playerGui:FindFirstChild("NeonDashboardUI") then
@@ -114,7 +80,7 @@ inner.Size = UDim2.new(1, -24, 1, -24)
 inner.Position = UDim2.new(0, 12, 0, 12)
 inner.BackgroundTransparency = 1
 
--- Title bar dengan kontrol minimize/maximize
+-- Title bar
 local titleBar = Instance.new("Frame", inner)
 titleBar.Size = UDim2.new(1,0,0,48)
 titleBar.Position = UDim2.new(0,0,0,0)
@@ -126,53 +92,19 @@ title.Position = UDim2.new(0,8,0,0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
-title.Text = "⚡ KAITUN FISH IT - ULTIMATE"
+title.Text = "⚡ KAITUN FISH IT — Full Featured"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 
-local Status = Instance.new("TextLabel", titleBar)
-Status.Size = UDim2.new(0.4,-16,1,0)
-Status.Position = UDim2.new(0.6,8,0,0)
-Status.BackgroundTransparency = 1
-Status.Font = Enum.Font.Gotham
-Status.TextSize = 13
-Status.Text = "🔴 Ready"
-Status.TextColor3 = Color3.fromRGB(200,200,200)
-Status.TextXAlignment = Enum.TextXAlignment.Right
-
--- Kontrol minimize/maximize di pojok kanan atas
-local controlFrame = Instance.new("Frame", titleBar)
-controlFrame.Size = UDim2.new(0, 60, 1, 0)
-controlFrame.Position = UDim2.new(1, -65, 0, 0)
-controlFrame.BackgroundTransparency = 1
-
--- Minimize Button (-)
-local minimizeBtn = Instance.new("TextButton", controlFrame)
-minimizeBtn.Size = UDim2.new(0, 25, 0, 25)
-minimizeBtn.Position = UDim2.new(0, 0, 0.5, -12)
-minimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
-minimizeBtn.Font = Enum.Font.GothamBold
-minimizeBtn.Text = "_"
-minimizeBtn.TextColor3 = Color3.fromRGB(30, 30, 30)
-minimizeBtn.TextSize = 14
-minimizeBtn.AutoButtonColor = false
-
-local minCorner = Instance.new("UICorner", minimizeBtn)
-minCorner.CornerRadius = UDim.new(0, 6)
-
--- Maximize Button (□)
-local maximizeBtn = Instance.new("TextButton", controlFrame)
-maximizeBtn.Size = UDim2.new(0, 25, 0, 25)
-maximizeBtn.Position = UDim2.new(0, 30, 0.5, -12)
-maximizeBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-maximizeBtn.Font = Enum.Font.GothamBold
-maximizeBtn.Text = "□"
-maximizeBtn.TextColor3 = Color3.fromRGB(30, 30, 30)
-maximizeBtn.TextSize = 12
-maximizeBtn.AutoButtonColor = false
-
-local maxCorner = Instance.new("UICorner", maximizeBtn)
-maxCorner.CornerRadius = UDim.new(0, 6)
+local memLabel = Instance.new("TextLabel", titleBar)
+memLabel.Size = UDim2.new(0.4,-16,1,0)
+memLabel.Position = UDim2.new(0.6,8,0,0)
+memLabel.BackgroundTransparency = 1
+memLabel.Font = Enum.Font.Gotham
+memLabel.TextSize = 13
+memLabel.Text = "Client Memory Usage: 0 MB"
+memLabel.TextColor3 = Color3.fromRGB(200,200,200)
+memLabel.TextXAlignment = Enum.TextXAlignment.Right
 
 -- left sidebar
 local sidebar = Instance.new("Frame", inner)
@@ -267,13 +199,15 @@ local function makeMenuItem(name, iconText)
     return row, label
 end
 
--- menu items (order like photo)
+-- menu items
 local items = {
-    {"Fishing", "🎣"},
-    {"Auto Fish", "⚡"},
-    {"Settings", "⚙"},
+    {"Main", "★"},
+    {"Spawn Boat", "⛵"},
+    {"Buy Rod", "🪝"},
+    {"Buy Weather", "☁"},
+    {"Buy Bait", "🍤"},
     {"Teleport", "📍"},
-    {"Stats", "📊"},
+    {"Settings", "⚙"},
 }
 local menuButtons = {}
 for i, v in ipairs(items) do
@@ -300,863 +234,633 @@ cTitle.Position = UDim2.new(0,12,0,12)
 cTitle.BackgroundTransparency = 1
 cTitle.Font = Enum.Font.GothamBold
 cTitle.TextSize = 16
-cTitle.Text = "Fishing Controls"
+cTitle.Text = "Main"
 cTitle.TextColor3 = Color3.fromRGB(245,245,245)
 cTitle.TextXAlignment = Enum.TextXAlignment.Left
 
--- =============================================
--- FISHING UTILITY FUNCTIONS
--- =============================================
+-- HELPER FUNCTIONS FOR UI ELEMENTS
+local function createToggle(parent, labelText, posY, callback)
+    local toggleFrame = Instance.new("Frame", parent)
+    toggleFrame.Size = UDim2.new(1, -24, 0, 40)
+    toggleFrame.Position = UDim2.new(0, 12, 0, posY)
+    toggleFrame.BackgroundTransparency = 1
 
-local function SafeGetCharacter()
-    local success, result = pcall(function()
-        return player.Character
-    end)
-    return success and result or nil
-end
+    local label = Instance.new("TextLabel", toggleFrame)
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.Text = labelText
+    label.TextColor3 = Color3.fromRGB(220,220,220)
+    label.TextXAlignment = Enum.TextXAlignment.Left
 
-local function GetFishingRod()
-    local char = SafeGetCharacter()
-    if not char then return nil end
-    
-    -- Cari fishing rod di backpack
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        for _, item in pairs(backpack:GetChildren()) do
-            local itemName = string.lower(item.Name)
-            if itemName:find("rod") or itemName:find("fishing") or itemName:find("pole") then
-                return item
-            end
+    local toggle = Instance.new("TextButton", toggleFrame)
+    toggle.Size = UDim2.new(0, 50, 0, 26)
+    toggle.Position = UDim2.new(1, -50, 0.5, -13)
+    toggle.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    toggle.Text = ""
+    toggle.AutoButtonColor = false
+    local tCorner = Instance.new("UICorner", toggle)
+    tCorner.CornerRadius = UDim.new(1, 0)
+
+    local knob = Instance.new("Frame", toggle)
+    knob.Size = UDim2.new(0, 20, 0, 20)
+    knob.Position = UDim2.new(0, 3, 0.5, -10)
+    knob.BackgroundColor3 = Color3.fromRGB(200,200,200)
+    local kCorner = Instance.new("UICorner", knob)
+    kCorner.CornerRadius = UDim.new(1, 0)
+
+    local state = false
+    toggle.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            TweenService:Create(toggle, TweenInfo.new(0.2), {BackgroundColor3 = ACCENT}):Play()
+            TweenService:Create(knob, TweenInfo.new(0.2), {Position = UDim2.new(1, -23, 0.5, -10)}):Play()
+        else
+            TweenService:Create(toggle, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40,40,40)}):Play()
+            TweenService:Create(knob, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, -10)}):Play()
         end
-    end
-    
-    -- Cari di character
-    if char then
-        for _, item in pairs(char:GetChildren()) do
-            if item:IsA("Tool") then
-                local itemName = string.lower(item.Name)
-                if itemName:find("rod") or itemName:find("fishing") or itemName:find("pole") then
-                    return item
-                end
-            end
-        end
-    end
-    
-    return nil
-end
-
-local function EquipRod()
-    if not config.autoEquipRod then return true end
-    
-    local rod = GetFishingRod()
-    if not rod then
-        Status.Text = "⚠️ No fishing rod found!"
-        Status.TextColor3 = theme.Warning
-        return false
-    end
-    
-    -- Jika rod sudah di-equip
-    if rod.Parent == player.Character then
-        return true
-    end
-    
-    -- Equip rod dari backpack
-    pcall(function()
-        player.Character:FindFirstChildOfClass("Humanoid"):EquipTool(rod)
-        task.wait(0.1)
+        if callback then callback(state) end
     end)
-    
-    return rod.Parent == player.Character
+
+    return toggleFrame, toggle
 end
 
-local function FindFishingProximityPrompt()
-    local success, prompt = pcall(function()
-        local char = SafeGetCharacter()
-        if not char then return nil end
+local function createDropdown(parent, labelText, options, posY, callback)
+    local ddFrame = Instance.new("Frame", parent)
+    ddFrame.Size = UDim2.new(1, -24, 0, 70)
+    ddFrame.Position = UDim2.new(0, 12, 0, posY)
+    ddFrame.BackgroundTransparency = 1
+
+    local label = Instance.new("TextLabel", ddFrame)
+    label.Size = UDim2.new(1, 0, 0, 24)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 13
+    label.Text = labelText
+    label.TextColor3 = Color3.fromRGB(200,200,200)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local ddBtn = Instance.new("TextButton", ddFrame)
+    ddBtn.Size = UDim2.new(0, 200, 0, 32)
+    ddBtn.Position = UDim2.new(0, 0, 0, 28)
+    ddBtn.BackgroundColor3 = Color3.fromRGB(20,20,22)
+    ddBtn.Font = Enum.Font.GothamBold
+    ddBtn.TextSize = 14
+    ddBtn.Text = options[1] or "Select"
+    ddBtn.TextColor3 = Color3.fromRGB(230,230,230)
+    ddBtn.AutoButtonColor = false
+    local ddCorner = Instance.new("UICorner", ddBtn)
+    ddCorner.CornerRadius = UDim.new(0,6)
+
+    local ddList = Instance.new("Frame", ddFrame)
+    ddList.Size = UDim2.new(0, 200, 0, 0)
+    ddList.Position = UDim2.new(0, 0, 0, 64)
+    ddList.BackgroundColor3 = Color3.fromRGB(18,18,20)
+    ddList.BorderSizePixel = 0
+    ddList.ClipsDescendants = true
+    ddList.ZIndex = 10
+    local ddListCorner = Instance.new("UICorner", ddList)
+    ddListCorner.CornerRadius = UDim.new(0,6)
+
+    local ddLayout = Instance.new("UIListLayout", ddList)
+    ddLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ddLayout.Padding = UDim.new(0,4)
+
+    for i, name in ipairs(options) do
+        local it = Instance.new("TextButton", ddList)
+        it.Size = UDim2.new(1, -8, 0, 28)
+        it.BackgroundColor3 = Color3.fromRGB(24,24,26)
+        it.Text = "  "..name
+        it.Font = Enum.Font.Gotham
+        it.TextSize = 13
+        it.TextColor3 = Color3.fromRGB(230,230,230)
+        it.AutoButtonColor = false
+        it.LayoutOrder = i
+
+        local itCorner = Instance.new("UICorner", it)
+        itCorner.CornerRadius = UDim.new(0,6)
         
-        for _, descendant in pairs(char:GetDescendants()) do
-            if descendant:IsA("ProximityPrompt") then
-                local objText = descendant.ObjectText and descendant.ObjectText:lower() or "Perfect"
-                local actionText = descendant.ActionText and descendant.ActionText:lower() or "Perfect"
-                
-                if objText:find("fish") or objText:find("cast") or objText:find("catch") or
-                   actionText:find("fish") or actionText:find("cast") or actionText:find("catch") then
-                    return descendant
-                end
-            end
-        end
-        
-        return nil
-    end)
-    
-    return success and prompt or nil
-end
-
-local function SimulateKeyPress(keyCode)
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
-        task.wait(0.001)
-        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
-    end)
-end
-
-local function SimulateClick()
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0.01)
-        task.wait(0.001)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0.01)
-    end)
-end
-
--- =============================================
--- INSTANT FISHING EXPLOIT FUNCTIONS
--- =============================================
-
--- Hook semua fishing related remotes
-local function HookFishingRemotes()
-    if not InstantFishing.InjectionMethods.RemoteHijacking then return end
-    
-    local function hijackRemote(remote)
-        if InstantFishing.HookedRemotes[remote] then return end
-        
-        if remote:IsA("RemoteEvent") then
-            -- Simpan function original
-            local oldFire = remote.FireServer
-            InstantFishing.OriginalFunctions[remote] = oldFire
-            
-            -- Override function
-            remote.FireServer = function(self, ...)
-                local args = {...}
-                local methodName = tostring(args[1] or "")
-                
-                -- Auto trigger fishing ketika method fishing dipanggil
-                if string.lower(methodName):find("fish") or 
-                   string.lower(methodName):find("catch") or 
-                   string.lower(methodName):find("reel") or
-                   #args == 0 then -- Jika tidak ada args, anggap fishing
-                    
-                    if InstantFishing.Enabled then
-                        -- Auto success fishing
-                        stats.fishCaught = stats.fishCaught + 1
-                        stats.successfulCatch = stats.successfulCatch + 1
-                        
-                        -- Return success value
-                        if remote.Parent and remote.Parent:IsA("ModuleScript") then
-                            return "Legendary", 9999, true
-                        end
-                        return true
-                    end
-                end
-                
-                -- Panggil function original
-                return oldFire(self, ...)
-            end
-            
-        elseif remote:IsA("RemoteFunction") then
-            -- Simpan function original
-            local oldInvoke = remote.InvokeServer
-            InstantFishing.OriginalFunctions[remote] = oldInvoke
-            
-            -- Override function
-            remote.InvokeServer = function(self, ...)
-                local args = {...}
-                local methodName = tostring(args[1] or "")
-                
-                -- Auto trigger fishing
-                if string.lower(methodName):find("fish") or 
-                   string.lower(methodName):find("catch") or
-                   #args == 0 then
-                    
-                    if InstantFishing.Enabled then
-                        stats.fishCaught = stats.fishCaught + 1
-                        stats.successfulCatch = stats.successfulCatch + 1
-                        return "Ultra", 5000, true, "Instant Catch"
-                    end
-                end
-                
-                return oldInvoke(self, ...)
-            end
-        end
-        
-        InstantFishing.HookedRemotes[remote] = true
-    end
-    
-    -- Hook existing remotes
-    for _, remote in pairs(game:GetDescendants()) do
-        if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-            pcall(hijackRemote, remote)
-        end
-    end
-    
-    -- Hook new remotes yang dibuat setelah script jalan
-    game.DescendantAdded:Connect(function(descendant)
-        if (descendant:IsA("RemoteEvent") or descendant:IsA("RemoteFunction")) and InstantFishing.Enabled then
-            task.wait(0.5) -- Tunggu remote fully loaded
-            pcall(hijackRemote, descendant)
-        end
-    end)
-end
-
--- Memory manipulation untuk inject fishing success
-local function InjectMemoryHooks()
-    if not InstantFishing.InjectionMethods.MemoryHooks then return end
-    
-    pcall(function()
-        -- Cari module scripts yang berhubungan dengan fishing
-        for _, module in pairs(game:GetDescendants()) do
-            if module:IsA("ModuleScript") then
-                local success, moduleTable = pcall(require, module)
-                if success and type(moduleTable) == "table" then
-                    
-                    -- Inject ke fishing functions
-                    if moduleTable.CatchFish or moduleTable.Fish then
-                        -- Simpan original functions
-                        if moduleTable.CatchFish and not InstantFishing.OriginalFunctions[module.."_CatchFish"] then
-                            InstantFishing.OriginalFunctions[module.."_CatchFish"] = moduleTable.CatchFish
-                        end
-                        if moduleTable.Fish and not InstantFishing.OriginalFunctions[module.."_Fish"] then
-                            InstantFishing.OriginalFunctions[module.."_Fish"] = moduleTable.Fish
-                        end
-                        
-                        -- Override functions
-                        if moduleTable.CatchFish then
-                            moduleTable.CatchFish = function(...)
-                                if InstantFishing.Enabled then
-                                    stats.fishCaught = stats.fishCaught + 1
-                                    stats.successfulCatch = stats.successfulCatch + 1
-                                    return "Legendary", 10000, true
-                                end
-                                return InstantFishing.OriginalFunctions[module.."_CatchFish"](...)
-                            end
-                        end
-                        
-                        if moduleTable.Fish then
-                            moduleTable.Fish = function(...)
-                                if InstantFishing.Enabled then
-                                    stats.fishCaught = stats.fishCaught + 1
-                                    stats.successfulCatch = stats.successfulCatch + 1
-                                    return true, "Mythical", 15000
-                                end
-                                return InstantFishing.OriginalFunctions[module.."_Fish"](...)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- Event spoofing untuk trigger auto fishing
-local function SpoofFishingEvents()
-    if not InstantFishing.InjectionMethods.EventSpoofing then return end
-    
-    pcall(function()
-        -- Cari bindable events fishing
-        for _, bindable in pairs(game:GetDescendants()) do
-            if bindable:IsA("BindableEvent") or bindable:IsA("BindableFunction") then
-                local name = string.lower(bindable.Name)
-                if name:find("fish") or name:find("catch") or name:find("reward") then
-                    
-                    -- Trigger events secara periodic saat instant fishing aktif
-                    if InstantFishing.Enabled then
-                        spawn(function()
-                            while InstantFishing.Enabled and bindable.Parent do
-                                pcall(function()
-                                    if bindable:IsA("BindableEvent") then
-                                        bindable:Fire("Legendary", 9999, true)
-                                    elseif bindable:IsA("BindableFunction") then
-                                        bindable:Invoke("InstantCatch")
-                                    end
-                                end)
-                                task.wait(0.1)
-                            end
-                        end)
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- Packet injection untuk fake fishing data
-local function InjectFishingPackets()
-    if not InstantFishing.InjectionMethods.PacketInjection then return end
-    
-    pcall(function()
-        -- Inject fake fishing packets ke server
-        spawn(function()
-            while InstantFishing.Enabled do
-                -- Cari fishing remotes dan inject fake data
-                for _, remote in pairs(game:GetDescendants()) do
-                    if remote:IsA("RemoteEvent") and string.lower(remote.Name):find("fish") then
-                        pcall(function()
-                            remote:FireServer("CatchFish", "Mythical", 20000)
-                            remote:FireServer("FishCaught", "Ultra", 15000)
-                        end)
-                    end
-                end
-                task.wait(0.05)
-            end
+        it.MouseEnter:Connect(function()
+            TweenService:Create(it, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(30,8,8)}):Play()
         end)
-    end)
-end
-
--- Main function untuk activate/deactivate instant fishing exploit
-local function SetInstantFishingExploit(enabled)
-    InstantFishing.Enabled = enabled
-    
-    if enabled then
-        print("💉 INSTANT FISHING EXPLOIT ACTIVATED!")
-        
-        -- Jalankan semua injection methods
-        HookFishingRemotes()
-        InjectMemoryHooks()
-        SpoofFishingEvents()
-        InjectFishingPackets()
-        
-        Status.Text = "💉 INSTANT FISHING - INJECTED"
-        Status.TextColor3 = Color3.fromRGB(255, 0, 255)
-        
-    else
-        print("🔵 Instant Fishing Exploit Disabled")
-        
-        -- Restore original functions
-        for remote, originalFunc in pairs(InstantFishing.OriginalFunctions) do
-            if typeof(remote) == "Instance" and remote.Parent then
-                if remote:IsA("RemoteEvent") then
-                    remote.FireServer = originalFunc
-                elseif remote:IsA("RemoteFunction") then
-                    remote.InvokeServer = originalFunc
-                end
-            end
-        end
-        
-        InstantFishing.HookedRemotes = {}
-        InstantFishing.OriginalFunctions = {}
-        
-        Status.Text = "🔵 Normal Mode"
-        Status.TextColor3 = Color3.fromRGB(0, 255, 100)
-    end
-end
-
--- =============================================
--- FISHING METHODS
--- =============================================
-
-local function TryFishingMethod()
-    local methods_tried = 0.001
-    local success = false
-    
-    -- Method 1: Equip Rod
-    if not EquipRod() then
-        Status.Text = "⚠️ No fishing rod found!"
-        Status.TextColor3 = theme.Warning
-        return false
-    end
-    methods_tried = methods_tried + 0.1
-    
-    -- Method 2: ProximityPrompt
-    pcall(function()
-        local prompt = FindFishingProximityPrompt()
-        if prompt and prompt.Enabled then
-            fireproximityprompt(prompt)
-            success = true
-        end
-    end)
-    methods_tried = methods_tried + 0.1
-    
-    if success then
-        stats.fishCaught = stats.fishCaught + 1
-        return true
-    end
-    
-    -- Method 3: ClickDetector
-    pcall(function()
-        local rod = GetFishingRod()
-        if rod and rod.Parent == player.Character then
-            local handle = rod:FindFirstChild("Handle")
-            if handle then
-                local clickDetector = handle:FindFirstChild("ClickDetector")
-                if clickDetector then
-                    fireclickdetector(clickDetector)
-                    success = true
-                end
-            end
-        end
-    end)
-    methods_tried = methods_tried + 0.1
-    
-    if success then
-        stats.fishCaught = stats.fishCaught + 1
-        return true
-    end
-    
-    -- Method 4: Simulate Clicks
-    SimulateClick()
-    task.wait(0.001)
-    
-    -- Method 5: Simulate Key Presses
-    SimulateKeyPress(Enum.KeyCode.E)
-    task.wait(0.001)
-    SimulateKeyPress(Enum.KeyCode.F)
-    task.wait(0.001)
-    
-    methods_tried = methods_tried + 0.1
-    
-    -- Count as attempt
-    stats.attempts = stats.attempts + 1
-    
-    -- Assume success for click/key methods
-    stats.fishCaught = stats.fishCaught + 1
-    
-    return true
-end
-
-local function StartFishing()
-    if fishingActive then return end
-    
-    fishingActive = true
-    Status.Text = "🟢 Fishing started..."
-    Status.TextColor3 = theme.Success
-    
-    print("🚀 Starting Kaitun Fishing...")
-    print("⚡ Delay: " .. config.fishingDelay .. "s")
-    
-    fishingConnection = RunService.Heartbeat:Connect(function()
-        if not fishingActive then return end
-        
-        local success = pcall(function()
-            TryFishingMethod()
+        it.MouseLeave:Connect(function()
+            TweenService:Create(it, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(24,24,26)}):Play()
         end)
-        
-        if not success then
-            Status.Text = "⚠️ Error occurred, retrying..."
-            Status.TextColor3 = theme.Warning
-        else
-            local elapsed = math.max(1, tick() - stats.startTime)
-            local rate = stats.fishCaught / elapsed
-            Status.Text = string.format("🟢 Fish: %d | %.2f/s | Attempts: %d", 
-                stats.fishCaught, rate, stats.attempts)
-            Status.TextColor3 = theme.Success
-        end
-        
-        task.wait(config.fishingDelay)
-    end)
-end
-
-local function StopFishing()
-    fishingActive = false
-    if fishingConnection then
-        fishingConnection:Disconnect()
-        fishingConnection = nil
-    end
-    Status.Text = "🔴 Fishing stopped"
-    Status.TextColor3 = theme.Error
-    print("🔴 Fishing stopped")
-end
-
--- =============================================
--- UI CREATION FUNCTIONS
--- =============================================
-
-local function CreateSection(title)
-    local section = Instance.new("Frame")
-    section.Size = UDim2.new(1, -24, 0, 400)
-    section.Position = UDim2.new(0, 12, 0, 64)
-    section.BackgroundColor3 = Color3.fromRGB(14,14,16)
-    section.BorderSizePixel = 0
-    section.Parent = content
-
-    local corner = Instance.new("UICorner", section)
-    corner.CornerRadius = UDim.new(0,8)
-
-    local sectionTitle = Instance.new("TextLabel", section)
-    sectionTitle.Size = UDim2.new(1, -20, 0, 40)
-    sectionTitle.Position = UDim2.new(0, 10, 0, 5)
-    sectionTitle.BackgroundTransparency = 1
-    sectionTitle.Font = Enum.Font.GothamBold
-    sectionTitle.Text = title
-    sectionTitle.TextColor3 = theme.Text
-    sectionTitle.TextSize = 16
-    sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
-
-    return section
-end
-
-local function CreateButton(text, description, callback)
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 200, 0, 50)
-    button.BackgroundColor3 = theme.Accent
-    button.AutoButtonColor = false
-    button.BorderSizePixel = 0
-
-    local corner = Instance.new("UICorner", button)
-    corner.CornerRadius = UDim.new(0,8)
-
-    local textLabel = Instance.new("TextLabel", button)
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Font = Enum.Font.GothamBold
-    textLabel.Text = text
-    textLabel.TextColor3 = Color3.fromRGB(30,30,30)
-    textLabel.TextSize = 16
-    textLabel.TextYAlignment = Enum.TextYAlignment.Center
-
-    -- Hover effects
-    button.MouseEnter:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 100, 100)}):Play()
-    end)
-    button.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = theme.Accent}):Play()
-    end)
-
-    button.MouseButton1Click:Connect(callback)
-
-    return button
-end
-
--- Create fishing controls in content
-local function ShowFishingContent()
-    -- Clear existing content
-    for _, child in pairs(content:GetChildren()) do
-        if child.Name ~= "ContentTitle" then
-            child:Destroy()
-        end
-    end
-
-    -- Fishing controls panel
-    local panel = CreateSection("🎯 FISHING CONTROLS")
-
-    -- Start/Stop Fishing Button
-    local startBtn = CreateButton("🚀 START FISHING", "Click to start auto fishing", function()
-        if fishingActive then
-            StopFishing()
-            startBtn:FindFirstChild("TextLabel").Text = "🚀 START FISHING"
-            startBtn.BackgroundColor3 = theme.Accent
-        else
-            StartFishing()
-            startBtn:FindFirstChild("TextLabel").Text = "⏹️ STOP FISHING"
-            startBtn.BackgroundColor3 = theme.Error
-        end
-    end)
-    startBtn.Position = UDim2.new(0, 20, 0, 20)
-    startBtn.Parent = panel
-
-    -- Settings toggles
-    local toggleY = 90
-    local function CreateFishingToggle(name, desc, default, callback, isExploit)
-        local frame = Instance.new("Frame", panel)
-        frame.Size = UDim2.new(1, -40, 0, 50)
-        frame.Position = UDim2.new(0, 20, 0, toggleY)
-        
-        if isExploit then
-            frame.BackgroundColor3 = Color3.fromRGB(25, 15, 25) -- Purple untuk exploit
-        else
-            frame.BackgroundColor3 = Color3.fromRGB(20,20,22) -- Normal color
-        end
-        
-        frame.BorderSizePixel = 0
-
-        local corner = Instance.new("UICorner", frame)
-        corner.CornerRadius = UDim.new(0,6)
-
-        local label = Instance.new("TextLabel", frame)
-        label.Size = UDim2.new(0.7, 0, 1, 0)
-        label.Position = UDim2.new(0, 10, 0, 0)
-        label.BackgroundTransparency = 1
-        label.Font = Enum.Font.GothamBold
-        label.Text = name
-        if isExploit then
-            label.TextColor3 = Color3.fromRGB(255, 200, 255) -- Light purple untuk exploit
-        else
-            label.TextColor3 = Color3.fromRGB(230,230,230) -- Normal color
-        end
-        label.TextSize = 14
-        label.TextXAlignment = Enum.TextXAlignment.Left
-
-        local descLabel = Instance.new("TextLabel", frame)
-        descLabel.Size = UDim2.new(0.7, 0, 0.5, 0)
-        descLabel.Position = UDim2.new(0, 10, 0.5, 0)
-        descLabel.BackgroundTransparency = 1
-        descLabel.Font = Enum.Font.Gotham
-        descLabel.Text = desc
-        if isExploit then
-            descLabel.TextColor3 = Color3.fromRGB(200, 150, 200) -- Light purple untuk exploit
-        else
-            descLabel.TextColor3 = Color3.fromRGB(150,150,150) -- Normal color
-        end
-        descLabel.TextSize = 11
-        descLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-        local toggleBtn = Instance.new("TextButton", frame)
-        toggleBtn.Size = UDim2.new(0, 60, 0, 30)
-        toggleBtn.Position = UDim2.new(1, -70, 0.5, -15)
-        
-        if isExploit then
-            toggleBtn.BackgroundColor3 = default and Color3.fromRGB(150, 0, 255) or Color3.fromRGB(80, 0, 120)
-        else
-            toggleBtn.BackgroundColor3 = default and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 70, 70)
-        end
-        
-        toggleBtn.Font = Enum.Font.GothamBold
-        toggleBtn.Text = default and "ON" or "OFF"
-        toggleBtn.TextColor3 = Color3.fromRGB(30,30,30)
-        toggleBtn.TextSize = 12
-        toggleBtn.AutoButtonColor = false
-
-        local toggleCorner = Instance.new("UICorner", toggleBtn)
-        toggleCorner.CornerRadius = UDim.new(0,6)
-
-        toggleBtn.MouseButton1Click:Connect(function()
-            local new = toggleBtn.Text == "OFF"
-            toggleBtn.Text = new and "ON" or "OFF"
-            
-            if isExploit then
-                toggleBtn.BackgroundColor3 = new and Color3.fromRGB(150, 0, 255) or Color3.fromRGB(80, 0, 120)
-            else
-                toggleBtn.BackgroundColor3 = new and Color3.fromRGB(0, 255, 100) or Color3.fromRGB(255, 70, 70)
-            end
-            
-            callback(new)
+        it.MouseButton1Click:Connect(function()
+            ddBtn.Text = name
+            TweenService:Create(ddList, TweenInfo.new(0.18), {Size = UDim2.new(0,200,0,0)}):Play()
+            if callback then callback(name) end
         end)
-
-        toggleY = toggleY + 60
-        return frame
     end
 
-    -- Normal Fishing Toggles
-    CreateFishingToggle("Auto Equip Rod", "Automatically equip fishing rod", config.autoEquipRod, function(v)
-        config.autoEquipRod = v
-    end, false)
-
-    CreateFishingToggle("Instant Fishing", "Fast fishing mode", config.instantFishing, function(v)
-        config.instantFishing = v
-        config.fishingDelay = v and 0.05 or 0.2
-    end, false)
-
-    CreateFishingToggle("Blantant Mode", "ULTRA FAST fishing", config.blantantMode, function(v)
-        config.blantantMode = v
-        if v then
-            config.fishingDelay = 0.02
-            config.instantFishing = true
-            Status.Text = "💥 BLANTANT MODE"
-            Status.TextColor3 = theme.Error
+    local ddOpen = false
+    ddBtn.MouseButton1Click:Connect(function()
+        ddOpen = not ddOpen
+        if ddOpen then
+            TweenService:Create(ddList, TweenInfo.new(0.18), {Size = UDim2.new(0,200,0, #options*34)}):Play()
         else
-            config.fishingDelay = 0.15
-            Status.Text = "🔵 Normal Mode"
-            Status.TextColor3 = theme.Success
-        end
-    end, false)
-
-    -- Exploit Toggles
-    CreateFishingToggle("💉 INSTANT FISHING EXPLOIT", "Inject into game system", InstantFishing.Enabled, function(v)
-        SetInstantFishingExploit(v)
-    end, true)
-
-    CreateFishingToggle("Remote Hijacking", "Hook game remotes", InstantFishing.InjectionMethods.RemoteHijacking, function(v)
-        InstantFishing.InjectionMethods.RemoteHijacking = v
-    end, true)
-
-    CreateFishingToggle("Memory Injection", "Modify game memory", InstantFishing.InjectionMethods.MemoryHooks, function(v)
-        InstantFishing.InjectionMethods.MemoryHooks = v
-    end, true)
-
-    -- Stats display
-    local statsPanel = Instance.new("Frame", content)
-    statsPanel.Size = UDim2.new(1, -24, 0, 120)
-    statsPanel.Position = UDim2.new(0, 12, 0, 480)
-    statsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
-    statsPanel.BorderSizePixel = 0
-
-    local statsCorner = Instance.new("UICorner", statsPanel)
-    statsCorner.CornerRadius = UDim.new(0,8)
-
-    local statsTitle = Instance.new("TextLabel", statsPanel)
-    statsTitle.Size = UDim2.new(1, -20, 0, 30)
-    statsTitle.Position = UDim2.new(0, 10, 0, 5)
-    statsTitle.BackgroundTransparency = 1
-    statsTitle.Font = Enum.Font.GothamBold
-    statsTitle.Text = "📊 Live Statistics"
-    statsTitle.TextColor3 = theme.Text
-    statsTitle.TextSize = 14
-    statsTitle.TextXAlignment = Enum.TextXAlignment.Left
-
-    -- Stats labels
-    local fishStat = Instance.new("TextLabel", statsPanel)
-    fishStat.Size = UDim2.new(0.5, -10, 0, 25)
-    fishStat.Position = UDim2.new(0, 10, 0, 40)
-    fishStat.BackgroundTransparency = 1
-    fishStat.Font = Enum.Font.Gotham
-    fishStat.Text = "🎣 Fish: 0"
-    fishStat.TextColor3 = theme.TextSecondary
-    fishStat.TextSize = 12
-    fishStat.TextXAlignment = Enum.TextXAlignment.Left
-
-    local attemptsStat = Instance.new("TextLabel", statsPanel)
-    attemptsStat.Size = UDim2.new(0.5, -10, 0, 25)
-    attemptsStat.Position = UDim2.new(0.5, 0, 0, 40)
-    attemptsStat.BackgroundTransparency = 1
-    attemptsStat.Font = Enum.Font.Gotham
-    attemptsStat.Text = "🔄 Attempts: 0"
-    attemptsStat.TextColor3 = theme.TextSecondary
-    attemptsStat.TextSize = 12
-    attemptsStat.TextXAlignment = Enum.TextXAlignment.Left
-
-    local rateStat = Instance.new("TextLabel", statsPanel)
-    rateStat.Size = UDim2.new(0.5, -10, 0, 25)
-    rateStat.Position = UDim2.new(0, 10, 0, 65)
-    rateStat.BackgroundTransparency = 1
-    rateStat.Font = Enum.Font.Gotham
-    rateStat.Text = "⚡ Rate: 0.00/s"
-    rateStat.TextColor3 = theme.TextSecondary
-    rateStat.TextSize = 12
-    rateStat.TextXAlignment = Enum.TextXAlignment.Left
-
-    local successStat = Instance.new("TextLabel", statsPanel)
-    successStat.Size = UDim2.new(0.5, -10, 0, 25)
-    successStat.Position = UDim2.new(0.5, 0, 0, 65)
-    successStat.BackgroundTransparency = 1
-    successStat.Font = Enum.Font.Gotham
-    successStat.Text = "✅ Success: 0"
-    successStat.TextColor3 = theme.TextSecondary
-    successStat.TextSize = 12
-    successStat.TextXAlignment = Enum.TextXAlignment.Left
-
-    -- Update stats in real-time
-    task.spawn(function()
-        while task.wait(0.5) do
-            local elapsed = math.max(1, tick() - stats.startTime)
-            local rate = stats.fishCaught / elapsed
-            
-            fishStat.Text = "🎣 Fish: " .. stats.fishCaught
-            attemptsStat.Text = "🔄 Attempts: " .. stats.attempts
-            rateStat.Text = string.format("⚡ Rate: %.2f/s", rate)
-            successStat.Text = "✅ Success: " .. stats.successfulCatch
+            TweenService:Create(ddList, TweenInfo.new(0.14), {Size = UDim2.new(0,200,0,0)}):Play()
         end
     end)
+
+    return ddFrame, ddBtn
 end
 
--- Menu navigation
-local activeMenu = "Fishing"
+local function createButton(parent, text, posX, posY, width, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0, width, 0, 34)
+    btn.Position = UDim2.new(0, posX, 0, posY)
+    btn.BackgroundColor3 = ACCENT
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(30,30,30)
+    btn.AutoButtonColor = false
+    local btnCorner = Instance.new("UICorner", btn)
+    btnCorner.CornerRadius = UDim.new(0,6)
+
+    btn.MouseButton1Click:Connect(function()
+        if callback then callback() end
+    end)
+
+    return btn
+end
+
+-- CREATE CONTENT PANELS FOR EACH MENU
+local contentPanels = {}
+
+-- MAIN PANEL
+local mainPanel = Instance.new("ScrollingFrame", content)
+mainPanel.Name = "MainPanel"
+mainPanel.Size = UDim2.new(1, -24, 1, -72)
+mainPanel.Position = UDim2.new(0, 12, 0, 64)
+mainPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+mainPanel.BorderSizePixel = 0
+mainPanel.ScrollBarThickness = 6
+mainPanel.CanvasSize = UDim2.new(0, 0, 0, 600)
+local mainCorner = Instance.new("UICorner", mainPanel)
+mainCorner.CornerRadius = UDim.new(0,8)
+
+createToggle(mainPanel, "Auto Farm", 10, function(state)
+    autoFarmEnabled = state
+    print("[Auto Farm]", state)
+end)
+
+createToggle(mainPanel, "Auto Cast", 60, function(state)
+    autoCastEnabled = state
+    print("[Auto Cast]", state)
+end)
+
+createToggle(mainPanel, "Auto Reel", 110, function(state)
+    autoReelEnabled = state
+    print("[Auto Reel]", state)
+end)
+
+createToggle(mainPanel, "Auto Shake", 160, function(state)
+    autoShakeEnabled = state
+    print("[Auto Shake]", state)
+end)
+
+createToggle(mainPanel, "Auto Sell Fish", 210, function(state)
+    autoSellEnabled = state
+    print("[Auto Sell]", state)
+end)
+
+createButton(mainPanel, "Start All", 12, 270, 120, function()
+    print("[UI] Start All Features")
+end)
+
+createButton(mainPanel, "Stop All", 144, 270, 120, function()
+    print("[UI] Stop All Features")
+end)
+
+contentPanels["Main"] = mainPanel
+
+-- SPAWN BOAT PANEL
+local boatPanel = Instance.new("Frame", content)
+boatPanel.Name = "BoatPanel"
+boatPanel.Size = UDim2.new(1, -24, 1, -72)
+boatPanel.Position = UDim2.new(0, 12, 0, 64)
+boatPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+boatPanel.BorderSizePixel = 0
+boatPanel.Visible = false
+local boatCorner = Instance.new("UICorner", boatPanel)
+boatCorner.CornerRadius = UDim.new(0,8)
+
+local boatLabel = Instance.new("TextLabel", boatPanel)
+boatLabel.Size = UDim2.new(1, -24, 0, 28)
+boatLabel.Position = UDim2.new(0, 12, 0, 12)
+boatLabel.BackgroundTransparency = 1
+boatLabel.Font = Enum.Font.GothamBold
+boatLabel.TextSize = 14
+boatLabel.Text = "Spawn Boat"
+boatLabel.TextColor3 = Color3.fromRGB(235,235,235)
+boatLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+createDropdown(boatPanel, "Select Boat Type", {"Small Boat", "Medium Boat", "Large Boat", "Speed Boat"}, 50, function(boat)
+    print("[Boat Selected]", boat)
+end)
+
+createButton(boatPanel, "Spawn Boat", 12, 150, 140, function()
+    print("[UI] Spawn Boat")
+end)
+
+contentPanels["Spawn Boat"] = boatPanel
+
+-- BUY ROD PANEL
+local rodPanel = Instance.new("Frame", content)
+rodPanel.Name = "RodPanel"
+rodPanel.Size = UDim2.new(1, -24, 1, -72)
+rodPanel.Position = UDim2.new(0, 12, 0, 64)
+rodPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+rodPanel.BorderSizePixel = 0
+rodPanel.Visible = false
+local rodCorner = Instance.new("UICorner", rodPanel)
+rodCorner.CornerRadius = UDim.new(0,8)
+
+local rodLabel = Instance.new("TextLabel", rodPanel)
+rodLabel.Size = UDim2.new(1, -24, 0, 28)
+rodLabel.Position = UDim2.new(0, 12, 0, 12)
+rodLabel.BackgroundTransparency = 1
+rodLabel.Font = Enum.Font.GothamBold
+rodLabel.TextSize = 14
+rodLabel.Text = "Buy Rod"
+rodLabel.TextColor3 = Color3.fromRGB(235,235,235)
+rodLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+createDropdown(rodPanel, "Select Rod", {"Basic Rod", "Carbon Rod", "Fast Rod", "Lucky Rod", "Kings Rod"}, 50, function(rod)
+    selectedRod = rod
+    print("[Rod Selected]", rod)
+end)
+
+createButton(rodPanel, "Buy Rod", 12, 150, 140, function()
+    print("[UI] Buy Rod:", selectedRod)
+end)
+
+contentPanels["Buy Rod"] = rodPanel
+
+-- BUY BAIT PANEL
+local baitPanel = Instance.new("Frame", content)
+baitPanel.Name = "BaitPanel"
+baitPanel.Size = UDim2.new(1, -24, 1, -72)
+baitPanel.Position = UDim2.new(0, 12, 0, 64)
+baitPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+baitPanel.BorderSizePixel = 0
+baitPanel.Visible = false
+local baitCorner = Instance.new("UICorner", baitPanel)
+baitCorner.CornerRadius = UDim.new(0,8)
+
+local baitLabel = Instance.new("TextLabel", baitPanel)
+baitLabel.Size = UDim2.new(1, -24, 0, 28)
+baitLabel.Position = UDim2.new(0, 12, 0, 12)
+baitLabel.BackgroundTransparency = 1
+baitLabel.Font = Enum.Font.GothamBold
+baitLabel.TextSize = 14
+baitLabel.Text = "Buy Bait"
+baitLabel.TextColor3 = Color3.fromRGB(235,235,235)
+baitLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+createDropdown(baitPanel, "Select Bait", {"Worm", "Fish Head", "Insect", "Squid", "Shrimp"}, 50, function(bait)
+    selectedBait = bait
+    print("[Bait Selected]", bait)
+end)
+
+createButton(baitPanel, "Buy Bait", 12, 150, 140, function()
+    print("[UI] Buy Bait:", selectedBait)
+end)
+
+contentPanels["Buy Bait"] = baitPanel
+
+-- TELEPORT PANEL
+local tpPanel = Instance.new("Frame", content)
+tpPanel.Name = "TeleportPanel"
+tpPanel.Size = UDim2.new(1, -24, 1, -72)
+tpPanel.Position = UDim2.new(0, 12, 0, 64)
+tpPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+tpPanel.BorderSizePixel = 0
+tpPanel.Visible = false
+local tpCorner = Instance.new("UICorner", tpPanel)
+tpCorner.CornerRadius = UDim.new(0,8)
+
+local tpLabel = Instance.new("TextLabel", tpPanel)
+tpLabel.Size = UDim2.new(1, -24, 0, 28)
+tpLabel.Position = UDim2.new(0, 12, 0, 12)
+tpLabel.BackgroundTransparency = 1
+tpLabel.Font = Enum.Font.GothamBold
+tpLabel.TextSize = 14
+tpLabel.Text = "Teleport"
+tpLabel.TextColor3 = Color3.fromRGB(235,235,235)
+tpLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+createDropdown(tpPanel, "Island", {"None","Main Island","Tropical Island","Frozen Island","Volcano Island","Pirate Cove"}, 50, function(island)
+    selectedIsland = island
+    print("[Island Selected]", island)
+end)
+
+createButton(tpPanel, "Teleport", 12, 150, 140, function()
+    print("[UI] Teleport to:", selectedIsland)
+end)
+
+createButton(tpPanel, "Sell Fish", 164, 150, 120, function()
+    print("[UI] Sell Fish")
+end)
+
+contentPanels["Teleport"] = tpPanel
+
+-- SETTINGS PANEL
+local settingsPanel = Instance.new("Frame", content)
+settingsPanel.Name = "SettingsPanel"
+settingsPanel.Size = UDim2.new(1, -24, 1, -72)
+settingsPanel.Position = UDim2.new(0, 12, 0, 64)
+settingsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+settingsPanel.BorderSizePixel = 0
+settingsPanel.Visible = false
+local settingsCorner = Instance.new("UICorner", settingsPanel)
+settingsCorner.CornerRadius = UDim.new(0,8)
+
+local settingsLabel = Instance.new("TextLabel", settingsPanel)
+settingsLabel.Size = UDim2.new(1, -24, 0, 28)
+settingsLabel.Position = UDim2.new(0, 12, 0, 12)
+settingsLabel.BackgroundTransparency = 1
+settingsLabel.Font = Enum.Font.GothamBold
+settingsLabel.TextSize = 14
+settingsLabel.Text = "Settings"
+settingsLabel.TextColor3 = Color3.fromRGB(235,235,235)
+settingsLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+createToggle(settingsPanel, "Anti AFK", 60, function(state)
+    print("[Anti AFK]", state)
+end)
+
+createToggle(settingsPanel, "Notifications", 110, function(state)
+    print("[Notifications]", state)
+end)
+
+contentPanels["Settings"] = settingsPanel
+
+-- BUY WEATHER PANEL (placeholder)
+local weatherPanel = Instance.new("Frame", content)
+weatherPanel.Name = "WeatherPanel"
+weatherPanel.Size = UDim2.new(1, -24, 1, -72)
+weatherPanel.Position = UDim2.new(0, 12, 0, 64)
+weatherPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+weatherPanel.BorderSizePixel = 0
+weatherPanel.Visible = false
+local weatherCorner = Instance.new("UICorner", weatherPanel)
+weatherCorner.CornerRadius = UDim.new(0,8)
+
+local weatherLabel = Instance.new("TextLabel", weatherPanel)
+weatherLabel.Size = UDim2.new(1, -24, 0, 28)
+weatherLabel.Position = UDim2.new(0, 12, 0, 12)
+weatherLabel.BackgroundTransparency = 1
+weatherLabel.Font = Enum.Font.GothamBold
+weatherLabel.TextSize = 14
+weatherLabel.Text = "Buy Weather"
+weatherLabel.TextColor3 = Color3.fromRGB(235,235,235)
+weatherLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+createDropdown(weatherPanel, "Select Weather", {"Clear", "Rain", "Storm", "Fog", "Aurora"}, 50, function(weather)
+    print("[Weather Selected]", weather)
+end)
+
+createButton(weatherPanel, "Buy Weather", 12, 150, 140, function()
+    print("[UI] Buy Weather")
+end)
+
+contentPanels["Buy Weather"] = weatherPanel
+
+-- MENU NAVIGATION
+local activeMenu = "Main"
 for name, btn in pairs(menuButtons) do
     btn.MouseButton1Click:Connect(function()
-        -- Highlight selected
+        -- highlight selected
         for n, b in pairs(menuButtons) do
             b.BackgroundColor3 = Color3.fromRGB(20,20,20)
         end
         btn.BackgroundColor3 = Color3.fromRGB(32,8,8)
         
-        -- Update content
+        -- hide all panels
+        for panelName, panel in pairs(contentPanels) do
+            panel.Visible = false
+        end
+        
+        -- show selected panel
+        if contentPanels[name] then
+            contentPanels[name].Visible = true
+        end
+        
+        -- set content title
         cTitle.Text = name
         activeMenu = name
-        
-        if name == "Fishing" then
-            ShowFishingContent()
-        elseif name == "Stats" then
-            -- Show stats content (bisa dikembangkan)
-            for _, child in pairs(content:GetChildren()) do
-                if child.Name ~= "ContentTitle" then
-                    child:Destroy()
-                end
-            end
-            -- Tambahkan content stats di sini
-        else
-            -- Placeholder untuk menu lainnya
-            for _, child in pairs(content:GetChildren()) do
-                if child.Name ~= "ContentTitle" then
-                    child:Destroy()
-                end
-            end
-        end
+        print("[UI] Menu selected:", name)
     end)
 end
 
--- Initialize dengan content fishing
-ShowFishingContent()
-menuButtons["Fishing"].BackgroundColor3 = Color3.fromRGB(32,8,8)
+-- Set Main as default
+menuButtons["Main"].BackgroundColor3 = Color3.fromRGB(32,8,8)
+mainPanel.Visible = true
 
--- UI State Management
-local uiState = {
-    isMinimized = false,
-    isVisible = true
-}
-
--- Minimize/Maximize Functions
-local function MinimizeUI()
-    uiState.isMinimized = true
-    TweenService:Create(card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 300, 0, 80)
-    }):Play()
-    TweenService:Create(glow, TweenInfo.new(0.3), {
-        Size = UDim2.new(0, 380, 0, 160),
-        ImageTransparency = 0.95
-    }):Play()
-    
-    -- Sembunyikan konten
-    sidebar.Visible = false
-    content.Visible = false
-    
-    -- Update title untuk minimized state
-    title.Text = "🎣 Kaitun Fish It"
-    Status.Text = "⬇️ Minimized"
-end
-
-local function MaximizeUI()
-    uiState.isMinimized = false
-    TweenService:Create(card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, WIDTH, 0, HEIGHT)
-    }):Play()
-    TweenService:Create(glow, TweenInfo.new(0.3), {
-        Size = UDim2.new(0, WIDTH+80, 0, HEIGHT+80),
-        ImageTransparency = 0.92
-    }):Play()
-    
-    -- Tampilkan konten
-    sidebar.Visible = true
-    content.Visible = true
-    
-    -- Update title untuk normal state
-    title.Text = "⚡ KAITUN FISH IT - ULTIMATE"
-    Status.Text = "🟢 Ready"
-end
-
-local function ToggleMinimize()
-    if uiState.isMinimized then
-        MaximizeUI()
-    else
-        MinimizeUI()
+-- AUTOMATION FUNCTIONS
+local function autoCast()
+    while autoCastEnabled do
+        pcall(function()
+            local rod = player.Character:FindFirstChild("Rod")
+            if rod then
+                local castEvent = ReplicatedStorage:FindFirstChild("events"):FindFirstChild("cast")
+                if castEvent then
+                    castEvent:FireServer(100)
+                    print("[Auto Cast] Casting rod")
+                end
+            end
+        end)
+        wait(0.5)
     end
 end
 
--- Button Events
-minimizeBtn.MouseButton1Click:Connect(ToggleMinimize)
-maximizeBtn.MouseButton1Click:Connect(ToggleMinimize) -- Both buttons do the same thing
+local function autoReel()
+    while autoReelEnabled do
+        pcall(function()
+            local playerGui = player:FindFirstChild("PlayerGui")
+            if playerGui then
+                local reelFinish = playerGui:FindFirstChild("reel"):FindFirstChild("bar"):FindFirstChild("reelfinish")
+                if reelFinish and reelFinish.Visible then
+                    local reelEvent = ReplicatedStorage:FindFirstChild("events"):FindFirstChild("reelfinished")
+                    if reelEvent then
+                        reelEvent:FireServer(100, true)
+                        print("[Auto Reel] Reeling complete")
+                    end
+                end
+            end
+        end)
+        wait(0.1)
+    end
+end
 
--- Hover effects untuk buttons
-minimizeBtn.MouseEnter:Connect(function()
-    TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 200, 0)}):Play()
+local function autoShake()
+    while autoShakeEnabled do
+        pcall(function()
+            local playerGui = player:FindFirstChild("PlayerGui")
+            if playerGui then
+                local shakeUI = playerGui:FindFirstChild("shakeui")
+                if shakeUI and shakeUI.Enabled then
+                    local safezone = shakeUI:FindFirstChild("safezone")
+                    if safezone then
+                        local shakeEvent = ReplicatedStorage:FindFirstChild("events"):FindFirstChild("shakereeled")
+                        if shakeEvent then
+                            shakeEvent:FireServer(100, true)
+                            print("[Auto Shake] Shake completed")
+                        end
+                    end
+                end
+            end
+        end)
+        wait(0.1)
+    end
+end
+
+local function autoSell()
+    while autoSellEnabled do
+        pcall(function()
+            local sellPoint = workspace:FindFirstChild("world"):FindFirstChild("npcs"):FindFirstChild("Merchant")
+            if sellPoint then
+                player.Character:WaitForChild("HumanoidRootPart").CFrame = sellPoint.HumanoidRootPart.CFrame
+                wait(0.5)
+                local sellEvent = ReplicatedStorage:FindFirstChild("events"):FindFirstChild("sellfish")
+                if sellEvent then
+                    sellEvent:FireServer()
+                    print("[Auto Sell] Fish sold")
+                end
+            end
+        end)
+        wait(10)
+    end
+end
+
+-- Start automation loops
+spawn(function()
+    while wait(0.5) do
+        if autoCastEnabled and not autoFarmEnabled then
+            spawn(autoCast)
+        end
+        if autoReelEnabled and not autoFarmEnabled then
+            spawn(autoReel)
+        end
+        if autoShakeEnabled and not autoFarmEnabled then
+            spawn(autoShake)
+        end
+        if autoSellEnabled and not autoFarmEnabled then
+            spawn(autoSell)
+        end
+    end
 end)
-minimizeBtn.MouseLeave:Connect(function()
-    TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 170, 0)}):Play()
+
+-- AUTO FARM (all-in-one)
+spawn(function()
+    while wait(0.5) do
+        if autoFarmEnabled then
+            -- Auto Cast
+            pcall(function()
+                local rod = player.Character:FindFirstChild("Rod")
+                if rod then
+                    local castEvent = ReplicatedStorage:FindFirstChild("events"):FindFirstChild("cast")
+                    if castEvent then
+                        castEvent:FireServer(100)
+                    end
+                end
+            end)
+            
+            -- Auto Reel
+            pcall(function()
+                local playerGui = player:FindFirstChild("PlayerGui")
+                if playerGui then
+                    local reelFinish = playerGui:FindFirstChild("reel"):FindFirstChild("bar"):FindFirstChild("reelfinish")
+                    if reelFinish and reelFinish.Visible then
+                        local reelEvent = ReplicatedStorage:FindFirstChild("events"):FindFirstChild("reelfinished")
+                        if reelEvent then
+                            reelEvent:FireServer(100, true)
+                        end
+                    end
+                end
+            end)
+            
+            -- Auto Shake
+            pcall(function()
+                local playerGui = player:FindFirstChild("PlayerGui")
+                if playerGui then
+                    local shakeUI = playerGui:FindFirstChild("shakeui")
+                    if shakeUI and shakeUI.Enabled then
+                        local safezone = shakeUI:FindFirstChild("safezone")
+                        if safezone then
+                            local shakeEvent = ReplicatedStorage:FindFirstChild("events"):FindFirstChild("shakereeled")
+                            if shakeEvent then
+                                shakeEvent:FireServer(100, true)
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
 end)
 
-maximizeBtn.MouseEnter:Connect(function()
-    TweenService:Create(maximizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 230, 255)}):Play()
+-- ANTI AFK
+local antiAFK = false
+spawn(function()
+    while wait(60) do
+        if antiAFK then
+            pcall(function()
+                local VirtualUser = game:GetService("VirtualUser")
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+        end
+    end
 end)
-maximizeBtn.MouseLeave:Connect(function()
-    TweenService:Create(maximizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 200, 255)}):Play()
+
+-- TOGGLE UI (with animation)
+local uiOpen = false
+local function toggleUI(show)
+    uiOpen = show
+    if show then
+        card.Visible = true
+        glow.Visible = true
+        container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
+        container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
+        container.AnchorPoint = Vector2.new(0.5,0.5)
+        container.ZIndex = 2
+        card:TweenSize(UDim2.new(0, WIDTH,0,HEIGHT), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.28, true)
+        TweenService:Create(glow, TweenInfo.new(0.28), {ImageTransparency = 0.8}):Play()
+    else
+        TweenService:Create(glow, TweenInfo.new(0.18), {ImageTransparency = 0.96}):Play()
+        card:TweenSize(UDim2.new(0, WIDTH*0.9,0,HEIGHT*0.9), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.16, true)
+        delay(0.16, function()
+            card.Visible = false
+            glow.Visible = false
+        end)
+    end
+end
+
+-- initial hide
+toggleUI(false)
+
+-- Keybind toggle (G)
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.G then
+        toggleUI(not uiOpen)
+    end
 end)
 
--- Posisi UI di tengah layar
-container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
-glow.Position = container.Position
+-- Memory usage update
+spawn(function()
+    while true do
+        local mem = math.floor(collectgarbage("count"))
+        memLabel.Text = "Client Memory: "..mem.." KB"
+        wait(1.2)
+    end
+end)
 
--- Auto start dengan UI maximized
-MaximizeUI()
-
-print("[Kaitun Fish It] Loaded!")
-print("🎣 Fishing system ready")
-print("💉 Instant Fishing Exploit: Ready")
-print("⚡ Controls: Use - and □ buttons to minimize/maximize")
-print("📍 UI Position: Center screen")
+print("[NeonDashboardUI] Loaded with all features. Press G to toggle.")
+print("[Info] Auto Farm includes: Cast, Reel, Shake automatically")
+print("[Info] Individual toggles available when Auto Farm is OFF")
