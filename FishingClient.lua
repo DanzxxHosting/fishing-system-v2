@@ -36,10 +36,6 @@ local config = {
     ultraSpeed = false
 }
 
--- Update reference config
-local config = _G.KaitunConfig
-
-
 local stats = {
     fishCaught = 0,
     startTime = tick(),
@@ -529,60 +525,54 @@ CreateToggle("Instant Fishing", "⚡ INSTANT CATCH - No delay fishing", config.i
     end
 end)
 
-
--- Perbaiki Blantant Mode toggle
 CreateToggle("Blantant Mode", "ULTRA FAST - Extreme speed fishing (20x Faster)", config.blantantMode, function(v)
-    -- Update config secara langsung
-    _G.KaitunConfig.blantantMode = v
-    config.blantantMode = v
+    -- Update config langsung
+    getgenv().config.blantantMode = v
     
     if v then
-        -- Blantant Mode ON
-        _G.KaitunConfig.fishingDelay = 0.01
-        _G.KaitunConfig.instantFishing = true
-        _G.KaitunConfig.ultraSpeed = true
+        -- Blantant Mode ON - Ultra fast settings
+        getgenv().config.fishingDelay = 0.01
+        getgenv().config.instantFishing = true
+        getgenv().config.ultraSpeed = true
         
-        config.fishingDelay = 0.01
-        config.instantFishing = true
-        config.ultraSpeed = true
-        
-        print("💥 BLASTANT MODE ACTIVATED!")
-        print("⚡ Delay: 0.01s")
-        print("🎯 Instant: ON")
+        print("💥 BLASTANT MODE ACTIVATED - ULTRA FAST!")
+        print("⚡ Delay: 0.01s | Instant: ON")
         
         if Status then
-            Status.Text = "💥 BLASTANT MODE - 0.01s DELAY"
+            Status.Text = "💥 BLASTANT MODE - ULTRA FAST"
             Status.TextColor3 = Color3.fromRGB(255, 50, 50)
         end
         
+        -- Force update fishing connection jika sedang aktif
+        if fishingActive and fishingConnection then
+            fishingConnection:Disconnect()
+            task.wait(0.1)
+            StartFishing()
+        end
+        
     else
-        -- Blantant Mode OFF
-        _G.KaitunConfig.fishingDelay = 0.15
-        _G.KaitunConfig.instantFishing = false
-        _G.KaitunConfig.ultraSpeed = false
+        -- Blantant Mode OFF - Normal settings
+        getgenv().config.fishingDelay = 0.15
+        getgenv().config.instantFishing = false
+        getgenv().config.ultraSpeed = false
         
-        config.fishingDelay = 0.15
-        config.instantFishing = false
-        config.ultraSpeed = false
-        
-        print("🔵 Blantant Mode Disabled")
-        print("⚡ Delay: 0.15s")
-        print("🎯 Instant: OFF")
+        print("🔵 Blantant Mode Disabled - Normal Speed")
+        print("⚡ Delay: 0.15s | Instant: OFF")
         
         if Status then
-            Status.Text = "🔵 Normal Mode - 0.15s DELAY"
+            Status.Text = "🔵 Normal Mode"
             Status.TextColor3 = theme.Success
         end
-    end
-    
-    -- Restart fishing dengan config baru
-    if fishingActive then
-        print("🔄 Restarting fishing with new settings...")
-        StopFishing()
-        task.wait(0.2)
-        StartFishing()
+        
+        -- Force update fishing connection jika sedang aktif
+        if fishingActive and fishingConnection then
+            fishingConnection:Disconnect()
+            task.wait(0.1)
+            StartFishing()
+        end
     end
 end)
+
 
 CreateSection("📊 Statistics")
 
