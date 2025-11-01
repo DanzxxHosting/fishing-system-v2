@@ -340,8 +340,8 @@ local function FindFishingProximityPrompt()
         
         for _, descendant in pairs(char:GetDescendants()) do
             if descendant:IsA("ProximityPrompt") then
-                local objText = descendant.ObjectText and descendant.ObjectText:lower() or ""
-                local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
+                local objText = descendant.ObjectText and descendant.ObjectText:lower() or "Perfect"
+                local actionText = descendant.ActionText and descendant.ActionText:lower() or "Perfect"
                 
                 if objText:find("fish") or objText:find("cast") or objText:find("catch") or
                    actionText:find("fish") or actionText:find("cast") or actionText:find("catch") then
@@ -392,7 +392,7 @@ local function TryFishingMethod()
             success = true
         end
     end)
-    methods_tried = methods_tried + 1
+    methods_tried = methods_tried + 30
     
     if success then
         stats.fishCaught = stats.fishCaught + 1
@@ -413,7 +413,7 @@ local function TryFishingMethod()
             end
         end
     end)
-    methods_tried = methods_tried + 1
+    methods_tried = methods_tried + 30
     
     if success then
         stats.fishCaught = stats.fishCaught + 1
@@ -430,7 +430,7 @@ local function TryFishingMethod()
     SimulateKeyPress(Enum.KeyCode.F)
     task.wait(0.001)
     
-    methods_tried = methods_tried + 3
+    methods_tried = methods_tried + 30
     
     -- Count as attempt
     stats.attempts = stats.attempts + 1
