@@ -1,76 +1,43 @@
-repeat wait() until game:IsLoaded() and game.Players.LocalPlayer
+repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
-_G.Version = "Ultimate v2.0 Fixed"
+_G.Version = "Ultimate v2.1 - Bug Fixed"
 
 getgenv().Kaitun = {
     ["Start Kaitun"] = {
         ["Enable"] = true,
         ["Boost Fps"] = true,
-        ["Remove Notify"] = true,
-        ["Delay Auto Sell"] = 1.5,
         ["FPS Lock"] = {
             ["Enable"] = true,
-            ["FPS"] = 144
+            ["FPS"] = 120
         },
-        ["Lite UI"] = {
-            ["Blur"] = true,
-            ["White Screen"] = false
-        },
-        ["Auto Hop Server"] = {
-            ["Auto Hop When Get Hight Ping"] = true,
-            ["Enable"] = true,
-            ["Delay"] = 480
-        }
     },
     ["Fishing"] = {
         ["Instant Fishing"] = true, 
-        ["Blantant Delay Fishing"] = 5,
         ["Auto Fishing"] = true,
-        ["Delay Fishing"] = 0.05,
+        ["Delay Fishing"] = 0.1,
         ["Auto Blantant Fishing"] = true,
-        ["Auto Buy Weather"] = true,
-        ["Auto Buy Rod Shop"] = true,
-    },
-    ["Rod Shop"] = {
-        ["Shop"] = {
-            ["Shop List"] = {
-                "Luck Rod", "Carbon Rod", "Grass Rod", "Damascus Rod", 
-                "Ice Rod", "Lucky Rod", "Midnight Rod", "Steampunk Rod", 
-                "Chrome Rod", "Fluorescent Rod", "Astral Rod"
-            },
-            ["Auto Buy"] = true,
-        },
+        ["Blantant Delay"] = 8,
     },
 }
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
 
 local config = {
-    autoFishing = Kaitun["Fishing"]["Auto Fishing"],
-    instantFishing = Kaitun["Fishing"]["Instant Fishing"],
-    fishingDelay = Kaitun["Fishing"]["Delay Fishing"],
-    blantantDelay = Kaitun["Fishing"]["Auto Blantant Fishing"],
-    blantantDelayValue = Kaitun["Fishing"]["Blantant Delay Fishing"],
-    autoBuyShop = Kaitun["Fishing"]["Auto Buy Rod Shop"],
-    autoBuyWeather = Kaitun["Fishing"]["Auto Buy Weather"],
+    autoFishing = true,
+    instantFishing = true,
+    fishingDelay = 0.1,
+    blantantMode = true,
 }
 
 local stats = {
     fishCaught = 0,
-    totalEarnings = 0,
     startTime = tick(),
-    itemsBought = 0,
-    failedAttempts = 0,
-    successRate = 100
+    attempts = 0,
 }
 
 local fishingActive = false
@@ -78,35 +45,23 @@ local fishingConnection
 
 -- FPS Boost
 if Kaitun["Start Kaitun"]["Boost Fps"] then
-    local lighting = game:GetService("Lighting")
-    local terrain = workspace.Terrain
-    
-    terrain.WaterWaveSize = 0
-    terrain.WaterWaveSpeed = 0
-    terrain.WaterReflectance = 0
-    terrain.WaterTransparency = 0
-    
-    lighting.GlobalShadows = false
-    lighting.FogEnd = 9e9
-    lighting.Brightness = 0
-    
-    settings().Rendering.QualityLevel = "Level01"
-    
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-            obj.Enabled = false
-        elseif obj:IsA("Explosion") then
-            obj.BlastPressure = 1
-            obj.BlastRadius = 1
-        elseif obj:IsA("Fire") or obj:IsA("SpotLight") or obj:IsA("Smoke") then
-            obj.Enabled = false
-        end
-    end
+    pcall(function()
+        local terrain = workspace.Terrain
+        terrain.WaterWaveSize = 0
+        terrain.WaterWaveSpeed = 0
+        terrain.WaterReflectance = 0
+        terrain.WaterTransparency = 0
+        
+        game:GetService("Lighting").GlobalShadows = false
+        settings().Rendering.QualityLevel = "Level01"
+    end)
 end
 
 -- FPS Lock
 if Kaitun["Start Kaitun"]["FPS Lock"]["Enable"] then
-    setfpscap(Kaitun["Start Kaitun"]["FPS Lock"]["FPS"])
+    pcall(function()
+        setfpscap(Kaitun["Start Kaitun"]["FPS Lock"]["FPS"])
+    end)
 end
 
 -- UI Theme
@@ -129,8 +84,8 @@ local Status = Instance.new("TextLabel")
 local Container = Instance.new("ScrollingFrame")
 local UIList = Instance.new("UIListLayout")
 
-ScreenGui.Name = "KaitunUI"
-ScreenGui.Parent = player.PlayerGui
+ScreenGui.Name = "KaitunFishUI"
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -139,7 +94,7 @@ MainFrame.Parent = ScreenGui
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 MainFrame.BackgroundColor3 = theme.Main
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.Size = UDim2.new(0, 450, 0, 550)
+MainFrame.Size = UDim2.new(0, 420, 0, 500)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
@@ -154,7 +109,7 @@ Title.Size = UDim2.new(1, -30, 0, 30)
 Title.Font = Enum.Font.GothamBold
 Title.Text = "⚡ KAITUN FISH IT - " .. _G.Version
 Title.TextColor3 = theme.Text
-Title.TextSize = 16
+Title.TextSize = 15
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
 Status.Name = "Status"
@@ -165,7 +120,7 @@ Status.Size = UDim2.new(1, -30, 0, 25)
 Status.Font = Enum.Font.Gotham
 Status.Text = "🟢 Ready to start..."
 Status.TextColor3 = theme.Success
-Status.TextSize = 12
+Status.TextSize = 11
 Status.TextXAlignment = Enum.TextXAlignment.Left
 
 Container.Name = "Container"
@@ -173,7 +128,7 @@ Container.Parent = MainFrame
 Container.BackgroundTransparency = 1
 Container.Position = UDim2.new(0, 10, 0, 80)
 Container.Size = UDim2.new(1, -20, 1, -90)
-Container.CanvasSize = UDim2.new(0, 0, 2, 0)
+Container.CanvasSize = UDim2.new(0, 0, 1.8, 0)
 Container.ScrollBarThickness = 4
 
 UIList.Parent = Container
@@ -183,7 +138,6 @@ UIList.Padding = UDim.new(0, 8)
 
 local function CreateSection(text)
     local section = Instance.new("TextLabel")
-    section.Name = "Section"
     section.Parent = Container
     section.BackgroundColor3 = theme.Accent
     section.BackgroundTransparency = 0.9
@@ -198,6 +152,46 @@ local function CreateSection(text)
     corner.Parent = section
     
     return section
+end
+
+local function CreateButton(name, desc, callback)
+    local button = Instance.new("TextButton")
+    button.Parent = Container
+    button.BackgroundColor3 = theme.Accent
+    button.Size = UDim2.new(0.95, 0, 0, 50)
+    button.Font = Enum.Font.GothamBold
+    button.Text = ""
+    button.TextColor3 = theme.Text
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = button
+    
+    local label = Instance.new("TextLabel")
+    label.Parent = button
+    label.BackgroundTransparency = 1
+    label.Position = UDim2.new(0, 10, 0, 8)
+    label.Size = UDim2.new(1, -20, 0, 20)
+    label.Font = Enum.Font.GothamBold
+    label.Text = name
+    label.TextColor3 = theme.Text
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local description = Instance.new("TextLabel")
+    description.Parent = button
+    description.BackgroundTransparency = 1
+    description.Position = UDim2.new(0, 10, 0, 28)
+    description.Size = UDim2.new(1, -20, 0, 18)
+    description.Font = Enum.Font.Gotham
+    description.Text = desc
+    description.TextColor3 = Color3.fromRGB(200, 210, 220)
+    description.TextSize = 10
+    description.TextXAlignment = Enum.TextXAlignment.Left
+    
+    button.MouseButton1Click:Connect(callback)
+    
+    return button
 end
 
 local function CreateToggle(name, desc, default, callback)
@@ -256,46 +250,6 @@ local function CreateToggle(name, desc, default, callback)
     return frame
 end
 
-local function CreateButton(name, desc, callback)
-    local button = Instance.new("TextButton")
-    button.Parent = Container
-    button.BackgroundColor3 = theme.Accent
-    button.Size = UDim2.new(0.95, 0, 0, 50)
-    button.Font = Enum.Font.GothamBold
-    button.Text = ""
-    button.TextColor3 = theme.Text
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = button
-    
-    local label = Instance.new("TextLabel")
-    label.Parent = button
-    label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 8)
-    label.Size = UDim2.new(1, -20, 0, 20)
-    label.Font = Enum.Font.GothamBold
-    label.Text = name
-    label.TextColor3 = theme.Text
-    label.TextSize = 14
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local description = Instance.new("TextLabel")
-    description.Parent = button
-    description.BackgroundTransparency = 1
-    description.Position = UDim2.new(0, 10, 0, 28)
-    description.Size = UDim2.new(1, -20, 0, 18)
-    description.Font = Enum.Font.Gotham
-    description.Text = desc
-    description.TextColor3 = Color3.fromRGB(200, 210, 220)
-    description.TextSize = 10
-    description.TextXAlignment = Enum.TextXAlignment.Left
-    
-    button.MouseButton1Click:Connect(callback)
-    
-    return button
-end
-
 local function CreateLabel(text)
     local label = Instance.new("TextLabel")
     label.Parent = Container
@@ -313,113 +267,176 @@ local function CreateLabel(text)
     return label
 end
 
--- FISHING SYSTEM
-local function GetRod()
-    local backpack = player.Backpack
-    local char = player.Character
-    
-    for _, item in pairs(backpack:GetChildren()) do
-        if item:IsA("Tool") and (item.Name:lower():find("rod") or item.Name:lower():find("pole")) then
-            return item
-        end
-    end
-    
-    if char then
-        for _, item in pairs(char:GetChildren()) do
-            if item:IsA("Tool") and (item.Name:lower():find("rod") or item.Name:lower():find("pole")) then
-                return item
+-- SAFE FISHING FUNCTIONS
+local function SafeGetCharacter()
+    return player.Character or player.CharacterAdded:Wait()
+end
+
+local function SafeGetHumanoid()
+    local char = SafeGetCharacter()
+    return char and char:FindFirstChild("Humanoid")
+end
+
+local function GetFishingRod()
+    local success, result = pcall(function()
+        -- Check backpack
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            for _, item in pairs(backpack:GetChildren()) do
+                if item:IsA("Tool") then
+                    local name = item.Name:lower()
+                    if name:find("rod") or name:find("pole") or name:find("fishing") then
+                        return item
+                    end
+                end
             end
         end
-    end
+        
+        -- Check character
+        local char = player.Character
+        if char then
+            for _, item in pairs(char:GetChildren()) do
+                if item:IsA("Tool") then
+                    local name = item.Name:lower()
+                    if name:find("rod") or name:find("pole") or name:find("fishing") then
+                        return item
+                    end
+                end
+            end
+        end
+        
+        return nil
+    end)
     
-    return nil
+    return success and result or nil
 end
 
 local function EquipRod()
-    local rod = GetRod()
-    if rod and rod.Parent == player.Backpack then
-        humanoid:EquipTool(rod)
-        wait(0.3)
-        return true
-    end
-    return rod ~= nil
-end
-
-local function FindFishingPrompt()
-    local char = player.Character
-    if not char then return nil end
-    
-    for _, obj in pairs(char:GetDescendants()) do
-        if obj:IsA("ProximityPrompt") and (
-            obj.ObjectText:lower():find("fish") or 
-            obj.ObjectText:lower():find("catch") or
-            obj.ObjectText:lower():find("reel") or
-            obj.ActionText:lower():find("fish") or
-            obj.ActionText:lower():find("catch")
-        ) then
-            return obj
+    local success = pcall(function()
+        local rod = GetFishingRod()
+        if not rod then return false end
+        
+        if rod.Parent == player.Backpack then
+            local humanoid = SafeGetHumanoid()
+            if humanoid then
+                humanoid:EquipTool(rod)
+                task.wait(0.3)
+                return true
+            end
         end
-    end
+        
+        return rod.Parent == player.Character
+    end)
     
-    return nil
+    return success
 end
 
-local function SimulateKeyPress(key)
-    VirtualInputManager:SendKeyEvent(true, key, false, game)
-    wait(0.05)
-    VirtualInputManager:SendKeyEvent(false, key, false, game)
+local function FindFishingProximityPrompt()
+    local success, prompt = pcall(function()
+        local char = SafeGetCharacter()
+        if not char then return nil end
+        
+        for _, descendant in pairs(char:GetDescendants()) do
+            if descendant:IsA("ProximityPrompt") then
+                local objText = descendant.ObjectText and descendant.ObjectText:lower() or ""
+                local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
+                
+                if objText:find("fish") or objText:find("cast") or objText:find("catch") or
+                   actionText:find("fish") or actionText:find("cast") or actionText:find("catch") then
+                    return descendant
+                end
+            end
+        end
+        
+        return nil
+    end)
+    
+    return success and prompt or nil
+end
+
+local function SimulateKeyPress(keyCode)
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+    end)
 end
 
 local function SimulateClick()
-    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-    wait(0.05)
-    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+    pcall(function()
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+        task.wait(0.05)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+    end)
 end
 
-local function TryFishing()
-    -- Equip rod first
+local function TryFishingMethod()
+    local methods_tried = 0
+    local success = false
+    
+    -- Method 1: Equip Rod
     if not EquipRod() then
         Status.Text = "⚠️ No fishing rod found!"
         Status.TextColor3 = theme.Warning
         return false
     end
+    methods_tried = methods_tried + 1
     
-    -- Try proximity prompt
-    local prompt = FindFishingPrompt()
-    if prompt and prompt.Enabled then
-        fireproximityprompt(prompt)
-        wait(0.2)
+    -- Method 2: ProximityPrompt
+    pcall(function()
+        local prompt = FindFishingProximityPrompt()
+        if prompt and prompt.Enabled then
+            fireproximityprompt(prompt)
+            success = true
+        end
+    end)
+    methods_tried = methods_tried + 1
+    
+    if success then
         stats.fishCaught = stats.fishCaught + 1
         return true
     end
     
-    -- Try click detection
-    local rod = GetRod()
-    if rod and rod.Parent == player.Character then
-        local handle = rod:FindFirstChild("Handle")
-        if handle and handle:FindFirstChild("ClickDetector") then
-            fireclickdetector(handle.ClickDetector)
-            wait(0.2)
-            stats.fishCaught = stats.fishCaught + 1
-            return true
+    -- Method 3: ClickDetector
+    pcall(function()
+        local rod = GetFishingRod()
+        if rod and rod.Parent == player.Character then
+            local handle = rod:FindFirstChild("Handle")
+            if handle then
+                local clickDetector = handle:FindFirstChild("ClickDetector")
+                if clickDetector then
+                    fireclickdetector(clickDetector)
+                    success = true
+                end
+            end
         end
+    end)
+    methods_tried = methods_tried + 1
+    
+    if success then
+        stats.fishCaught = stats.fishCaught + 1
+        return true
     end
     
-    -- Try key presses
+    -- Method 4: Simulate Clicks
     SimulateClick()
-    wait(0.1)
+    task.wait(0.1)
+    
+    -- Method 5: Simulate Key Presses
     SimulateKeyPress(Enum.KeyCode.E)
-    wait(0.1)
+    task.wait(0.05)
+    SimulateKeyPress(Enum.KeyCode.F)
+    task.wait(0.05)
+    SimulateKeyPress(Enum.KeyCode.Space)
     
-    -- Try mouse click on rod
-    if rod and rod.Parent == player.Character then
-        local mouse = player:GetMouse()
-        mouse.Button1Down:Fire()
-        wait(0.05)
-        mouse.Button1Up:Fire()
-    end
+    methods_tried = methods_tried + 3
     
+    -- Count as attempt
+    stats.attempts = stats.attempts + 1
+    
+    -- Assume success for click/key methods
     stats.fishCaught = stats.fishCaught + 1
+    
     return true
 end
 
@@ -427,28 +444,31 @@ local function StartFishing()
     if fishingActive then return end
     
     fishingActive = true
-    Status.Text = "🟢 Fishing active..."
+    Status.Text = "🟢 Fishing started..."
     Status.TextColor3 = theme.Success
     
     print("🚀 Starting Kaitun Fishing...")
+    print("⚡ Delay: " .. config.fishingDelay .. "s")
     
     fishingConnection = RunService.Heartbeat:Connect(function()
-        if not config.autoFishing or not fishingActive then return end
+        if not fishingActive then return end
         
         local success = pcall(function()
-            TryFishing()
+            TryFishingMethod()
         end)
         
-        if success then
-            local elapsed = tick() - stats.startTime
-            local rate = stats.fishCaught / math.max(1, elapsed)
-            Status.Text = string.format("🟢 Fish: %d | %.1f/s", stats.fishCaught, rate)
-            Status.TextColor3 = theme.Success
+        if not success then
+            Status.Text = "⚠️ Error occurred, retrying..."
+            Status.TextColor3 = theme.Warning
         else
-            stats.failedAttempts = stats.failedAttempts + 1
+            local elapsed = math.max(1, tick() - stats.startTime)
+            local rate = stats.fishCaught / elapsed
+            Status.Text = string.format("🟢 Fish: %d | %.2f/s | Attempts: %d", 
+                stats.fishCaught, rate, stats.attempts)
+            Status.TextColor3 = theme.Success
         end
         
-        wait(config.blantantDelay and (config.blantantDelayValue / 1000) or config.fishingDelay)
+        task.wait(config.fishingDelay)
     end)
 end
 
@@ -463,7 +483,7 @@ local function StopFishing()
     print("🔴 Fishing stopped")
 end
 
--- UI Elements
+-- Build UI
 CreateSection("🎯 FISHING CONTROLS")
 
 local startBtn = CreateButton("🚀 START FISHING", "Click to start auto fishing", function()
@@ -482,34 +502,36 @@ CreateSection("⚡ SETTINGS")
 
 CreateToggle("Instant Fishing", "Fast fishing mode", config.instantFishing, function(v)
     config.instantFishing = v
+    config.fishingDelay = v and 0.05 or 0.2
 end)
 
-CreateToggle("Blantant Mode", "Ultra fast mode", config.blantantDelay, function(v)
-    config.blantantDelay = v
+CreateToggle("Blantant Mode", "Ultra fast (may be risky)", config.blantantMode, function(v)
+    config.blantantMode = v
+    config.fishingDelay = v and 0.05 or 0.15
 end)
 
 CreateSection("📊 STATISTICS")
 
 local statLabels = {
-    fish = CreateLabel("🎣 Fish: 0"),
-    rate = CreateLabel("⚡ Rate: 0/s"),
-    earnings = CreateLabel("💰 Earnings: $0"),
+    fish = CreateLabel("🎣 Fish Caught: 0"),
+    attempts = CreateLabel("🔄 Attempts: 0"),
+    rate = CreateLabel("⚡ Rate: 0.00/s"),
 }
 
-spawn(function()
-    while wait(0.5) do
-        local elapsed = tick() - stats.startTime
-        local rate = stats.fishCaught / math.max(1, elapsed)
+task.spawn(function()
+    while task.wait(0.5) do
+        local elapsed = math.max(1, tick() - stats.startTime)
+        local rate = stats.fishCaught / elapsed
         
-        statLabels.fish.Text = "🎣 Fish: " .. stats.fishCaught
+        statLabels.fish.Text = "🎣 Fish Caught: " .. stats.fishCaught
+        statLabels.attempts.Text = "🔄 Attempts: " .. stats.attempts
         statLabels.rate.Text = string.format("⚡ Rate: %.2f/s", rate)
-        statLabels.earnings.Text = "💰 Earnings: $" .. stats.totalEarnings
     end
 end)
 
 CreateSection("🎮 ACTIONS")
 
-CreateButton("🔄 Equip Rod", "Equip fishing rod", function()
+CreateButton("🎣 Equip Rod", "Manually equip fishing rod", function()
     if EquipRod() then
         Status.Text = "✅ Rod equipped!"
         Status.TextColor3 = theme.Success
@@ -519,22 +541,30 @@ CreateButton("🔄 Equip Rod", "Equip fishing rod", function()
     end
 end)
 
-CreateButton("📊 Reset Stats", "Reset statistics", function()
+CreateButton("📊 Reset Stats", "Reset all statistics", function()
     stats.fishCaught = 0
-    stats.totalEarnings = 0
+    stats.attempts = 0
     stats.startTime = tick()
     Status.Text = "✅ Stats reset!"
     Status.TextColor3 = theme.Success
 end)
 
--- Auto start if enabled
-if Kaitun["Start Kaitun"]["Enable"] and config.autoFishing then
-    wait(2)
+CreateButton("🗑️ Close UI", "Close this interface", function()
+    ScreenGui:Destroy()
+    if fishingConnection then
+        fishingConnection:Disconnect()
+    end
+end)
+
+-- Auto start
+if Kaitun["Fishing"]["Auto Fishing"] then
+    task.wait(2)
     StartFishing()
     startBtn:FindFirstChild("TextLabel").Text = "⏹️ STOP FISHING"
     startBtn.BackgroundColor3 = theme.Error
+    print("✅ Auto-started fishing!")
 end
 
-print("✅ Kaitun Fish It Loaded!")
+print("✅ Kaitun Fish It Loaded Successfully!")
 print("🎣 Version: " .. _G.Version)
 print("⚡ Ready to fish!")
