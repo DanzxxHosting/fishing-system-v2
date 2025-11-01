@@ -20,24 +20,6 @@ getgenv().Kaitun = {
     },
 }
 
--- Function untuk mendapatkan rod terbaik
-local function GetBestRod()
-    local bestRod = nil
-    local rodTiers = {
-        ["astral"] = 10,
-        ["fluorescent"] = 9,
-        ["chrome"] = 8,
-        ["stempunk"] = 7,
-        ["midnight"] = 6,
-        ["lucky"] = 5,
-        ["ice"] = 4,
-        ["demascus"] = 3,
-        ["carbon"] = 2,
-        ["grass"] = 1,
-        ["luck"] = 0
-    }
-    
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -500,94 +482,6 @@ local function StopFishing()
     print("🔴 Fishing stopped")
 end
 
--- Function untuk cek inventory rods
-local function CheckRodInventory()
-    local rods = {}
-    local locations = {player.Backpack, player.Character}
-    
-    for _, location in pairs(locations) do
-        if location then
-            for _, item in pairs(location:GetChildren()) do
-                if item:IsA("Tool") then
-                    local name = item.Name:lower()
-                    if name:find("rod") or name:find("pole") or name:find("fishing") then
-                        table.insert(rods, {
-                            Name = item.Name,
-                            Location = location == player.Backpack and "Backpack" or "Equipped"
-                        })
-                    end
-                end
-            end
-        end
-    end
-    
-    return rods
-end
-
-    -- Cari di backpack
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        for _, tool in pairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") then
-                local toolName = tool.Name:lower()
-                for rodName, tier in pairs(rodTiers) do
-                    if toolName:find(rodName) then
-                        if not bestRod or tier > rodTiers[bestRod.Name:lower()] then
-                            bestRod = tool
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    -- Cari di character
-    local character = player.Character
-    if character then
-        for _, tool in pairs(character:GetChildren()) do
-            if tool:IsA("Tool") then
-                local toolName = tool.Name:lower()
-                for rodName, tier in pairs(rodTiers) do
-                    if toolName:find(rodName) then
-                        if not bestRod or tier > rodTiers[bestRod.Name:lower()] then
-                            bestRod = tool
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    return bestRod
-end
-
--- Function untuk equip rod terbaik
-local function EquipBestRod()
-    local success = pcall(function()
-        local bestRod = GetBestRod()
-        if not bestRod then
-            return false, "No fishing rod found"
-        end
-        
-        -- Jika rod sudah di-equip
-        if bestRod.Parent == player.Character then
-            return true, bestRod.Name .. " already equipped"
-        end
-        
-        -- Equip rod
-        local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid:EquipTool(bestRod)
-            task.wait(0.5) -- Tunggu equip process
-            return true, "Equipped " .. bestRod.Name
-        end
-        
-        return false, "Cannot equip rod"
-    end)
-    
-    return success
-end
-
 -- Build UI
 CreateSection("🎯 FISHING CONTROLS")
 
@@ -650,49 +544,6 @@ CreateToggle("Blantant Mode", "ULTRA FAST - Extreme speed fishing (20x Faster)",
 end)
 
 CreateSection("📊 Statistics")
-
-
--- Update button dengan auto equip rod terbaik
-CreateButton("🎣 AUTO EQUIP BEST ROD", "Automatically equip your best fishing rod", function()
-    local success, message = EquipBestRod()
-    
-    if success then
-        local bestRod = GetBestRod()
-        if bestRod then
-            Status.Text = "✅ " .. bestRod.Name .. " equipped!"
-            Status.TextColor3 = theme.Success
-            print("🎣 Equipped best rod: " .. bestRod.Name)
-        else
-            Status.Text = "✅ Rod equipped!"
-            Status.TextColor3 = theme.Success
-        end
-    else
-        Status.Text = "❌ No fishing rod found!"
-        Status.TextColor3 = theme.Error
-        print("❌ No fishing rod available")
-    end
-end)
-
-
--- Button untuk cek inventory rods
-CreateButton("📋 CHECK RODS", "Show all fishing rods in inventory", function()
-    local rods = CheckRodInventory()
-    local bestRod = GetBestRod()
-    
-    if #rods > 0 then
-        local rodList = ""
-        for i, rod in pairs(rods) do
-            local marker = rod.Name == bestRod.Name and " 👑" or ""
-            rodList = rodList .. rod.Name .. " (" .. rod.Location .. ")" .. marker .. "\n"
-        end
-        Status.Text = "📋 " .. #rods .. " rods found\nBest: " .. bestRod.Name
-        Status.TextColor3 = theme.Success
-        print("🎣 Rods in inventory:\n" .. rodList)
-    else
-        Status.Text = "❌ No rods found in inventory"
-        Status.TextColor3 = theme.Error
-    end
-end)
 
 CreateButton("🗑️ Close UI", "Close this interface", function()
     ScreenGui:Destroy()
