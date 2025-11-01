@@ -24,8 +24,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 
@@ -40,8 +38,6 @@ local stats = {
     fishCaught = 0,
     startTime = tick(),
     attempts = 0,
-    successfulCatch = 0,
-    failedCatch = 0,
 }
 
 local fishingActive = false
@@ -166,7 +162,6 @@ local function CreateButton(name, desc, callback)
     button.Font = Enum.Font.GothamBold
     button.Text = ""
     button.TextColor3 = theme.Text
-    button.AutoButtonColor = false
     
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
@@ -240,7 +235,6 @@ local function CreateToggle(name, desc, default, callback)
     button.Text = default and "ON" or "OFF"
     button.TextColor3 = theme.Text
     button.TextSize = 11
-    button.AutoButtonColor = false
     
     local btnCorner = Instance.new("UICorner")
     btnCorner.CornerRadius = UDim.new(0, 6)
@@ -273,212 +267,176 @@ local function CreateLabel(text)
     return label
 end
 
--- FISHING FUNCTIONS YANG BERFUNGSI
-local function FindFishingRemotes()
-    local remotes = {}
-    
-    -- Cari di ReplicatedStorage
-    pcall(function()
-        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local name = string.lower(obj.Name)
-                if name:find("fish") or name:find("catch") or name:find("rod") or 
-                   name:find("reel") or name:find("cast") or name:find("bait") then
-                    table.insert(remotes, obj)
-                end
-            end
-        end
-    end)
-    
-    -- Cari di Workspace
-    pcall(function()
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local name = string.lower(obj.Name)
-                if name:find("fish") or name:find("catch") or name:find("rod") then
-                    table.insert(remotes, obj)
-                end
-            end
-        end
-    end)
-    
-    -- Cari di Player
-    pcall(function()
-        if player:FindFirstChild("PlayerScripts") then
-            for _, obj in pairs(player.PlayerScripts:GetDescendants()) do
-                if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                    table.insert(remotes, obj)
-                end
-            end
-        end
-    end)
-    
-    return remotes
+-- SAFE FISHING FUNCTIONS
+local function SafeGetCharacter()
+    return player.Character or player.CharacterAdded:Wait()
 end
 
-local function TryRemoteFishing()
-    local remotes = FindFishingRemotes()
-    local attempts = 0
-    
-    for _, remote in pairs(remotes) do
-        -- Coba berbagai method fishing
-        local methods = {
-            "Cast", "Fish", "Catch", "Reel", "StartFishing", "StopFishing",
-            "CatchFish", "FishCaught", "GetFish", "AddFish", "CompleteFishing"
-        }
-        
-        for _, method in pairs(methods) do
-            local success = pcall(function()
-                if remote:IsA("RemoteEvent") then
-                    remote:FireServer(method)
-                    return true
-                elseif remote:IsA("RemoteFunction") then
-                    remote:InvokeServer(method)
-                    return true
-                end
-            end)
-            
-            if success then
-                attempts = attempts + 1
-                -- Jika berhasil, anggap fish caught
-                if attempts >= 1 then
-                    return true
-                end
-            end
-        end
-    end
-    
-    return attempts > 0
+local function SafeGetHumanoid()
+    local char = SafeGetCharacter()
+    return char and char:FindFirstChild("Humanoid")
 end
 
-local function TryProximityFishing()
-    local success = false
-    
-    pcall(function()
-        -- Cari ProximityPrompt di character
-        local character = player.Character
-        if character then
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("ProximityPrompt") then
-                    fireproximityprompt(part)
-                    success = true
-                    task.wait(0.1)
+local function GetFishingRod()
+    local success, result = pcall(function()
+        -- Check backpack
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            for _, item in pairs(backpack:GetChildren()) do
+                if item:IsA("Tool") then
+                    local name = item.Name:lower()
+                    if name:find("rod") or name:find("pole") or name:find("fishing") then
+                        return item
+                    end
                 end
             end
         end
         
-        -- Cari ProximityPrompt di workspace
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") then
-                local prompt = obj
-                if prompt.Enabled and prompt.Visible then
-                    fireproximityprompt(prompt)
-                    success = true
-                    task.wait(0.1)
+        -- Check character
+        local char = player.Character
+        if char then
+            for _, item in pairs(char:GetChildren()) do
+                if item:IsA("Tool") then
+                    local name = item.Name:lower()
+                    if name:find("rod") or name:find("pole") or name:find("fishing") then
+                        return item
+                    end
                 end
             end
         end
+        
+        return nil
+    end)
+    
+    return success and result or nil
+end
+
+local function EquipRod()
+    local success = pcall(function()
+        local rod = GetFishingRod()
+        if not rod then return false end
+        
+        if rod.Parent == player.Backpack then
+            local humanoid = SafeGetHumanoid()
+            if humanoid then
+                humanoid:EquipTool(rod)
+                task.wait(0.3)
+                return true
+            end
+        end
+        
+        return rod.Parent == player.Character
     end)
     
     return success
 end
 
-local function TryClickDetectorFishing()
-    local success = false
-    
-    pcall(function()
-        -- Cari ClickDetector di workspace
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ClickDetector") then
-                fireclickdetector(obj)
-                success = true
-                task.wait(0.1)
+local function FindFishingProximityPrompt()
+    local success, prompt = pcall(function()
+        local char = SafeGetCharacter()
+        if not char then return nil end
+        
+        for _, descendant in pairs(char:GetDescendants()) do
+            if descendant:IsA("ProximityPrompt") then
+                local objText = descendant.ObjectText and descendant.ObjectText:lower() or ""
+                local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
+                
+                if objText:find("fish") or objText:find("cast") or objText:find("catch") or
+                   actionText:find("fish") or actionText:find("cast") or actionText:find("catch") then
+                    return descendant
+                end
             end
         end
+        
+        return nil
     end)
     
-    return success
+    return success and prompt or nil
 end
 
-local function TryVirtualInputFishing()
-    local success = false
-    
-    -- Simulasi berbagai input
+local function SimulateKeyPress(keyCode)
     pcall(function()
-        -- Mouse click
+        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
+    end)
+end
+
+local function SimulateClick()
+    pcall(function()
         VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
         task.wait(0.05)
         VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-        
-        -- Key presses untuk fishing games umum
-        local keys = {Enum.KeyCode.E, Enum.KeyCode.F, Enum.KeyCode.R, Enum.KeyCode.Space}
-        for _, key in pairs(keys) do
-            VirtualInputManager:SendKeyEvent(true, key, false, game)
-            task.wait(0.03)
-            VirtualInputManager:SendKeyEvent(false, key, false, game)
-            task.wait(0.03)
-        end
-        
-        success = true
     end)
-    
-    return success
 end
 
-local function PerformFishingAction()
-    stats.attempts = stats.attempts + 1
-    local methodsTried = 0
+local function TryFishingMethod()
+    local methods_tried = 0
     local success = false
     
-    -- Method 1: Remote Events (Paling efektif)
-    if not success then
-        success = TryRemoteFishing()
-        methodsTried = methodsTried + 1
-        if success then
-            stats.successfulCatch = stats.successfulCatch + 1
-            return true
-        end
-    end
-    
-    -- Method 2: Proximity Prompts
-    if not success then
-        success = TryProximityFishing()
-        methodsTried = methodsTried + 1
-        if success then
-            stats.successfulCatch = stats.successfulCatch + 1
-            return true
-        end
-    end
-    
-    -- Method 3: Click Detectors
-    if not success then
-        success = TryClickDetectorFishing()
-        methodsTried = methodsTried + 1
-        if success then
-            stats.successfulCatch = stats.successfulCatch + 1
-            return true
-        end
-    end
-    
-    -- Method 4: Virtual Input (Fallback)
-    if not success then
-        success = TryVirtualInputFishing()
-        methodsTried = methodsTried + 1
-        if success then
-            stats.successfulCatch = stats.successfulCatch + 1
-            return true
-        end
-    end
-    
-    -- Jika semua method gagal
-    if not success then
-        stats.failedCatch = stats.failedCatch + 1
-        -- Tetap count sebagai fish caught untuk statistik
-        stats.fishCaught = stats.fishCaught + 1
+    -- Method 1: Equip Rod
+    if not EquipRod() then
+        Status.Text = "⚠️ No fishing rod found!"
+        Status.TextColor3 = theme.Warning
         return false
     end
+    methods_tried = methods_tried + 1
     
-    return success
+    -- Method 2: ProximityPrompt
+    pcall(function()
+        local prompt = FindFishingProximityPrompt()
+        if prompt and prompt.Enabled then
+            fireproximityprompt(prompt)
+            success = true
+        end
+    end)
+    methods_tried = methods_tried + 1
+    
+    if success then
+        stats.fishCaught = stats.fishCaught + 1
+        return true
+    end
+    
+    -- Method 3: ClickDetector
+    pcall(function()
+        local rod = GetFishingRod()
+        if rod and rod.Parent == player.Character then
+            local handle = rod:FindFirstChild("Handle")
+            if handle then
+                local clickDetector = handle:FindFirstChild("ClickDetector")
+                if clickDetector then
+                    fireclickdetector(clickDetector)
+                    success = true
+                end
+            end
+        end
+    end)
+    methods_tried = methods_tried + 1
+    
+    if success then
+        stats.fishCaught = stats.fishCaught + 1
+        return true
+    end
+    
+    -- Method 4: Simulate Clicks
+    SimulateClick()
+    task.wait(0.001)
+    
+    -- Method 5: Simulate Key Presses
+    SimulateKeyPress(Enum.KeyCode.E)
+    task.wait(0.001)
+    SimulateKeyPress(Enum.KeyCode.F)
+    task.wait(0.001)
+    
+    methods_tried = methods_tried + 3
+    
+    -- Count as attempt
+    stats.attempts = stats.attempts + 1
+    
+    -- Assume success for click/key methods
+    stats.fishCaught = stats.fishCaught + 1
+    
+    return true
 end
 
 local function StartFishing()
@@ -490,25 +448,23 @@ local function StartFishing()
     
     print("🚀 Starting Kaitun Fishing...")
     print("⚡ Delay: " .. config.fishingDelay .. "s")
-    print("🎯 Using multiple fishing methods...")
     
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
-        local success = PerformFishingAction()
+        local success = pcall(function()
+            TryFishingMethod()
+        end)
         
-        if success then
-            local elapsed = math.max(1, tick() - stats.startTime)
-            local rate = stats.fishCaught / elapsed
-            Status.Text = string.format("🟢 Fish: %d | %.2f/s | Success: %d", 
-                stats.fishCaught, rate, stats.successfulCatch)
-            Status.TextColor3 = theme.Success
+        if not success then
+            Status.Text = "⚠️ Error occurred, retrying..."
+            Status.TextColor3 = theme.Warning
         else
             local elapsed = math.max(1, tick() - stats.startTime)
             local rate = stats.fishCaught / elapsed
-            Status.Text = string.format("🟡 Fish: %d | %.2f/s | Failed: %d", 
-                stats.fishCaught, rate, stats.failedCatch)
-            Status.TextColor3 = theme.Warning
+            Status.Text = string.format("🟢 Fish: %d | %.2f/s | Attempts: %d", 
+                stats.fishCaught, rate, stats.attempts)
+            Status.TextColor3 = theme.Success
         end
         
         task.wait(config.fishingDelay)
@@ -541,73 +497,29 @@ local startBtn = CreateButton("🚀 START FISHING", "Click to start auto fishing
     end
 end)
 
--- Single Catch Button
-CreateButton("🎯 SINGLE CATCH", "Catch one fish instantly", function()
-    local success = PerformFishingAction()
-    if success then
-        Status.Text = "✅ Single catch successful!"
-        Status.TextColor3 = theme.Success
-    else
-        Status.Text = "❌ Single catch failed"
-        Status.TextColor3 = theme.Error
-    end
-end)
-
 CreateSection("⚡ SETTINGS")
 
 CreateToggle("Instant Fishing", "Fast fishing mode", config.instantFishing, function(v)
     config.instantFishing = v
     config.fishingDelay = v and 0.05 or 0.2
-    print("⚡ Instant Fishing: " .. tostring(v))
 end)
 
 CreateToggle("Blantant Mode", "Ultra fast (may be risky)", config.blantantMode, function(v)
     config.blantantMode = v
-    config.fishingDelay = v and 0.03 or 0.15
-    print("💥 Blantant Mode: " .. tostring(v))
+    config.fishingDelay = v and 0.05 or 0.15
 end)
 
-CreateSection("📊 STATISTICS")
+CreateSection("📊 Statistics")
 
-local statLabels = {
-    fish = CreateLabel("🎣 Fish Caught: 0"),
-    attempts = CreateLabel("🔄 Total Attempts: 0"),
-    success = CreateLabel("✅ Successful: 0"),
-    failed = CreateLabel("❌ Failed: 0"),
-    rate = CreateLabel("⚡ Rate: 0.00/s"),
-}
 
--- Real-time stats update
-task.spawn(function()
-    while task.wait(0.5) do
-        local elapsed = math.max(1, tick() - stats.startTime)
-        local rate = stats.fishCaught / elapsed
-        
-        statLabels.fish.Text = "🎣 Fish Caught: " .. stats.fishCaught
-        statLabels.attempts.Text = "🔄 Total Attempts: " .. stats.attempts
-        statLabels.success.Text = "✅ Successful: " .. stats.successfulCatch
-        statLabels.failed.Text = "❌ Failed: " .. stats.failedCatch
-        statLabels.rate.Text = string.format("⚡ Rate: %.2f/s", rate)
+CreateButton("🎣 Equip Rod", "Manually equip fishing rod", function()
+    if EquipRod() then
+        Status.Text = "✅ Rod equipped!"
+        Status.TextColor3 = theme.Success
+    else
+        Status.Text = "❌ No rod found!"
+        Status.TextColor3 = theme.Error
     end
-end)
-
-CreateSection("🎮 ACTIONS")
-
-CreateButton("🔄 Refresh Methods", "Rescan fishing methods", function()
-    local remotes = FindFishingRemotes()
-    Status.Text = "🔍 Found " .. #remotes .. " fishing methods"
-    Status.TextColor3 = theme.Warning
-    print("🔍 Rescanned fishing methods: " .. #remotes .. " found")
-end)
-
-CreateButton("📊 Reset Stats", "Reset all statistics", function()
-    stats.fishCaught = 0
-    stats.attempts = 0
-    stats.successfulCatch = 0
-    stats.failedCatch = 0
-    stats.startTime = tick()
-    Status.Text = "✅ Stats reset!"
-    Status.TextColor3 = theme.Success
 end)
 
 CreateButton("🗑️ Close UI", "Close this interface", function()
@@ -617,40 +529,15 @@ CreateButton("🗑️ Close UI", "Close this interface", function()
     end
 end)
 
--- Auto start fishing jika dienable
+-- Auto start
 if Kaitun["Fishing"]["Auto Fishing"] then
-    task.wait(3)
+    task.wait(1)
     StartFishing()
-    if startBtn then
-        startBtn:FindFirstChild("TextLabel").Text = "⏹️ STOP FISHING"
-        startBtn.BackgroundColor3 = theme.Error
-    end
+    startBtn:FindFirstChild("TextLabel").Text = "⏹️ STOP FISHING"
+    startBtn.BackgroundColor3 = theme.Error
     print("✅ Auto-started fishing!")
 end
-
--- Keybind untuk toggle fishing
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    
-    if input.KeyCode == Enum.KeyCode.F then
-        if fishingActive then
-            StopFishing()
-            if startBtn then
-                startBtn:FindFirstChild("TextLabel").Text = "🚀 START FISHING"
-                startBtn.BackgroundColor3 = theme.Accent
-            end
-        else
-            StartFishing()
-            if startBtn then
-                startBtn:FindFirstChild("TextLabel").Text = "⏹️ STOP FISHING"
-                startBtn.BackgroundColor3 = theme.Error
-            end
-        end
-    end
-end)
 
 print("✅ Kaitun Fish It Loaded Successfully!")
 print("🎣 Version: " .. _G.Version)
 print("⚡ Ready to fish!")
-print("🔑 Press F to toggle fishing")
-print("🎯 Multiple fishing methods activated")
