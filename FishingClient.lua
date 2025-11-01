@@ -16,7 +16,7 @@ getgenv().Kaitun = {
         ["Auto Fishing"] = true,
         ["Delay Fishing"] = 0.1,
         ["Auto Blantant Fishing"] = true,
-        ["Blantant Delay"] = 8,
+        ["Blantant Delay"] = 0.001,
     },
 }
 
@@ -359,21 +359,21 @@ end
 local function SimulateKeyPress(keyCode)
     pcall(function()
         VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
-        task.wait(0.05)
+        task.wait(0.001)
         VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
     end)
 end
 
 local function SimulateClick()
     pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-        task.wait(0.05)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0.01)
+        task.wait(0.001)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0.01)
     end)
 end
 
 local function TryFishingMethod()
-    local methods_tried = 0
+    local methods_tried = 0.001
     local success = false
     
     -- Method 1: Equip Rod
@@ -382,7 +382,7 @@ local function TryFishingMethod()
         Status.TextColor3 = theme.Warning
         return false
     end
-    methods_tried = methods_tried + 1
+    methods_tried = methods_tried + 0.1
     
     -- Method 2: ProximityPrompt
     pcall(function()
@@ -392,7 +392,7 @@ local function TryFishingMethod()
             success = true
         end
     end)
-    methods_tried = methods_tried + 30
+    methods_tried = methods_tried + 0.1
     
     if success then
         stats.fishCaught = stats.fishCaught + 1
@@ -413,7 +413,7 @@ local function TryFishingMethod()
             end
         end
     end)
-    methods_tried = methods_tried + 30
+    methods_tried = methods_tried + 0.1
     
     if success then
         stats.fishCaught = stats.fishCaught + 1
@@ -430,7 +430,7 @@ local function TryFishingMethod()
     SimulateKeyPress(Enum.KeyCode.F)
     task.wait(0.001)
     
-    methods_tried = methods_tried + 30
+    methods_tried = methods_tried + 0.1
     
     -- Count as attempt
     stats.attempts = stats.attempts + 1
