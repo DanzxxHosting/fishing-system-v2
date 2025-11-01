@@ -487,11 +487,11 @@ CreateSection("🎯 FISHING CONTROLS")
 
 local startBtn = CreateButton("🚀 START FISHING", "Click to start auto fishing", function()
     if fishingActive then
-        StopFishing()
+        StartFishing()
         startBtn:FindFirstChild("TextLabel").Text = "🚀 START FISHING"
         startBtn.BackgroundColor3 = theme.Accent
     else
-        StartFishing()
+        StopFishing()
         startBtn:FindFirstChild("TextLabel").Text = "⏹️ STOP FISHING"
         startBtn.BackgroundColor3 = theme.Error
     end
@@ -499,14 +499,48 @@ end)
 
 CreateSection("⚡ SETTINGS")
 
-CreateToggle("Instant Fishing", "Fast fishing mode", config.instantFishing, function(v)
+CreateToggle("Instant Fishing", "⚡ INSTANT CATCH - No delay fishing", config.instantFishing, function(v)
     config.instantFishing = v
-    config.fishingDelay = v and 0.05 or 0.2
+    
+    if v then
+        -- Instant Fishing ON - Super fast
+        config.fishingDelay = 0.01  -- 20x faster dari normal
+        print("⚡ INSTANT FISHING ACTIVATED - INSTANT CATCH!")
+        Status.Text = "⚡ INSTANT FISHING - NO DELAY"
+        Status.TextColor3 = Color3.fromRGB(0, 255, 255)
+        
+        -- Auto enable features untuk instant fishing
+        if not config.blantantMode then
+            config.blantantMode = true
+            print("💥 Auto-enabled Blantant Mode for maximum speed!")
+        end
+    else
+        -- Instant Fishing OFF - Normal speed
+        config.fishingDelay = 0.2
+        print("🔵 Instant Fishing Disabled")
+        Status.Text = "🔵 Normal Fishing"
+        Status.TextColor3 = theme.Success
+    end
 end)
 
-CreateToggle("Blantant Mode", "Ultra fast (may be risky)", config.blantantMode, function(v)
+CreateToggle("Blantant Mode", "ULTRA FAST - Extreme speed fishing (20x Faster)", config.blantantMode, function(v)
     config.blantantMode = v
-    config.fishingDelay = v and 0.05 or 0.15
+    
+    if v then
+        -- Blantant Mode ON - Ultra fast settings
+        config.fishingDelay = 0.02  -- 10x faster dari normal
+        config.instantFishing = true
+        print("💥 BLASTANT MODE ACTIVATED - 10x SPEED!")
+        Status.Text = "💥 BLASTANT MODE - ULTRA FAST"
+        Status.TextColor3 = Color3.fromRGB(255, 50, 50)
+    else
+        -- Blantant Mode OFF - Normal settings
+        config.fishingDelay = 0.15
+        config.instantFishing = false
+        print("🔵 Blantant Mode Disabled - Normal Speed")
+        Status.Text = "🔵 Normal Mode"
+        Status.TextColor3 = theme.Success
+    end
 end)
 
 CreateSection("📊 Statistics")
