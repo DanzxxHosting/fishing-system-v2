@@ -67,19 +67,19 @@ screen.Parent = playerGui
 screen.IgnoreGuiInset = true
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Main container
+-- Main container (CENTERED)
 local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
-container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
 container.AnchorPoint = Vector2.new(0.5, 0.5)
+container.Position = UDim2.new(0.5, 0, 0.5, 0)
 container.BackgroundTransparency = 1
 container.Parent = screen
 
--- Outer glow
-local glow = Instance.new("ImageLabel", screen)
+-- Outer glow (CENTERED)
+local glow = Instance.new("ImageLabel", container)
 glow.Name = "Glow"
-glow.AnchorPoint = Vector2.new(0.5,0.5)
+glow.AnchorPoint = Vector2.new(0.5, 0.5)
 glow.Size = UDim2.new(0, WIDTH+80, 0, HEIGHT+80)
 glow.Position = UDim2.new(0.5, 0, 0.5, 0)
 glow.BackgroundTransparency = 1
