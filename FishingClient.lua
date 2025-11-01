@@ -99,32 +99,8 @@ local instantCatchConnection
 -- UI Variables
 local ScreenGui
 local MainFrame
-local ToggleButton
-local isUIVisible = true
-
--- Create Toggle Button
-local function CreateToggleButton()
-    ToggleButton = Instance.new("TextButton")
-    ToggleButton.Name = "UIToggleButton"
-    ToggleButton.Parent = player.PlayerGui
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
-    ToggleButton.BorderSizePixel = 0
-    ToggleButton.Position = UDim2.new(0, 10, 0, 10)
-    ToggleButton.Size = UDim2.new(0, 120, 0, 40)
-    ToggleButton.ZIndex = 100
-    ToggleButton.Font = Enum.Font.GothamBold
-    ToggleButton.Text = "🔧 OPEN UI"
-    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleButton.TextSize = 14
-    
-    ToggleButton.MouseButton1Click:Connect(function()
-        if MainFrame then
-            isUIVisible = not isUIVisible
-            MainFrame.Visible = isUIVisible
-            ToggleButton.Text = isUIVisible and "🔧 CLOSE UI" or "🔧 OPEN UI"
-        end
-    end)
-end
+local MinimizedFrame
+local isMinimized = false
 
 -- Simple UI Library
 local function CreateKaitunUI()
@@ -147,7 +123,7 @@ local function CreateKaitunUI()
         MainContainer.Size = UDim2.new(1, 0, 1, 0)
     end
 
-    -- Main Frame
+    -- Main Frame (Full UI)
     MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Parent = MainContainer or ScreenGui
@@ -158,7 +134,6 @@ local function CreateKaitunUI()
     MainFrame.Size = UDim2.new(0, 500, 0, 650)
     MainFrame.Active = true
     MainFrame.Draggable = true
-    MainFrame.Visible = isUIVisible
 
     -- Background Effect
     local BackgroundEffect = Instance.new("Frame")
@@ -204,25 +179,6 @@ local function CreateKaitunUI()
     StatusLabel.TextSize = 12
     StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- Close Button
-    local CloseButton = Instance.new("TextButton")
-    CloseButton.Name = "CloseButton"
-    CloseButton.Parent = TopBar
-    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-    CloseButton.BorderSizePixel = 0
-    CloseButton.Position = UDim2.new(0.9, 0, 0.25, 0)
-    CloseButton.Size = UDim2.new(0, 25, 0, 25)
-    CloseButton.Font = Enum.Font.GothamBold
-    CloseButton.Text = "X"
-    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseButton.TextSize = 12
-
-    CloseButton.MouseButton1Click:Connect(function()
-        isUIVisible = false
-        MainFrame.Visible = false
-        ToggleButton.Text = "🔧 OPEN UI"
-    end)
-
     -- Minimize Button
     local MinimizeButton = Instance.new("TextButton")
     MinimizeButton.Name = "MinimizeButton"
@@ -237,9 +193,24 @@ local function CreateKaitunUI()
     MinimizeButton.TextSize = 12
 
     MinimizeButton.MouseButton1Click:Connect(function()
-        isUIVisible = false
-        MainFrame.Visible = false
-        ToggleButton.Text = "🔧 OPEN UI"
+        minimizeUI()
+    end)
+
+    -- Close Button
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Name = "CloseButton"
+    CloseButton.Parent = TopBar
+    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+    CloseButton.BorderSizePixel = 0
+    CloseButton.Position = UDim2.new(0.9, 0, 0.25, 0)
+    CloseButton.Size = UDim2.new(0, 25, 0, 25)
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.Text = "X"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.TextSize = 12
+
+    CloseButton.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
     end)
 
     -- Tab Container
@@ -266,6 +237,46 @@ local function CreateKaitunUI()
     UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
     UIListLayout.Padding = UDim.new(0, 10)
+
+    -- Create Minimized Frame (Hidden by default)
+    MinimizedFrame = Instance.new("Frame")
+    MinimizedFrame.Name = "MinimizedFrame"
+    MinimizedFrame.Parent = MainContainer or ScreenGui
+    MinimizedFrame.BackgroundColor3 = Color3.fromRGB(15, 25, 45)
+    MinimizedFrame.BorderSizePixel = 0
+    MinimizedFrame.Position = UDim2.new(0, 10, 0, 10)
+    MinimizedFrame.Size = UDim2.new(0, 200, 0, 50)
+    MinimizedFrame.Active = true
+    MinimizedFrame.Draggable = true
+    MinimizedFrame.Visible = false
+
+    local MinimizedBackground = Instance.new("Frame")
+    MinimizedBackground.Name = "MinimizedBackground"
+    MinimizedBackground.Parent = MinimizedFrame
+    MinimizedBackground.BackgroundColor3 = Color3.fromRGB(25, 40, 65)
+    MinimizedBackground.BorderSizePixel = 0
+    MinimizedBackground.Position = UDim2.new(0, 2, 0, 2)
+    MinimizedBackground.Size = UDim2.new(1, -4, 1, -4)
+
+    local LogoLabel = Instance.new("TextLabel")
+    LogoLabel.Name = "LogoLabel"
+    LogoLabel.Parent = MinimizedFrame
+    LogoLabel.BackgroundTransparency = 1
+    LogoLabel.Size = UDim2.new(1, 0, 1, 0)
+    LogoLabel.Font = Enum.Font.GothamBold
+    LogoLabel.Text = "🎯 KAITUN " .. _G.Version
+    LogoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LogoLabel.TextSize = 14
+    LogoLabel.TextStrokeTransparency = 0.8
+
+    -- Click to restore
+    MinimizedFrame.MouseButton1Click:Connect(function()
+        restoreUI()
+    end)
+
+    LogoLabel.MouseButton1Click:Connect(function()
+        restoreUI()
+    end)
 
     -- UI Functions
     local UIFunctions = {}
@@ -396,6 +407,21 @@ local function CreateKaitunUI()
     end
 
     return UIFunctions, ScrollFrame
+end
+
+-- Minimize and Restore Functions
+function minimizeUI()
+    isMinimized = true
+    MainFrame.Visible = false
+    MinimizedFrame.Visible = true
+    print("📱 UI Minimized - Click the logo to restore")
+end
+
+function restoreUI()
+    isMinimized = false
+    MainFrame.Visible = true
+    MinimizedFrame.Visible = false
+    print("🖥️ UI Restored")
 end
 
 -- =============================================
@@ -665,10 +691,6 @@ end
 -- =============================================
 -- INITIALIZE KAITUN UI
 -- =============================================
--- Create toggle button first
-CreateToggleButton()
-
--- Then create main UI
 local Window, ScrollFrame = CreateKaitunUI()
 
 -- Create UI Elements
@@ -818,19 +840,13 @@ end)
 -- UI Control Section
 Window:CreateSection("🔧 UI CONTROLS")
 
-Window:CreateButton("📱 TOGGLE UI VISIBILITY", "Show/Hide the Kaitun UI", function()
-    isUIVisible = not isUIVisible
-    MainFrame.Visible = isUIVisible
-    ToggleButton.Text = isUIVisible and "🔧 CLOSE UI" or "🔧 OPEN UI"
-    Window:UpdateStatus(isUIVisible and "📱 UI Visible" or "📱 UI Hidden")
+Window:CreateButton("📱 MINIMIZE UI", "Minimize UI to small logo", function()
+    minimizeUI()
 end)
 
 Window:CreateButton("🗑️ DESTROY UI", "Completely remove Kaitun UI", function()
     if ScreenGui then
         ScreenGui:Destroy()
-    end
-    if ToggleButton then
-        ToggleButton:Destroy()
     end
     Window:UpdateStatus("🗑️ UI Destroyed - Reload script to get it back")
 end)
@@ -847,22 +863,24 @@ if Kaitun["Start Kaitun"]["Enable"] and Kaitun["Fishing"]["Auto Fishing"] then
     end)
 end
 
-print("🎣 KAITUN FISH IT LOADED - WITH TOGGLE UI!")
-print("🔧 Use the blue button in top-left to show/hide UI")
+print("🎣 KAITUN FISH IT LOADED - WITH MINIMIZE FEATURE!")
+print("📱 Click '-' to minimize, click logo to restore")
 print("⚡ Instant Fishing: " .. tostring(Kaitun["Fishing"]["Instant Fishing"]))
 print("🎯 Instant Catch: READY")
 
-Window:UpdateStatus("✅ KAITUN SYSTEM READY - USE TOGGLE BUTTON!", Color3.fromRGB(0, 255, 127))
+Window:UpdateStatus("✅ KAITUN SYSTEM READY - CLICK '-' TO MINIMIZE", Color3.fromRGB(0, 255, 127))
 
 -- Keybind to toggle UI (Optional)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
     if input.KeyCode == Enum.KeyCode.RightControl then
-        isUIVisible = not isUIVisible
-        MainFrame.Visible = isUIVisible
-        ToggleButton.Text = isUIVisible and "🔧 CLOSE UI" or "🔧 OPEN UI"
+        if isMinimized then
+            restoreUI()
+        else
+            minimizeUI()
+        end
     end
 end)
 
-print("🔑 Press RIGHT CTRL to quickly toggle UI visibility")
+print("🔑 Press RIGHT CTRL to quickly minimize/restore UI")
