@@ -453,29 +453,27 @@ local function StartFishing()
     Status.TextColor3 = theme.Success
     
     print("🚀 Starting Kaitun Fishing...")
-    print("⚡ Current Delay: " .. config.fishingDelay .. "s")
-    print("🎯 Blantant Mode: " .. tostring(config.blantantMode))
+    print("⚡ Delay: " .. config.fishingDelay .. "s")
     
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
-        local success = PerformFishingAction()
+        local success = pcall(function()
+            TryFishingMethod()
+        end)
         
-        if success then
-            local elapsed = math.max(1, tick() - stats.startTime)
-            local rate = stats.fishCaught / elapsed
-            Status.Text = string.format("🟢 Fish: %d | %.2f/s | Delay: %.2fs", 
-                stats.fishCaught, rate, config.fishingDelay)
-            Status.TextColor3 = theme.Success
+        if not success then
+            Status.Text = "⚠️ Error occurred, retrying..."
+            Status.TextColor3 = theme.Warning
         else
             local elapsed = math.max(1, tick() - stats.startTime)
             local rate = stats.fishCaught / elapsed
-            Status.Text = string.format("🟡 Fish: %d | %.2f/s | Delay: %.2fs", 
-                stats.fishCaught, rate, config.fishingDelay)
-            Status.TextColor3 = theme.Warning
+            Status.Text = string.format("🟢 Fish: %d | %.2f/s | Attempts: %d", 
+                stats.fishCaught, rate, stats.attempts)
+            Status.TextColor3 = theme.Success
         end
         
-        task.wait(config.fishingDelay) -- PASTIKAN menggunakan config.fishingDelay
+        task.wait(config.fishingDelay)
     end)
 end
 
@@ -587,6 +585,7 @@ CreateToggle("Blantant Mode", "ULTRA FAST - Extreme speed fishing (20x Faster)",
 end)
 
 CreateSection("📊 Statistics")
+
 
 CreateButton("🎣 Equip Rod", "Manually equip fishing rod", function()
     if EquipRod() then
