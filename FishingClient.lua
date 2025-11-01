@@ -34,13 +34,16 @@ local theme = {
 local config = {
     autoFishing = false,
     blantantMode = false,
+    superBlantantMode = false,
     fishingDelay = 0.01,
     autoEquipRod = true,
     autoSell = false,
     antiAFK = false,
     autoShake = true,
     autoReel = true,
-    perfectCatch = true
+    perfectCatch = true,
+    instantCatch = false,
+    bypassDetection = false
 }
 
 -- STATS
