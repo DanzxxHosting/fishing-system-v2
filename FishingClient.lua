@@ -40,7 +40,7 @@ local stats = {
     attempts = 0,
 }
 
-local fishingActive = false
+local fishingActive = true
 local fishingConnection
 
 -- FPS Boost
@@ -516,19 +516,19 @@ CreateToggle("Instant Fishing", "⚡ INSTANT CATCH - No delay fishing", config.i
         end
     else
         -- Instant Fishing OFF - Normal speed
-        config.fishingDelay = 0.2
+        config.fishingDelay = 0.1
         print("🔵 Instant Fishing Disabled")
         Status.Text = "🔵 Normal Fishing"
         Status.TextColor3 = theme.Success
     end
 end)
 
-CreateToggle("Blantant Mode", "ULTRA FAST - Extreme speed fishing (20x Faster)", config.blantantMode, function(v)
-    config.blantantMode = v
+CreateToggle("Blantant Mode", "ULTRA FAST - Extreme speed fishing (20x Faster)", config.blantantMode, function(blantantMode)
+    config.blantantMode = blantantMode
     
-    if v then
+    if blantantMode then
         -- Blantant Mode ON - Ultra fast settings
-        config.fishingDelay = 0.02  -- 10x faster dari normal
+        config.fishingDelay = 0.01 -- 10x faster dari normal
         config.instantFishing = true
         print("💥 BLASTANT MODE ACTIVATED - 10x SPEED!")
         Status.Text = "💥 BLASTANT MODE - ULTRA FAST"
