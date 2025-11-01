@@ -588,45 +588,6 @@ end)
 
 CreateSection("📊 Statistics")
 
-CreateButton("🐛 DEBUG TOGGLE", "Test if toggle is working", function()
-    print("=== TOGGLE DEBUG ===")
-    print("Toggle Value:", config.blantantMode)
-    print("Fishing Delay:", config.fishingDelay)
-    print("Instant Fishing:", config.instantFishing)
-    print("Fishing Active:", fishingActive)
-    
-    -- Test change value
-    local newValue = not config.blantantMode
-    config.blantantMode = newValue
-    _G.KaitunConfig.blantantMode = newValue
-    
-    print("New Toggle Value:", config.blantantMode)
-    print("====================")
-    
-    Status.Text = "🐛 Debug: " .. tostring(config.blantantMode)
-    Status.TextColor3 = theme.Warning
-end)
-
-CreateButton("⚙️ FORCE BLANTANT", "Force enable blantant mode", function()
-    _G.KaitunConfig.blantantMode = true
-    _G.KaitunConfig.fishingDelay = 0.01
-    _G.KaitunConfig.instantFishing = true
-    
-    config.blantantMode = true
-    config.fishingDelay = 0.01
-    config.instantFishing = true
-    
-    print("💥 FORCE BLANTANT ACTIVATED!")
-    Status.Text = "💥 FORCE BLANTANT - 0.01s"
-    Status.TextColor3 = Color3.fromRGB(255, 0, 0)
-    
-    if fishingActive then
-        StopFishing()
-        task.wait(0.3)
-        StartFishing()
-    end
-end)
-
 CreateButton("🎣 Equip Rod", "Manually equip fishing rod", function()
     if EquipRod() then
         Status.Text = "✅ Rod equipped!"
