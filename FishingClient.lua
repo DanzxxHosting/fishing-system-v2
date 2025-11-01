@@ -1,6 +1,6 @@
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
-_G.Version = "Ultimate v2.1 - Bug Fixed"
+_G.Version = "Ultimate v2.2 - Smooth & Silent"
 
 getgenv().Kaitun = {
     ["Start Kaitun"] = {
@@ -14,15 +14,14 @@ getgenv().Kaitun = {
     ["Fishing"] = {
         ["Instant Fishing"] = true, 
         ["Auto Fishing"] = true,
-        ["Delay Fishing"] = 0.1,
-        ["Auto Blantant Fishing"] = true,
-        ["Blantant Delay"] = 8,
+        ["Delay Fishing"] = 0.05,
+        ["Blantant Mode"] = true,
+        ["Blantant Delay"] = 5,
     },
 }
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
@@ -30,8 +29,8 @@ local player = Players.LocalPlayer
 local config = {
     autoFishing = true,
     instantFishing = true,
-    fishingDelay = 0.1,
     blantantMode = true,
+    fishingDelay = 0.05,
 }
 
 local stats = {
@@ -42,8 +41,9 @@ local stats = {
 
 local fishingActive = false
 local fishingConnection
+local lastCastTime = 0
 
--- FPS Boost
+-- FPS Optimization
 if Kaitun["Start Kaitun"]["Boost Fps"] then
     pcall(function()
         local terrain = workspace.Terrain
@@ -52,16 +52,14 @@ if Kaitun["Start Kaitun"]["Boost Fps"] then
         terrain.WaterReflectance = 0
         terrain.WaterTransparency = 0
         
-        game:GetService("Lighting").GlobalShadows = false
+        local lighting = game:GetService("Lighting")
+        lighting.GlobalShadows = false
         settings().Rendering.QualityLevel = "Level01"
     end)
 end
 
--- FPS Lock
 if Kaitun["Start Kaitun"]["FPS Lock"]["Enable"] then
-    pcall(function()
-        setfpscap(Kaitun["Start Kaitun"]["FPS Lock"]["FPS"])
-    end)
+    pcall(function() setfpscap(120) end)
 end
 
 -- UI Theme
@@ -75,10 +73,9 @@ local theme = {
     Text = Color3.fromRGB(245, 250, 255),
 }
 
--- Create UI
+-- Create Lightweight UI
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
-local UICorner = Instance.new("UICorner")
 local Title = Instance.new("TextLabel")
 local Status = Instance.new("TextLabel")
 local Container = Instance.new("ScrollingFrame")
@@ -87,48 +84,44 @@ local UIList = Instance.new("UIListLayout")
 ScreenGui.Name = "KaitunFishUI"
 ScreenGui.Parent = player:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 MainFrame.BackgroundColor3 = theme.Main
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.Size = UDim2.new(0, 420, 0, 500)
+MainFrame.Size = UDim2.new(0, 400, 0, 480)
 MainFrame.Active = true
 MainFrame.Draggable = true
 
-UICorner.CornerRadius = UDim.new(0, 12)
-UICorner.Parent = MainFrame
+local corner1 = Instance.new("UICorner")
+corner1.CornerRadius = UDim.new(0, 12)
+corner1.Parent = MainFrame
 
-Title.Name = "Title"
 Title.Parent = MainFrame
 Title.BackgroundTransparency = 1
 Title.Position = UDim2.new(0, 15, 0, 10)
-Title.Size = UDim2.new(1, -30, 0, 30)
+Title.Size = UDim2.new(1, -30, 0, 28)
 Title.Font = Enum.Font.GothamBold
 Title.Text = "⚡ KAITUN FISH IT - " .. _G.Version
 Title.TextColor3 = theme.Text
-Title.TextSize = 15
+Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
-Status.Name = "Status"
 Status.Parent = MainFrame
 Status.BackgroundTransparency = 1
-Status.Position = UDim2.new(0, 15, 0, 45)
-Status.Size = UDim2.new(1, -30, 0, 25)
+Status.Position = UDim2.new(0, 15, 0, 42)
+Status.Size = UDim2.new(1, -30, 0, 22)
 Status.Font = Enum.Font.Gotham
-Status.Text = "🟢 Ready to start..."
+Status.Text = "🟢 Ready..."
 Status.TextColor3 = theme.Success
 Status.TextSize = 11
 Status.TextXAlignment = Enum.TextXAlignment.Left
 
-Container.Name = "Container"
 Container.Parent = MainFrame
 Container.BackgroundTransparency = 1
-Container.Position = UDim2.new(0, 10, 0, 80)
-Container.Size = UDim2.new(1, -20, 1, -90)
-Container.CanvasSize = UDim2.new(0, 0, 1.8, 0)
+Container.Position = UDim2.new(0, 10, 0, 75)
+Container.Size = UDim2.new(1, -20, 1, -85)
+Container.CanvasSize = UDim2.new(0, 0, 1.6, 0)
 Container.ScrollBarThickness = 4
 
 UIList.Parent = Container
@@ -141,16 +134,15 @@ local function CreateSection(text)
     section.Parent = Container
     section.BackgroundColor3 = theme.Accent
     section.BackgroundTransparency = 0.9
-    section.Size = UDim2.new(0.95, 0, 0, 35)
+    section.Size = UDim2.new(0.96, 0, 0, 32)
     section.Font = Enum.Font.GothamBold
     section.Text = text
     section.TextColor3 = theme.Text
-    section.TextSize = 14
+    section.TextSize = 13
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = section
-    
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 7)
+    c.Parent = section
     return section
 end
 
@@ -158,39 +150,36 @@ local function CreateButton(name, desc, callback)
     local button = Instance.new("TextButton")
     button.Parent = Container
     button.BackgroundColor3 = theme.Accent
-    button.Size = UDim2.new(0.95, 0, 0, 50)
-    button.Font = Enum.Font.GothamBold
+    button.Size = UDim2.new(0.96, 0, 0, 48)
     button.Text = ""
-    button.TextColor3 = theme.Text
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = button
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 8)
+    c.Parent = button
     
     local label = Instance.new("TextLabel")
     label.Parent = button
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 8)
+    label.Position = UDim2.new(0, 10, 0, 6)
     label.Size = UDim2.new(1, -20, 0, 20)
     label.Font = Enum.Font.GothamBold
     label.Text = name
     label.TextColor3 = theme.Text
-    label.TextSize = 14
+    label.TextSize = 13
     label.TextXAlignment = Enum.TextXAlignment.Left
     
-    local description = Instance.new("TextLabel")
-    description.Parent = button
-    description.BackgroundTransparency = 1
-    description.Position = UDim2.new(0, 10, 0, 28)
-    description.Size = UDim2.new(1, -20, 0, 18)
-    description.Font = Enum.Font.Gotham
-    description.Text = desc
-    description.TextColor3 = Color3.fromRGB(200, 210, 220)
-    description.TextSize = 10
-    description.TextXAlignment = Enum.TextXAlignment.Left
+    local desc_label = Instance.new("TextLabel")
+    desc_label.Parent = button
+    desc_label.BackgroundTransparency = 1
+    desc_label.Position = UDim2.new(0, 10, 0, 26)
+    desc_label.Size = UDim2.new(1, -20, 0, 16)
+    desc_label.Font = Enum.Font.Gotham
+    desc_label.Text = desc
+    desc_label.TextColor3 = Color3.fromRGB(200, 210, 220)
+    desc_label.TextSize = 10
+    desc_label.TextXAlignment = Enum.TextXAlignment.Left
     
     button.MouseButton1Click:Connect(callback)
-    
     return button
 end
 
@@ -198,47 +187,47 @@ local function CreateToggle(name, desc, default, callback)
     local frame = Instance.new("Frame")
     frame.Parent = Container
     frame.BackgroundColor3 = theme.Secondary
-    frame.Size = UDim2.new(0.95, 0, 0, 60)
+    frame.Size = UDim2.new(0.96, 0, 0, 56)
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = frame
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 8)
+    c.Parent = frame
     
     local label = Instance.new("TextLabel")
     label.Parent = frame
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 8)
-    label.Size = UDim2.new(0.6, 0, 0, 20)
+    label.Position = UDim2.new(0, 10, 0, 6)
+    label.Size = UDim2.new(0.58, 0, 0, 18)
     label.Font = Enum.Font.GothamBold
     label.Text = name
     label.TextColor3 = theme.Text
-    label.TextSize = 13
+    label.TextSize = 12
     label.TextXAlignment = Enum.TextXAlignment.Left
     
-    local description = Instance.new("TextLabel")
-    description.Parent = frame
-    description.BackgroundTransparency = 1
-    description.Position = UDim2.new(0, 10, 0, 32)
-    description.Size = UDim2.new(0.6, 0, 0, 20)
-    description.Font = Enum.Font.Gotham
-    description.Text = desc
-    description.TextColor3 = Color3.fromRGB(180, 190, 200)
-    description.TextSize = 10
-    description.TextXAlignment = Enum.TextXAlignment.Left
+    local desc_label = Instance.new("TextLabel")
+    desc_label.Parent = frame
+    desc_label.BackgroundTransparency = 1
+    desc_label.Position = UDim2.new(0, 10, 0, 28)
+    desc_label.Size = UDim2.new(0.58, 0, 0, 18)
+    desc_label.Font = Enum.Font.Gotham
+    desc_label.Text = desc
+    desc_label.TextColor3 = Color3.fromRGB(180, 190, 200)
+    desc_label.TextSize = 9
+    desc_label.TextXAlignment = Enum.TextXAlignment.Left
     
     local button = Instance.new("TextButton")
     button.Parent = frame
     button.BackgroundColor3 = default and theme.Success or theme.Error
-    button.Position = UDim2.new(0.75, 0, 0.25, 0)
-    button.Size = UDim2.new(0.2, 0, 0.5, 0)
+    button.Position = UDim2.new(0.72, 0, 0.23, 0)
+    button.Size = UDim2.new(0.23, 0, 0.54, 0)
     button.Font = Enum.Font.GothamBold
     button.Text = default and "ON" or "OFF"
     button.TextColor3 = theme.Text
-    button.TextSize = 11
+    button.TextSize = 10
     
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    btnCorner.Parent = button
+    local bc = Instance.new("UICorner")
+    bc.CornerRadius = UDim.new(0, 6)
+    bc.Parent = button
     
     button.MouseButton1Click:Connect(function()
         local new = button.Text == "OFF"
@@ -254,52 +243,92 @@ local function CreateLabel(text)
     local label = Instance.new("TextLabel")
     label.Parent = Container
     label.BackgroundColor3 = theme.Secondary
-    label.Size = UDim2.new(0.95, 0, 0, 35)
+    label.Size = UDim2.new(0.96, 0, 0, 32)
     label.Font = Enum.Font.GothamBold
     label.Text = text
     label.TextColor3 = theme.Text
-    label.TextSize = 13
+    label.TextSize = 12
     
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = label
-    
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 6)
+    c.Parent = label
     return label
 end
 
--- SAFE FISHING FUNCTIONS
-local function SafeGetCharacter()
-    return player.Character or player.CharacterAdded:Wait()
+-- CORE FISHING FUNCTIONS (NO JUMPING!)
+local function SafeGetChar()
+    return player.Character
 end
 
-local function SafeGetHumanoid()
-    local char = SafeGetCharacter()
-    return char and char:FindFirstChild("Humanoid")
-end
-
-local function GetFishingRod()
-    local success, result = pcall(function()
-        -- Check backpack
-        local backpack = player:FindFirstChild("Backpack")
-        if backpack then
-            for _, item in pairs(backpack:GetChildren()) do
-                if item:IsA("Tool") then
-                    local name = item.Name:lower()
-                    if name:find("rod") or name:find("pole") or name:find("fishing") then
-                        return item
+local function GetRod()
+    pcall(function()
+        local bp = player:FindFirstChild("Backpack")
+        if bp then
+            for _, tool in pairs(bp:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local n = tool.Name:lower()
+                    if n:find("rod") or n:find("pole") or n:find("fishing") then
+                        return tool
                     end
                 end
             end
         end
         
-        -- Check character
-        local char = player.Character
+        local char = SafeGetChar()
         if char then
-            for _, item in pairs(char:GetChildren()) do
-                if item:IsA("Tool") then
-                    local name = item.Name:lower()
-                    if name:find("rod") or name:find("pole") or name:find("fishing") then
-                        return item
+            for _, tool in pairs(char:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local n = tool.Name:lower()
+                    if n:find("rod") or n:find("pole") or n:find("fishing") then
+                        return tool
+                    end
+                end
+            end
+        end
+    end)
+    return nil
+end
+
+local function EquipRodSilent()
+    local success = pcall(function()
+        local rod = GetRod()
+        if not rod then return false end
+        
+        if rod.Parent == player.Backpack then
+            local char = SafeGetChar()
+            if char then
+                local hum = char:FindFirstChild("Humanoid")
+                if hum then
+                    hum:EquipTool(rod)
+                    task.wait(0.2)
+                end
+            end
+        end
+        return true
+    end)
+    return success
+end
+
+local function FindProximityPrompt()
+    local success, result = pcall(function()
+        local char = SafeGetChar()
+        if not char then return nil end
+        
+        -- Search in character descendants
+        for _, obj in pairs(char:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") and obj.Enabled then
+                return obj
+            end
+        end
+        
+        -- Search in workspace near player
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("ProximityPrompt") and obj.Enabled then
+                    local parent = obj.Parent
+                    if parent and (parent.Position - hrp.Position).Magnitude < 20 then
+                        return obj
                     end
                 end
             end
@@ -311,173 +340,95 @@ local function GetFishingRod()
     return success and result or nil
 end
 
-local function EquipRod()
-    local success = pcall(function()
-        local rod = GetFishingRod()
-        if not rod then return false end
-        
-        if rod.Parent == player.Backpack then
-            local humanoid = SafeGetHumanoid()
-            if humanoid then
-                humanoid:EquipTool(rod)
-                task.wait(0.3)
-                return true
-            end
-        end
-        
-        return rod.Parent == player.Character
-    end)
+local function TryCastRod()
+    -- Equip rod if not equipped
+    EquipRodSilent()
     
-    return success
-end
-
-local function FindFishingProximityPrompt()
-    local success, prompt = pcall(function()
-        local char = SafeGetCharacter()
-        if not char then return nil end
-        
-        for _, descendant in pairs(char:GetDescendants()) do
-            if descendant:IsA("ProximityPrompt") then
-                local objText = descendant.ObjectText and descendant.ObjectText:lower() or ""
-                local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
-                
-                if objText:find("fish") or objText:find("cast") or objText:find("catch") or
-                   actionText:find("fish") or actionText:find("cast") or actionText:find("catch") then
-                    return descendant
-                end
-            end
-        end
-        
-        return nil
-    end)
-    
-    return success and prompt or nil
-end
-
-local function SimulateKeyPress(keyCode)
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
-        task.wait(0.05)
-        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
-    end)
-end
-
-local function SimulateClick()
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-        task.wait(0.05)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-    end)
-end
-
-local function TryFishingMethod()
-    local methods_tried = 0
-    local success = false
-    
-    -- Method 1: Equip Rod
-    if not EquipRod() then
-        Status.Text = "⚠️ No fishing rod found!"
-        Status.TextColor3 = theme.Warning
-        return false
-    end
-    methods_tried = methods_tried + 1
-    
-    -- Method 2: ProximityPrompt
-    pcall(function()
-        local prompt = FindFishingProximityPrompt()
-        if prompt and prompt.Enabled then
+    -- Try ProximityPrompt (BEST METHOD - NO JUMPING)
+    local prompt = FindProximityPrompt()
+    if prompt then
+        pcall(function()
             fireproximityprompt(prompt)
-            success = true
-        end
-    end)
-    methods_tried = methods_tried + 1
-    
-    if success then
-        stats.fishCaught = stats.fishCaught + 1
+        end)
         return true
     end
     
-    -- Method 3: ClickDetector
-    pcall(function()
-        local rod = GetFishingRod()
-        if rod and rod.Parent == player.Character then
+    -- Try ClickDetector on rod handle (SILENT METHOD)
+    local rod = GetRod()
+    if rod and rod.Parent == SafeGetChar() then
+        pcall(function()
             local handle = rod:FindFirstChild("Handle")
             if handle then
-                local clickDetector = handle:FindFirstChild("ClickDetector")
-                if clickDetector then
-                    fireclickdetector(clickDetector)
-                    success = true
+                local cd = handle:FindFirstChild("ClickDetector")
+                if cd then
+                    fireclickdetector(cd)
+                end
+            end
+        end)
+        return true
+    end
+    
+    -- Try Remote Events (SILENT METHOD)
+    pcall(function()
+        for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("RemoteEvent") then
+                local name = obj.Name:lower()
+                if name:find("fish") or name:find("cast") or name:find("rod") then
+                    obj:FireServer()
+                    obj:FireServer("Cast")
+                    obj:FireServer(true)
                 end
             end
         end
     end)
-    methods_tried = methods_tried + 1
-    
-    if success then
-        stats.fishCaught = stats.fishCaught + 1
-        return true
-    end
-    
-    -- Method 4: Simulate Clicks
-    SimulateClick()
-    task.wait(0.1)
-    
-    -- Method 5: Simulate Key Presses
-    SimulateKeyPress(Enum.KeyCode.E)
-    task.wait(0.05)
-    SimulateKeyPress(Enum.KeyCode.F)
-    task.wait(0.05)
-    SimulateKeyPress(Enum.KeyCode.Space)
-    
-    methods_tried = methods_tried + 3
-    
-    -- Count as attempt
-    stats.attempts = stats.attempts + 1
-    
-    -- Assume success for click/key methods
-    stats.fishCaught = stats.fishCaught + 1
     
     return true
+end
+
+local function AutoFishingLoop()
+    while fishingActive do
+        local currentTime = tick()
+        
+        -- Apply delay based on mode
+        local delay = config.fishingDelay
+        if config.blantantMode then
+            delay = Kaitun["Fishing"]["Blantant Delay"] / 1000
+        end
+        
+        -- Cast rod
+        pcall(function()
+            TryCastRod()
+            stats.fishCaught = stats.fishCaught + 1
+            stats.attempts = stats.attempts + 1
+        end)
+        
+        lastCastTime = currentTime
+        
+        -- Update UI
+        local elapsed = math.max(1, tick() - stats.startTime)
+        local rate = stats.fishCaught / elapsed
+        Status.Text = string.format("🟢 Fishing: %d fish | %.2f/s", stats.fishCaught, rate)
+        
+        task.wait(delay)
+    end
 end
 
 local function StartFishing()
     if fishingActive then return end
     
     fishingActive = true
-    Status.Text = "🟢 Fishing started..."
+    Status.Text = "🟢 Starting fishing..."
     Status.TextColor3 = theme.Success
     
-    print("🚀 Starting Kaitun Fishing...")
-    print("⚡ Delay: " .. config.fishingDelay .. "s")
+    print("🚀 Kaitun Fishing Started")
+    print("⚡ Mode: " .. (config.blantantMode and "BLANTANT" or "INSTANT"))
+    print("⏱️ Delay: " .. (config.blantantMode and (Kaitun["Fishing"]["Blantant Delay"] .. "ms") or (config.fishingDelay .. "s")))
     
-    fishingConnection = RunService.Heartbeat:Connect(function()
-        if not fishingActive then return end
-        
-        local success = pcall(function()
-            TryFishingMethod()
-        end)
-        
-        if not success then
-            Status.Text = "⚠️ Error occurred, retrying..."
-            Status.TextColor3 = theme.Warning
-        else
-            local elapsed = math.max(1, tick() - stats.startTime)
-            local rate = stats.fishCaught / elapsed
-            Status.Text = string.format("🟢 Fish: %d | %.2f/s | Attempts: %d", 
-                stats.fishCaught, rate, stats.attempts)
-            Status.TextColor3 = theme.Success
-        end
-        
-        task.wait(config.fishingDelay)
-    end)
+    task.spawn(AutoFishingLoop)
 end
 
 local function StopFishing()
     fishingActive = false
-    if fishingConnection then
-        fishingConnection:Disconnect()
-        fishingConnection = nil
-    end
     Status.Text = "🔴 Fishing stopped"
     Status.TextColor3 = theme.Error
     print("🔴 Fishing stopped")
@@ -486,7 +437,7 @@ end
 -- Build UI
 CreateSection("🎯 FISHING CONTROLS")
 
-local startBtn = CreateButton("🚀 START FISHING", "Click to start auto fishing", function()
+local startBtn = CreateButton("🚀 START FISHING", "Start silent auto fishing", function()
     if fishingActive then
         StopFishing()
         startBtn:FindFirstChild("TextLabel").Text = "🚀 START FISHING"
@@ -498,41 +449,48 @@ local startBtn = CreateButton("🚀 START FISHING", "Click to start auto fishing
     end
 end)
 
-CreateSection("⚡ SETTINGS")
+CreateSection("⚡ FISHING MODES")
 
-CreateToggle("Instant Fishing", "Fast fishing mode", config.instantFishing, function(v)
+CreateToggle("Instant Fishing", "Ultra fast mode (0.05s delay)", config.instantFishing, function(v)
     config.instantFishing = v
-    config.fishingDelay = v and 0.05 or 0.2
+    config.fishingDelay = v and 0.05 or 0.15
+    if v then
+        config.blantantMode = false
+    end
 end)
 
-CreateToggle("Blantant Mode", "Ultra fast (may be risky)", config.blantantMode, function(v)
+CreateToggle("Blantant Mode", "Extreme speed (5ms delay)", config.blantantMode, function(v)
     config.blantantMode = v
-    config.fishingDelay = v and 0.05 or 0.15
+    if v then
+        config.instantFishing = false
+    end
 end)
 
 CreateSection("📊 STATISTICS")
 
 local statLabels = {
-    fish = CreateLabel("🎣 Fish Caught: 0"),
+    fish = CreateLabel("🎣 Fish: 0"),
     attempts = CreateLabel("🔄 Attempts: 0"),
     rate = CreateLabel("⚡ Rate: 0.00/s"),
 }
 
 task.spawn(function()
-    while task.wait(0.5) do
-        local elapsed = math.max(1, tick() - stats.startTime)
-        local rate = stats.fishCaught / elapsed
-        
-        statLabels.fish.Text = "🎣 Fish Caught: " .. stats.fishCaught
-        statLabels.attempts.Text = "🔄 Attempts: " .. stats.attempts
-        statLabels.rate.Text = string.format("⚡ Rate: %.2f/s", rate)
+    while task.wait(0.4) do
+        pcall(function()
+            local elapsed = math.max(1, tick() - stats.startTime)
+            local rate = stats.fishCaught / elapsed
+            
+            statLabels.fish.Text = "🎣 Fish Caught: " .. stats.fishCaught
+            statLabels.attempts.Text = "🔄 Attempts: " .. stats.attempts
+            statLabels.rate.Text = string.format("⚡ Rate: %.2f/s", rate)
+        end)
     end
 end)
 
-CreateSection("🎮 ACTIONS")
+CreateSection("🎮 QUICK ACTIONS")
 
 CreateButton("🎣 Equip Rod", "Manually equip fishing rod", function()
-    if EquipRod() then
+    if EquipRodSilent() then
         Status.Text = "✅ Rod equipped!"
         Status.TextColor3 = theme.Success
     else
@@ -549,14 +507,12 @@ CreateButton("📊 Reset Stats", "Reset all statistics", function()
     Status.TextColor3 = theme.Success
 end)
 
-CreateButton("🗑️ Close UI", "Close this interface", function()
+CreateButton("🗑️ Close UI", "Destroy this interface", function()
+    StopFishing()
     ScreenGui:Destroy()
-    if fishingConnection then
-        fishingConnection:Disconnect()
-    end
 end)
 
--- Auto start
+-- Auto-start if enabled
 if Kaitun["Fishing"]["Auto Fishing"] then
     task.wait(2)
     StartFishing()
@@ -565,6 +521,7 @@ if Kaitun["Fishing"]["Auto Fishing"] then
     print("✅ Auto-started fishing!")
 end
 
-print("✅ Kaitun Fish It Loaded Successfully!")
+print("✅ Kaitun Fish It Loaded!")
 print("🎣 Version: " .. _G.Version)
+print("🔇 Silent mode enabled - No jumping!")
 print("⚡ Ready to fish!")
