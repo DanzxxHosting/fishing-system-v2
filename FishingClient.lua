@@ -1,4 +1,4 @@
--- Kaitun Fish It - Full Featured Fixed Version
+-- Kaitun Fish It - Blantant Auto Fishing Edition
 -- Paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
 
 local Players = game:GetService("Players")
@@ -6,9 +6,11 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local mouse = player:GetMouse()
 
 -- CONFIG
 local WIDTH = 920
@@ -26,18 +28,19 @@ local theme = {
     Error = Color3.fromRGB(255, 70, 70),
     Text = Color3.fromRGB(240, 240, 240),
     TextSecondary = Color3.fromRGB(180, 180, 180),
-    Exploit = Color3.fromRGB(150, 0, 255)
 }
 
 -- CONFIG
 local config = {
     autoFishing = false,
-    instantFishing = true,
-    fishingDelay = 0.1,
     blantantMode = false,
+    fishingDelay = 0.01,
     autoEquipRod = true,
     autoSell = false,
-    antiAFK = false
+    antiAFK = false,
+    autoShake = true,
+    autoReel = true,
+    perfectCatch = true
 }
 
 -- STATS
@@ -46,13 +49,14 @@ local stats = {
     startTime = tick(),
     attempts = 0,
     successfulCatch = 0,
-    failedCatch = 0,
-    sessionTime = 0
+    failedCatch = 0
 }
 
 -- STATE
 local fishingActive = false
-local fishingConnection = nil
+local fishingLoop = nil
+local reelLoop = nil
+local shakeLoop = nil
 
 -- Cleanup old
 if playerGui:FindFirstChild("NeonDashboardUI") then
@@ -120,7 +124,7 @@ title.Position = UDim2.new(0,8,0,0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
-title.Text = "⚡ KAITUN FISH IT - ULTIMATE"
+title.Text = "⚡ KAITUN FISH IT - BLANTANT"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -253,7 +257,6 @@ end
 -- Menu items
 local items = {
     {"Fishing", "🎣"},
-    {"Auto Fish", "⚡"},
     {"Teleport", "📍"},
     {"Settings", "⚙"},
     {"Stats", "📊"},
@@ -283,24 +286,16 @@ cTitle.Position = UDim2.new(0,12,0,12)
 cTitle.BackgroundTransparency = 1
 cTitle.Font = Enum.Font.GothamBold
 cTitle.TextSize = 16
-cTitle.Text = "Fishing Controls"
+cTitle.Text = "Blantant Auto Fishing"
 cTitle.TextColor3 = Color3.fromRGB(245,245,245)
 cTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 -- =============================================
--- UTILITY FUNCTIONS
+-- BLANTANT AUTO FISHING FUNCTIONS
 -- =============================================
 
-local function SafeCall(func, ...)
-    local success, result = pcall(func, ...)
-    if not success then
-        warn("[Kaitun] Error:", result)
-    end
-    return success, result
-end
-
 local function GetCharacter()
-    return player.Character or player.CharacterAdded:Wait()
+    return player.Character
 end
 
 local function GetHumanoid()
@@ -308,29 +303,21 @@ local function GetHumanoid()
     return char and char:FindFirstChildOfClass("Humanoid")
 end
 
-local function GetFishingRod()
+local function GetRod()
     local char = GetCharacter()
     if not char then return nil end
     
-    -- Check character
     for _, item in pairs(char:GetChildren()) do
-        if item:IsA("Tool") then
-            local name = item.Name:lower()
-            if name:find("rod") or name:find("fish") or name:find("pole") then
-                return item
-            end
+        if item:IsA("Tool") and (item.Name:lower():find("rod") or item.Name:lower():find("fish")) then
+            return item
         end
     end
     
-    -- Check backpack
     local backpack = player:FindFirstChild("Backpack")
     if backpack then
         for _, item in pairs(backpack:GetChildren()) do
-            if item:IsA("Tool") then
-                local name = item.Name:lower()
-                if name:find("rod") or name:find("fish") or name:find("pole") then
-                    return item
-                end
+            if item:IsA("Tool") and (item.Name:lower():find("rod") or item.Name:lower():find("fish")) then
+                return item
             end
         end
     end
@@ -341,175 +328,176 @@ end
 local function EquipRod()
     if not config.autoEquipRod then return true end
     
-    local rod = GetFishingRod()
-    if not rod then
-        Status.Text = "⚠️ No Rod Found"
-        Status.TextColor3 = theme.Warning
-        return false
-    end
+    local rod = GetRod()
+    if not rod then return false end
     
-    if rod.Parent == player.Character then
-        return true
-    end
+    if rod.Parent == player.Character then return true end
     
     local humanoid = GetHumanoid()
     if humanoid then
-        SafeCall(function()
+        pcall(function()
             humanoid:EquipTool(rod)
         end)
-        task.wait(0.2)
+        task.wait(0.1)
     end
     
     return rod.Parent == player.Character
 end
 
--- =============================================
--- FISHING FUNCTIONS
--- =============================================
-
-local function FindFishingUI()
-    local gui = playerGui:FindFirstChild("FishingGui") or 
-                playerGui:FindFirstChild("FishGui") or
-                playerGui:FindFirstChild("reel")
-    return gui
-end
-
-local function CheckBite()
-    local gui = FindFishingUI()
-    if not gui then return false end
+-- Cast dengan semua method
+local function Cast()
+    stats.attempts = stats.attempts + 1
     
-    -- Check berbagai UI patterns
-    local bite = gui:FindFirstChild("Bite") or 
-                gui:FindFirstChild("bite") or
-                gui:FindFirstChild("Pull") or
-                gui:FindFirstChild("Reel")
+    local rod = GetRod()
+    if not rod then return false end
     
-    return bite and bite.Visible
-end
-
-local function TryCast()
-    local rod = GetFishingRod()
-    if not rod or rod.Parent ~= player.Character then
-        return false
-    end
-    
-    -- Method 1: Remote events
-    SafeCall(function()
-        local events = ReplicatedStorage:FindFirstChild("events") or 
-                      ReplicatedStorage:FindFirstChild("Events") or
-                      ReplicatedStorage:FindFirstChild("Remotes")
-        
+    -- Method 1: FireServer events
+    pcall(function()
+        local events = ReplicatedStorage:FindFirstChild("events")
         if events then
-            local castEvent = events:FindFirstChild("cast") or
-                            events:FindFirstChild("Cast") or
-                            events:FindFirstChild("CastRod")
-            
-            if castEvent and castEvent:IsA("RemoteEvent") then
-                castEvent:FireServer(100)
-                return true
+            local castEvent = events:FindFirstChild("cast")
+            if castEvent then
+                castEvent:FireServer(100, 1)
             end
         end
     end)
     
-    -- Method 2: Tool activation
-    SafeCall(function()
-        rod:Activate()
-    end)
-    
-    -- Method 3: ProximityPrompt
-    SafeCall(function()
-        for _, desc in pairs(rod:GetDescendants()) do
-            if desc:IsA("ProximityPrompt") then
-                fireproximityprompt(desc)
-            end
+    -- Method 2: Tool Activate
+    pcall(function()
+        if rod.Parent == player.Character then
+            rod:Activate()
         end
     end)
     
-    -- Method 4: ClickDetector
-    SafeCall(function()
-        for _, desc in pairs(rod:GetDescendants()) do
-            if desc:IsA("ClickDetector") then
-                fireclickdetector(desc)
-            end
-        end
+    -- Method 3: Click simulation
+    pcall(function()
+        mouse.Button1Down:Fire()
+        task.wait(0.01)
+        mouse.Button1Up:Fire()
     end)
     
     return true
 end
 
-local function TryReel()
-    -- Method 1: Remote events
-    SafeCall(function()
-        local events = ReplicatedStorage:FindFirstChild("events") or 
-                      ReplicatedStorage:FindFirstChild("Events") or
-                      ReplicatedStorage:FindFirstChild("Remotes")
-        
-        if events then
-            local reelEvent = events:FindFirstChild("reelfinished") or
-                            events:FindFirstChild("Reel") or
-                            events:FindFirstChild("CatchFish")
-            
-            if reelEvent and reelEvent:IsA("RemoteEvent") then
-                reelEvent:FireServer(100, true)
-                return true
-            end
-        end
-    end)
-    
-    -- Method 2: UI button clicks
-    SafeCall(function()
-        local gui = FindFishingUI()
-        if gui then
-            for _, btn in pairs(gui:GetDescendants()) do
-                if btn:IsA("TextButton") or btn:IsA("ImageButton") then
-                    local btnName = btn.Name:lower()
-                    if btnName:find("reel") or btnName:find("catch") or btnName:find("pull") then
-                        for _, connection in pairs(getconnections(btn.MouseButton1Click)) do
-                            connection:Fire()
+-- Auto Reel Function
+local function AutoReel()
+    while config.autoReel and fishingActive do
+        pcall(function()
+            -- Method 1: Check reel UI
+            local reelUI = playerGui:FindFirstChild("reel")
+            if reelUI then
+                local bar = reelUI:FindFirstChild("bar")
+                if bar then
+                    local reelfinish = bar:FindFirstChild("reelfinish")
+                    if reelfinish and reelfinish.Visible then
+                        -- Fire reel event
+                        local events = ReplicatedStorage:FindFirstChild("events")
+                        if events then
+                            local reelEvent = events:FindFirstChild("reelfinished")
+                            if reelEvent then
+                                reelEvent:FireServer(100, true)
+                                stats.successfulCatch = stats.successfulCatch + 1
+                                stats.fishCaught = stats.fishCaught + 1
+                            end
                         end
                     end
                 end
             end
-        end
-    end)
-    
-    return true
+            
+            -- Method 2: Check any fishing GUI
+            for _, gui in pairs(playerGui:GetChildren()) do
+                if gui:IsA("ScreenGui") then
+                    for _, obj in pairs(gui:GetDescendants()) do
+                        if obj:IsA("TextButton") then
+                            local text = obj.Text:lower()
+                            if text:find("reel") or text:find("catch") then
+                                for _, connection in pairs(getconnections(obj.MouseButton1Click)) do
+                                    connection:Fire()
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        task.wait(0.01)
+    end
 end
 
-local function DoFishing()
-    stats.attempts = stats.attempts + 1
-    
-    -- Equip rod
-    if not EquipRod() then
-        task.wait(1)
-        return
+-- Auto Shake Function
+local function AutoShake()
+    while config.autoShake and fishingActive do
+        pcall(function()
+            local shakeUI = playerGui:FindFirstChild("shakeui")
+            if shakeUI and shakeUI.Enabled then
+                local safezone = shakeUI:FindFirstChild("safezone")
+                if safezone then
+                    local button = shakeUI:FindFirstChild("button")
+                    if button then
+                        -- Perfect shake position
+                        local events = ReplicatedStorage:FindFirstChild("events")
+                        if events then
+                            local shakeEvent = events:FindFirstChild("shake") or events:FindFirstChild("shakereeled")
+                            if shakeEvent then
+                                shakeEvent:FireServer(100, true)
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        task.wait(0.01)
     end
-    
-    -- Cast
-    if TryCast() then
-        Status.Text = "🎣 Casting..."
-        Status.TextColor3 = theme.Success
-        task.wait(config.fishingDelay)
+end
+
+-- Perfect Catch Function
+local function PerfectCatch()
+    while config.perfectCatch and fishingActive do
+        pcall(function()
+            -- Auto perfect timing untuk semua minigame
+            for _, gui in pairs(playerGui:GetChildren()) do
+                if gui:IsA("ScreenGui") and gui.Enabled then
+                    -- Check untuk bar/slider minigame
+                    for _, obj in pairs(gui:GetDescendants()) do
+                        if obj:IsA("Frame") and obj.Name:lower():find("perfect") then
+                            local events = ReplicatedStorage:FindFirstChild("events")
+                            if events then
+                                for _, event in pairs(events:GetChildren()) do
+                                    if event:IsA("RemoteEvent") then
+                                        event:FireServer(100, true, "perfect")
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        task.wait(0.01)
     end
-    
-    -- Wait for bite (with timeout)
-    local waitTime = 0
-    while waitTime < 10 and fishingActive do
-        if CheckBite() then
-            -- Reel in
-            if TryReel() then
-                stats.fishCaught = stats.fishCaught + 1
-                stats.successfulCatch = stats.successfulCatch + 1
-                Status.Text = string.format("✅ Caught! Total: %d", stats.fishCaught)
+end
+
+-- Main Blantant Fishing Loop
+local function BlantantFishing()
+    while fishingActive do
+        pcall(function()
+            -- Equip rod
+            if not EquipRod() then
+                Status.Text = "⚠️ No Rod Found!"
+                Status.TextColor3 = theme.Warning
+                task.wait(1)
+                return
+            end
+            
+            -- Cast
+            if Cast() then
+                Status.Text = string.format("⚡ BLANTANT | Fish: %d", stats.fishCaught)
                 Status.TextColor3 = theme.Success
             end
-            break
-        end
-        waitTime = waitTime + 0.1
-        task.wait(0.1)
+            
+            task.wait(config.fishingDelay)
+        end)
     end
-    
-    task.wait(config.fishingDelay)
 end
 
 local function StartFishing()
@@ -517,24 +505,39 @@ local function StartFishing()
     
     fishingActive = true
     stats.startTime = tick()
-    Status.Text = "🟢 Fishing Active"
+    Status.Text = "⚡ FISHING ACTIVE"
     Status.TextColor3 = theme.Success
     
-    print("[Kaitun] Fishing started")
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print("⚡ BLANTANT AUTO FISHING STARTED")
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     
-    task.spawn(function()
-        while fishingActive do
-            SafeCall(DoFishing)
-            task.wait(0.1)
-        end
-    end)
+    -- Start all loops
+    fishingLoop = task.spawn(BlantantFishing)
+    reelLoop = task.spawn(AutoReel)
+    shakeLoop = task.spawn(AutoShake)
+    task.spawn(PerfectCatch)
 end
 
 local function StopFishing()
     fishingActive = false
-    Status.Text = "🔴 Stopped"
+    Status.Text = "🔴 STOPPED"
     Status.TextColor3 = theme.Error
-    print("[Kaitun] Fishing stopped")
+    
+    if fishingLoop then
+        task.cancel(fishingLoop)
+        fishingLoop = nil
+    end
+    if reelLoop then
+        task.cancel(reelLoop)
+        reelLoop = nil
+    end
+    if shakeLoop then
+        task.cancel(shakeLoop)
+        shakeLoop = nil
+    end
+    
+    print("🔴 Fishing stopped")
 end
 
 -- =============================================
@@ -542,14 +545,19 @@ end
 -- =============================================
 
 local function AutoSell()
-    SafeCall(function()
-        local merchant = workspace:FindFirstChild("world") and 
-                        workspace.world:FindFirstChild("npcs") and
-                        workspace.world.npcs:FindFirstChild("Merchant")
+    pcall(function()
+        local merchant = workspace:FindFirstChild("world")
+        if merchant then
+            merchant = merchant:FindFirstChild("npcs")
+            if merchant then
+                merchant = merchant:FindFirstChild("Merchant")
+            end
+        end
         
         if merchant and merchant:FindFirstChild("HumanoidRootPart") then
             local char = GetCharacter()
             if char and char:FindFirstChild("HumanoidRootPart") then
+                local oldPos = char.HumanoidRootPart.CFrame
                 char.HumanoidRootPart.CFrame = merchant.HumanoidRootPart.CFrame
                 task.wait(0.5)
                 
@@ -558,10 +566,13 @@ local function AutoSell()
                     local sellEvent = events:FindFirstChild("sellfish")
                     if sellEvent then
                         sellEvent:FireServer()
-                        Status.Text = "💰 Sold Fish!"
+                        Status.Text = "💰 SOLD FISH!"
                         Status.TextColor3 = theme.Success
                     end
                 end
+                
+                task.wait(0.5)
+                char.HumanoidRootPart.CFrame = oldPos
             end
         end
     end)
@@ -569,7 +580,7 @@ end
 
 -- Auto sell loop
 task.spawn(function()
-    while task.wait(30) do
+    while task.wait(60) do
         if config.autoSell and fishingActive then
             AutoSell()
         end
@@ -583,7 +594,7 @@ end)
 task.spawn(function()
     while task.wait(120) do
         if config.antiAFK then
-            SafeCall(function()
+            pcall(function()
                 local VirtualUser = game:GetService("VirtualUser")
                 VirtualUser:CaptureController()
                 VirtualUser:ClickButton2(Vector2.new())
@@ -707,11 +718,31 @@ local function ShowFishingContent()
     
     local scroll = CreateScrollFrame()
     
+    -- Giant warning
+    local warning = Instance.new("Frame", scroll)
+    warning.Size = UDim2.new(1, -40, 0, 80)
+    warning.Position = UDim2.new(0, 20, 0, 20)
+    warning.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
+    warning.BorderSizePixel = 0
+    local wCorner = Instance.new("UICorner", warning)
+    wCorner.CornerRadius = UDim.new(0,8)
+    
+    local wText = Instance.new("TextLabel", warning)
+    wText.Size = UDim2.new(1, -20, 1, 0)
+    wText.Position = UDim2.new(0, 10, 0, 0)
+    wText.BackgroundTransparency = 1
+    wText.Font = Enum.Font.GothamBold
+    wText.Text = "⚠️ BLANTANT MODE ACTIVE ⚠️\nULTRA FAST FISHING - HIGH DETECTION RISK"
+    wText.TextColor3 = Color3.fromRGB(255, 255, 100)
+    wText.TextSize = 14
+    wText.TextWrapped = true
+    
     -- Start/Stop button
-    local startBtn = CreateButton(scroll, "🚀 START FISHING", UDim2.new(0, 20, 0, 20), function()
+    yOffset = 120
+    local startBtn = CreateButton(scroll, "⚡ START BLANTANT FISHING", UDim2.new(0, 20, 0, 120), function()
         if fishingActive then
             StopFishing()
-            startBtn.Text = "🚀 START FISHING"
+            startBtn.Text = "⚡ START BLANTANT FISHING"
             startBtn.BackgroundColor3 = theme.Accent
         else
             StartFishing()
@@ -720,32 +751,30 @@ local function ShowFishingContent()
         end
     end)
     
-    yOffset = 90
+    yOffset = 200
     
-    CreateToggle(scroll, "Auto Equip Rod", "Automatically equip fishing rod", config.autoEquipRod, function(v)
-        config.autoEquipRod = v
-    end)
-    
-    CreateToggle(scroll, "Instant Mode", "Faster fishing speed", config.instantFishing, function(v)
-        config.instantFishing = v
-        config.fishingDelay = v and 0.05 or 0.2
-    end)
-    
-    CreateToggle(scroll, "Blantant Mode", "ULTRA FAST (risky)", config.blantantMode, function(v)
+    CreateToggle(scroll, "⚡ Blantant Mode", "Ultra fast fishing (0.01s delay)", config.blantantMode, function(v)
         config.blantantMode = v
-        if v then
-            config.fishingDelay = 0.01
-            config.instantFishing = true
-        else
-            config.fishingDelay = 0.1
-        end
+        config.fishingDelay = v and 0.01 or 0.1
     end)
     
-    CreateToggle(scroll, "Auto Sell Fish", "Auto sell to merchant", config.autoSell, function(v)
+    CreateToggle(scroll, "Auto Reel", "Auto reel when fish bites", config.autoReel, function(v)
+        config.autoReel = v
+    end)
+    
+    CreateToggle(scroll, "Auto Shake", "Auto shake minigame", config.autoShake, function(v)
+        config.autoShake = v
+    end)
+    
+    CreateToggle(scroll, "Perfect Catch", "Auto perfect timing", config.perfectCatch, function(v)
+        config.perfectCatch = v
+    end)
+    
+    CreateToggle(scroll, "Auto Sell Fish", "Auto sell to merchant every 60s", config.autoSell, function(v)
         config.autoSell = v
     end)
     
-    CreateToggle(scroll, "Anti AFK", "Prevent kick for AFK", config.antiAFK, function(v)
+    CreateToggle(scroll, "Anti AFK", "Prevent AFK kick", config.antiAFK, function(v)
         config.antiAFK = v
     end)
 end
@@ -763,7 +792,7 @@ local function ShowStatsContent()
     
     local function CreateStat(name, value, pos)
         local stat = Instance.new("Frame", panel)
-        stat.Size = UDim2.new(0.45, 0, 0, 60)
+        stat.Size = UDim2.new(0.45, 0, 0, 70)
         stat.Position = pos
         stat.BackgroundColor3 = Color3.fromRGB(20,20,22)
         stat.BorderSizePixel = 0
@@ -781,13 +810,13 @@ local function ShowStatsContent()
         nameLabel.TextXAlignment = Enum.TextXAlignment.Left
         
         local valueLabel = Instance.new("TextLabel", stat)
-        valueLabel.Size = UDim2.new(1, -20, 0, 30)
-        valueLabel.Position = UDim2.new(0, 10, 0, 25)
+        valueLabel.Size = UDim2.new(1, -20, 0, 35)
+        valueLabel.Position = UDim2.new(0, 10, 0, 30)
         valueLabel.BackgroundTransparency = 1
         valueLabel.Font = Enum.Font.GothamBold
         valueLabel.Text = value
         valueLabel.TextColor3 = theme.Text
-        valueLabel.TextSize = 18
+        valueLabel.TextSize = 20
         valueLabel.TextXAlignment = Enum.TextXAlignment.Left
         
         return stat, valueLabel
@@ -795,10 +824,10 @@ local function ShowStatsContent()
     
     local fishStat, fishValue = CreateStat("🎣 Fish Caught", "0", UDim2.new(0, 20, 0, 20))
     local attemptStat, attemptValue = CreateStat("🔄 Attempts", "0", UDim2.new(0.52, 0, 0, 20))
-    local successStat, successValue = CreateStat("✅ Success Rate", "0%", UDim2.new(0, 20, 0, 100))
-    local rateStat, rateValue = CreateStat("⚡ Fish/Second", "0.00", UDim2.new(0.52, 0, 0, 100))
-    local timeStat, timeValue = CreateStat("⏱️ Session Time", "0:00:00", UDim2.new(0, 20, 0, 180))
-    local statusStat, statusValue = CreateStat("📊 Status", "Idle", UDim2.new(0.52, 0, 0, 180))
+    local successStat, successValue = CreateStat("✅ Success Rate", "0%", UDim2.new(0, 20, 0, 110))
+    local rateStat, rateValue = CreateStat("⚡ Fish/Second", "0.00", UDim2.new(0.52, 0, 0, 110))
+    local timeStat, timeValue = CreateStat("⏱️ Session Time", "0:00:00", UDim2.new(0, 20, 0, 200))
+    local statusStat, statusValue = CreateStat("📊 Status", "Idle", UDim2.new(0.52, 0, 0, 200))
     
     -- Update stats in real-time
     task.spawn(function()
@@ -817,7 +846,7 @@ local function ShowStatsContent()
             local seconds = math.floor(elapsed % 60)
             timeValue.Text = string.format("%d:%02d:%02d", hours, minutes, seconds)
             
-            statusValue.Text = fishingActive and "🟢 Active" or "🔴 Idle"
+            statusValue.Text = fishingActive and "⚡ ACTIVE" or "🔴 Idle"
             statusValue.TextColor3 = fishingActive and theme.Success or theme.Error
         end
     end)
@@ -862,7 +891,7 @@ local function ShowTeleportContent()
         end)
         
         btn.MouseButton1Click:Connect(function()
-            SafeCall(function()
+            pcall(function()
                 local char = GetCharacter()
                 if char and char:FindFirstChild("HumanoidRootPart") then
                     char.HumanoidRootPart.CFrame = island.pos
@@ -877,7 +906,7 @@ local function ShowTeleportContent()
     
     -- Sell Fish button
     yOffset = yOffset + 20
-    CreateButton(scroll, "💰 SELL FISH", UDim2.new(0, 20, 0, yOffset), function()
+    CreateButton(scroll, "💰 SELL FISH NOW", UDim2.new(0, 20, 0, yOffset), function()
         AutoSell()
     end)
 end
@@ -893,7 +922,7 @@ local function ShowSettingsContent()
     settingsTitle.Position = UDim2.new(0, 20, 0, 20)
     settingsTitle.BackgroundTransparency = 1
     settingsTitle.Font = Enum.Font.GothamBold
-    settingsTitle.Text = "⚙️ General Settings"
+    settingsTitle.Text = "⚙️ Settings & Configuration"
     settingsTitle.TextColor3 = theme.Text
     settingsTitle.TextSize = 16
     settingsTitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -910,7 +939,7 @@ local function ShowSettingsContent()
         print("[Settings] Auto Equip:", v)
     end)
     
-    CreateToggle(scroll, "Auto Sell", "Auto sell when inventory full", config.autoSell, function(v)
+    CreateToggle(scroll, "Auto Sell", "Auto sell every 60s", config.autoSell, function(v)
         config.autoSell = v
         print("[Settings] Auto Sell:", v)
     end)
@@ -930,13 +959,13 @@ local function ShowSettingsContent()
     sliderLabel.Position = UDim2.new(0, 10, 0, 5)
     sliderLabel.BackgroundTransparency = 1
     sliderLabel.Font = Enum.Font.GothamBold
-    sliderLabel.Text = string.format("Fishing Delay: %.2fs", config.fishingDelay)
+    sliderLabel.Text = string.format("Fishing Delay: %.3fs", config.fishingDelay)
     sliderLabel.TextColor3 = theme.Text
     sliderLabel.TextSize = 14
     sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
     
     local sliderBg = Instance.new("Frame", sliderFrame)
-    sliderBg.Size = UDim2.new(1, -40, 0, 6)
+    sliderBg.Size = UDim2.new(1, -40, 0, 8)
     sliderBg.Position = UDim2.new(0, 20, 0, 45)
     sliderBg.BackgroundColor3 = Color3.fromRGB(40,40,40)
     sliderBg.BorderSizePixel = 0
@@ -951,8 +980,8 @@ local function ShowSettingsContent()
     sliderFillCorner.CornerRadius = UDim.new(1,0)
     
     local sliderBtn = Instance.new("TextButton", sliderBg)
-    sliderBtn.Size = UDim2.new(0, 20, 0, 20)
-    sliderBtn.Position = UDim2.new(config.fishingDelay / 1, -10, 0.5, -10)
+    sliderBtn.Size = UDim2.new(0, 24, 0, 24)
+    sliderBtn.Position = UDim2.new(config.fishingDelay / 1, -12, 0.5, -12)
     sliderBtn.BackgroundColor3 = theme.Accent
     sliderBtn.Text = ""
     sliderBtn.AutoButtonColor = false
@@ -978,9 +1007,9 @@ local function ShowSettingsContent()
             local relative = math.clamp((mousePos - sliderPos) / sliderSize, 0, 1)
             
             config.fishingDelay = math.clamp(relative * 1, 0.01, 1)
-            sliderLabel.Text = string.format("Fishing Delay: %.2fs", config.fishingDelay)
+            sliderLabel.Text = string.format("Fishing Delay: %.3fs", config.fishingDelay)
             sliderFill.Size = UDim2.new(relative, 0, 1, 0)
-            sliderBtn.Position = UDim2.new(relative, -10, 0.5, -10)
+            sliderBtn.Position = UDim2.new(relative, -12, 0.5, -12)
         end
     end)
     
@@ -996,6 +1025,35 @@ local function ShowSettingsContent()
         Status.Text = "📊 Stats Reset"
         Status.TextColor3 = theme.Success
     end)
+    
+    yOffset = yOffset + 70
+    
+    -- Info panel
+    local infoPanel = Instance.new("Frame", scroll)
+    infoPanel.Size = UDim2.new(1, -40, 0, 120)
+    infoPanel.Position = UDim2.new(0, 20, 0, yOffset)
+    infoPanel.BackgroundColor3 = Color3.fromRGB(15,15,20)
+    infoPanel.BorderSizePixel = 0
+    local infoCorner = Instance.new("UICorner", infoPanel)
+    infoCorner.CornerRadius = UDim.new(0,8)
+    
+    local infoText = Instance.new("TextLabel", infoPanel)
+    infoText.Size = UDim2.new(1, -20, 1, -10)
+    infoText.Position = UDim2.new(0, 10, 0, 5)
+    infoText.BackgroundTransparency = 1
+    infoText.Font = Enum.Font.Gotham
+    infoText.Text = [[ℹ️ BLANTANT MODE INFO:
+
+⚡ Ultra fast fishing with 0.01s delay
+🎯 Auto reel, shake, and perfect catch
+💰 Auto sell every 60 seconds
+🛡️ Anti AFK protection
+⚠️ HIGH DETECTION RISK - Use at own risk]]
+    infoText.TextColor3 = theme.TextSecondary
+    infoText.TextSize = 12
+    infoText.TextXAlignment = Enum.TextXAlignment.Left
+    infoText.TextYAlignment = Enum.TextYAlignment.Top
+    infoText.TextWrapped = true
 end
 
 -- =============================================
@@ -1016,8 +1074,6 @@ for name, btn in pairs(menuButtons) do
         activeMenu = name
         
         if name == "Fishing" then
-            ShowFishingContent()
-        elseif name == "Auto Fish" then
             ShowFishingContent()
         elseif name == "Stats" then
             ShowStatsContent()
@@ -1045,17 +1101,17 @@ local uiState = {
 local function MinimizeUI()
     uiState.isMinimized = true
     TweenService:Create(card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 300, 0, 80)
+        Size = UDim2.new(0, 350, 0, 80)
     }):Play()
     TweenService:Create(glow, TweenInfo.new(0.3), {
-        Size = UDim2.new(0, 380, 0, 160),
+        Size = UDim2.new(0, 430, 0, 160),
         ImageTransparency = 0.95
     }):Play()
     
     sidebar.Visible = false
     content.Visible = false
     
-    title.Text = "🎣 Kaitun Fish It"
+    title.Text = "⚡ Kaitun Fish"
     Status.Text = "⬇️ Minimized"
 end
 
@@ -1072,8 +1128,8 @@ local function MaximizeUI()
     sidebar.Visible = true
     content.Visible = true
     
-    title.Text = "⚡ KAITUN FISH IT - ULTIMATE"
-    Status.Text = fishingActive and "🟢 Active" or "🔴 Ready"
+    title.Text = "⚡ KAITUN FISH IT - BLANTANT"
+    Status.Text = fishingActive and "⚡ ACTIVE" or "🔴 Ready"
 end
 
 local function ToggleMinimize()
@@ -1111,8 +1167,12 @@ local startPos
 
 local function update(input)
     local delta = input.Position - dragStart
-    container.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    glow.Position = container.Position
+    local newX = startPos.X.Scale
+    local newXOffset = startPos.X.Offset + delta.X
+    local newY = startPos.Y.Scale
+    local newYOffset = startPos.Y.Offset + delta.Y
+    
+    container.Position = UDim2.new(newX, newXOffset, newY, newYOffset)
 end
 
 titleBar.InputBegan:Connect(function(input)
@@ -1148,28 +1208,32 @@ MaximizeUI()
 -- FINAL INITIALIZATION
 -- =============================================
 
-print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("⚡ KAITUN FISH IT - ULTIMATE EDITION")
-print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("⚡ KAITUN FISH IT - BLANTANT AUTO FISHING")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 print("✅ UI Loaded Successfully")
-print("🎣 Fishing System: Ready")
-print("📍 Teleport System: Ready")
-print("⚙️ Settings System: Ready")
-print("📊 Stats System: Ready")
-print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🎮 Controls:")
-print("   • Use - and □ buttons to minimize/maximize")
-print("   • Drag title bar to move UI")
-print("   • Click menu items to navigate")
-print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("⚠️ Features:")
-print("   • Auto Fishing with multiple methods")
-print("   • Auto Equip Rod")
-print("   • Auto Sell Fish")
+print("⚡ Blantant Mode: READY")
+print("🎣 Auto Fishing: READY")
+print("🎯 Auto Reel/Shake: READY")
+print("📍 Teleport: READY")
+print("💰 Auto Sell: READY")
+print("🛡️ Anti AFK: READY")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("🎮 Features:")
+print("   • Ultra Fast Fishing (0.01s delay)")
+print("   • Auto Cast, Reel, Shake, Perfect Catch")
+print("   • Auto Sell every 60 seconds")
 print("   • Island Teleport")
-print("   • Anti AFK")
-print("   • Real-time Statistics")
-print("   • Customizable Delay")
-print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-print("🚀 Ready to fish! Click START FISHING to begin")
-print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("   • Real-time Stats")
+print("   • Draggable UI (drag title bar)")
+print("   • Minimize/Maximize (- and □ buttons)")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("⚠️ WARNING: BLANTANT MODE IS VERY FAST")
+print("⚠️ HIGH DETECTION RISK - USE AT OWN RISK")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+print("🚀 Ready! Click START BLANTANT FISHING")
+print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━") Equip Rod", "Auto equip fishing rod", config.autoEquipRod, function(v)
+        config.autoEquipRod = v
+    end)
+    
+    CreateToggle(scroll, "Auto
