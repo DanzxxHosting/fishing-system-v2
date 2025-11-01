@@ -545,6 +545,17 @@ end)
 
 CreateSection("📊 Statistics")
 
+
+CreateButton("🎣 Equip Rod", "Manually equip fishing rod", function()
+    if EquipRod() then
+        Status.Text = "✅ Rod equipped!"
+        Status.TextColor3 = theme.Success
+    else
+        Status.Text = "❌ No rod found!"
+        Status.TextColor3 = theme.Error
+    end
+end)
+
 CreateButton("🗑️ Close UI", "Close this interface", function()
     ScreenGui:Destroy()
     if fishingConnection then
