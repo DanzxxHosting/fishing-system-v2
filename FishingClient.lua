@@ -1,5 +1,5 @@
 -- UI-Only: Neon Panel (sidebar + content) — paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
--- Tema: hitam matte + merah neon. Toggle dengan tombol G. Safe (UI only).
+-- Tema: hitam matte + merah neon. Toggle dengan tombol - dan logo. Safe (UI only).
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -90,7 +90,7 @@ inner.Size = UDim2.new(1, -24, 1, -24)
 inner.Position = UDim2.new(0, 12, 0, 12)
 inner.BackgroundTransparency = 1
 
--- Title bar
+-- Title bar dengan kontrol minimize/maximize
 local titleBar = Instance.new("Frame", inner)
 titleBar.Size = UDim2.new(1,0,0,48)
 titleBar.Position = UDim2.new(0,0,0,0)
@@ -115,6 +115,40 @@ statusLabel.TextSize = 13
 statusLabel.Text = "🔴 Ready"
 statusLabel.TextColor3 = Color3.fromRGB(200,200,200)
 statusLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+-- Kontrol minimize/maximize di pojok kanan atas
+local controlFrame = Instance.new("Frame", titleBar)
+controlFrame.Size = UDim2.new(0, 60, 1, 0)
+controlFrame.Position = UDim2.new(1, -65, 0, 0)
+controlFrame.BackgroundTransparency = 1
+
+-- Minimize Button (-)
+local minimizeBtn = Instance.new("TextButton", controlFrame)
+minimizeBtn.Size = UDim2.new(0, 25, 0, 25)
+minimizeBtn.Position = UDim2.new(0, 0, 0.5, -12)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.Text = "_"
+minimizeBtn.TextColor3 = Color3.fromRGB(30, 30, 30)
+minimizeBtn.TextSize = 14
+minimizeBtn.AutoButtonColor = false
+
+local minCorner = Instance.new("UICorner", minimizeBtn)
+minCorner.CornerRadius = UDim.new(0, 6)
+
+-- Maximize Button (□)
+local maximizeBtn = Instance.new("TextButton", controlFrame)
+maximizeBtn.Size = UDim2.new(0, 25, 0, 25)
+maximizeBtn.Position = UDim2.new(0, 30, 0.5, -12)
+maximizeBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+maximizeBtn.Font = Enum.Font.GothamBold
+maximizeBtn.Text = "□"
+maximizeBtn.TextColor3 = Color3.fromRGB(30, 30, 30)
+maximizeBtn.TextSize = 12
+maximizeBtn.AutoButtonColor = false
+
+local maxCorner = Instance.new("UICorner", maximizeBtn)
+maxCorner.CornerRadius = UDim.new(0, 6)
 
 -- left sidebar
 local sidebar = Instance.new("Frame", inner)
@@ -580,39 +614,86 @@ end
 ShowFishingContent()
 menuButtons["Fishing"].BackgroundColor3 = Color3.fromRGB(32,8,8)
 
--- close/open toggle with G (with pop animation)
-local uiOpen = false
-local function toggleUI(show)
-    uiOpen = show
-    if show then
-        card.Visible = true
-        glow.Visible = true
-        container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
-        container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
-        container.AnchorPoint = Vector2.new(0.5,0.5)
-        container.ZIndex = 2
-        card:TweenSize(UDim2.new(0, WIDTH,0,HEIGHT), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.28, true)
-        TweenService:Create(glow, TweenInfo.new(0.28), {ImageTransparency = 0.8}):Play()
+-- UI State Management
+local uiState = {
+    isMinimized = false,
+    isVisible = true
+}
+
+-- Minimize/Maximize Functions
+local function MinimizeUI()
+    uiState.isMinimized = true
+    TweenService:Create(card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 300, 0, 80)
+    }):Play()
+    TweenService:Create(glow, TweenInfo.new(0.3), {
+        Size = UDim2.new(0, 380, 0, 160),
+        ImageTransparency = 0.95
+    }):Play()
+    
+    -- Sembunyikan konten
+    sidebar.Visible = false
+    content.Visible = false
+    
+    -- Update title untuk minimized state
+    title.Text = "🎣 Kaitun Fish It"
+    statusLabel.Text = "⬇️ Minimized"
+end
+
+local function MaximizeUI()
+    uiState.isMinimized = false
+    TweenService:Create(card, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, WIDTH, 0, HEIGHT)
+    }):Play()
+    TweenService:Create(glow, TweenInfo.new(0.3), {
+        Size = UDim2.new(0, WIDTH+80, 0, HEIGHT+80),
+        ImageTransparency = 0.92
+    }):Play()
+    
+    -- Tampilkan konten
+    sidebar.Visible = true
+    content.Visible = true
+    
+    -- Update title untuk normal state
+    title.Text = "⚡ KAITUN FISH IT - ULTIMATE"
+    statusLabel.Text = "🟢 Ready"
+end
+
+local function ToggleMinimize()
+    if uiState.isMinimized then
+        MaximizeUI()
     else
-        TweenService:Create(glow, TweenInfo.new(0.18), {ImageTransparency = 0.96}):Play()
-        card:TweenSize(UDim2.new(0, WIDTH*0.9,0,HEIGHT*0.9), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.16, true)
-        delay(0.16, function()
-            card.Visible = false
-            glow.Visible = false
-        end)
+        MinimizeUI()
     end
 end
 
--- initial hide
-toggleUI(false)
+-- Button Events
+minimizeBtn.MouseButton1Click:Connect(ToggleMinimize)
+maximizeBtn.MouseButton1Click:Connect(ToggleMinimize) -- Both buttons do the same thing
 
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.KeyCode == Enum.KeyCode.G then
-        toggleUI(not uiOpen)
-    end
+-- Hover effects untuk buttons
+minimizeBtn.MouseEnter:Connect(function()
+    TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 200, 0)}):Play()
+end)
+minimizeBtn.MouseLeave:Connect(function()
+    TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 170, 0)}):Play()
 end)
 
-print("[Kaitun Fish It] Loaded! Press G to toggle UI")
+maximizeBtn.MouseEnter:Connect(function()
+    TweenService:Create(maximizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 230, 255)}):Play()
+end)
+maximizeBtn.MouseLeave:Connect(function()
+    TweenService:Create(maximizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(0, 200, 255)}):Play()
+end)
+
+-- Posisi UI di tengah layar
+container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
+glow.Position = container.Position
+
+-- Auto start dengan UI maximized
+MaximizeUI()
+
+print("[Kaitun Fish It] Loaded!")
 print("🎣 Fishing system ready")
-print("⚡ Features: Auto Fishing, Instant Mode, Blantant Mode")
+print("⚡ Controls: Use - and □ buttons to minimize/maximize")
+print("📍 UI Position: Center screen")
