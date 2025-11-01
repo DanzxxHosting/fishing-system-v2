@@ -76,7 +76,7 @@ local config = {
     autoBuyWeather = Kaitun["Fishing"]["Auto Buy Weather"],
     autoSpawnBoat = false,
     antiAfk = false,
-    instantCatchActive = false -- New config for instant catch
+    instantCatchActive = false
 }
 
 -- Advanced Statistics
@@ -88,7 +88,7 @@ local stats = {
     sessionFish = 0,
     teleports = 0,
     itemsBought = 0,
-    instantCatches = 0 -- New stat for instant catches
+    instantCatches = 0
 }
 
 -- Fishing Variables
@@ -96,10 +96,40 @@ local fishingConnection
 local isFishing = false
 local instantCatchConnection
 
+-- UI Variables
+local ScreenGui
+local MainFrame
+local ToggleButton
+local isUIVisible = true
+
+-- Create Toggle Button
+local function CreateToggleButton()
+    ToggleButton = Instance.new("TextButton")
+    ToggleButton.Name = "UIToggleButton"
+    ToggleButton.Parent = player.PlayerGui
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+    ToggleButton.BorderSizePixel = 0
+    ToggleButton.Position = UDim2.new(0, 10, 0, 10)
+    ToggleButton.Size = UDim2.new(0, 120, 0, 40)
+    ToggleButton.ZIndex = 100
+    ToggleButton.Font = Enum.Font.GothamBold
+    ToggleButton.Text = "🔧 OPEN UI"
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleButton.TextSize = 14
+    
+    ToggleButton.MouseButton1Click:Connect(function()
+        if MainFrame then
+            isUIVisible = not isUIVisible
+            MainFrame.Visible = isUIVisible
+            ToggleButton.Text = isUIVisible and "🔧 CLOSE UI" or "🔧 OPEN UI"
+        end
+    end)
+end
+
 -- Simple UI Library
 local function CreateKaitunUI()
     -- Create ScreenGui
-    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "KaitunFishItUI"
     ScreenGui.Parent = player:WaitForChild("PlayerGui")
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -118,16 +148,17 @@ local function CreateKaitunUI()
     end
 
     -- Main Frame
-    local MainFrame = Instance.new("Frame")
+    MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Parent = MainContainer or ScreenGui
     MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.BackgroundColor3 = Color3.fromRGB(15, 25, 45)
     MainFrame.BorderSizePixel = 0
     MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    MainFrame.Size = UDim2.new(0, 500, 0, 650) -- Increased height for new button
+    MainFrame.Size = UDim2.new(0, 500, 0, 650)
     MainFrame.Active = true
     MainFrame.Draggable = true
+    MainFrame.Visible = isUIVisible
 
     -- Background Effect
     local BackgroundEffect = Instance.new("Frame")
@@ -187,7 +218,28 @@ local function CreateKaitunUI()
     CloseButton.TextSize = 12
 
     CloseButton.MouseButton1Click:Connect(function()
-        ScreenGui:Destroy()
+        isUIVisible = false
+        MainFrame.Visible = false
+        ToggleButton.Text = "🔧 OPEN UI"
+    end)
+
+    -- Minimize Button
+    local MinimizeButton = Instance.new("TextButton")
+    MinimizeButton.Name = "MinimizeButton"
+    MinimizeButton.Parent = TopBar
+    MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+    MinimizeButton.BorderSizePixel = 0
+    MinimizeButton.Position = UDim2.new(0.8, 0, 0.25, 0)
+    MinimizeButton.Size = UDim2.new(0, 25, 0, 25)
+    MinimizeButton.Font = Enum.Font.GothamBold
+    MinimizeButton.Text = "_"
+    MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MinimizeButton.TextSize = 12
+
+    MinimizeButton.MouseButton1Click:Connect(function()
+        isUIVisible = false
+        MainFrame.Visible = false
+        ToggleButton.Text = "🔧 OPEN UI"
     end)
 
     -- Tab Container
@@ -205,7 +257,7 @@ local function CreateKaitunUI()
     ScrollFrame.BackgroundTransparency = 1
     ScrollFrame.BorderSizePixel = 0
     ScrollFrame.Size = UDim2.new(1, 0, 1, 0)
-    ScrollFrame.CanvasSize = UDim2.new(0, 0, 3.5, 0) -- Increased for new content
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 3.5, 0)
     ScrollFrame.ScrollBarThickness = 5
     ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 180, 255)
 
@@ -359,7 +411,6 @@ function startInstantCatchFishing()
     
     instantCatchConnection = RunService.Heartbeat:Connect(function()
         if config.instantCatchActive then
-            -- SUPER FAST FISHING METHOD
             local success = false
             
             -- Method 1: Direct Remote Events
@@ -380,7 +431,7 @@ function startInstantCatchFishing()
             
             -- Method 2: Virtual Input Spam
             if not success then
-                for i = 1, 10 do -- 10x input spam
+                for i = 1, 10 do
                     pcall(function()
                         VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
                         VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
@@ -399,22 +450,22 @@ function startInstantCatchFishing()
                 success = true
             end
             
-            -- Update stats if successful
             if success then
-                stats.fishCaught = stats.fishCaught + math.random(1, 3) -- Multiple fish per catch
+                stats.fishCaught = stats.fishCaught + math.random(1, 3)
                 stats.sessionFish = stats.sessionFish + math.random(1, 3)
                 stats.instantCatches = stats.instantCatches + 1
-                stats.totalEarnings = stats.totalEarnings + math.random(500, 2000) -- Higher earnings
+                stats.totalEarnings = stats.totalEarnings + math.random(500, 2000)
                 
-                -- Update status every 10 catches
                 if stats.instantCatches % 10 == 0 then
                     local fishPerSecond = stats.instantCatches / (tick() - stats.startTime)
-                    Window:UpdateStatus("⚡ INSTANT CATCH - " .. stats.instantCatches .. " catches | " .. string.format("%.1f", fishPerSecond) .. "/s", Color3.fromRGB(255, 255, 0))
+                    if Window then
+                        Window:UpdateStatus("⚡ INSTANT CATCH - " .. stats.instantCatches .. " catches | " .. string.format("%.1f", fishPerSecond) .. "/s", Color3.fromRGB(255, 255, 0))
+                    end
                     print("🎯 INSTANT CATCH: " .. stats.instantCatches .. " super catches!")
                 end
             end
             
-            wait(0.01) -- Ultra fast delay
+            wait(0.01)
         end
     end)
 end
@@ -426,7 +477,9 @@ function stopInstantCatchFishing()
     end
     config.instantCatchActive = false
     print("🔴 Instant Catch Fishing Stopped")
-    Window:UpdateStatus("🔴 Instant Catch Stopped", Color3.fromRGB(255, 60, 60))
+    if Window then
+        Window:UpdateStatus("🔴 Instant Catch Stopped", Color3.fromRGB(255, 60, 60))
+    end
 end
 
 -- =============================================
@@ -468,7 +521,6 @@ function performUltimateFishing()
     isFishing = true
     local success = false
     
-    -- SUPER INSTANT FISHING MODE (20x FASTER)
     if config.instantFishing then
         local fishingEvents = findFishingEvent()
         
@@ -498,7 +550,6 @@ function performUltimateFishing()
         end
     end
     
-    -- BLANTANT MODE - Ultra fast fishing (20x FASTER)
     if not success and config.blantantDelay then
         for i = 1, 5 do
             pcall(function()
@@ -547,13 +598,17 @@ function startAutoFishing()
             
             if success then
                 local fishPerSecond = stats.fishCaught / (tick() - stats.startTime)
-                Window:UpdateStatus("🟢 FISHING - " .. stats.fishCaught .. " fish | " .. string.format("%.1f", fishPerSecond) .. "/s", Color3.fromRGB(0, 255, 127))
+                if Window then
+                    Window:UpdateStatus("🟢 FISHING - " .. stats.fishCaught .. " fish | " .. string.format("%.1f", fishPerSecond) .. "/s", Color3.fromRGB(0, 255, 127))
+                end
                 
                 if stats.fishCaught % 5 == 0 then
                     print("📊 KAITUN REPORT: " .. stats.fishCaught .. " fish | $" .. stats.totalEarnings .. " | " .. string.format("%.1f", fishPerSecond) .. " fish/s")
                 end
             else
-                Window:UpdateStatus("🟡 Scanning fishing methods...", Color3.fromRGB(255, 200, 0))
+                if Window then
+                    Window:UpdateStatus("🟡 Scanning fishing methods...", Color3.fromRGB(255, 200, 0))
+                end
             end
             
             local actualDelay = config.blantantDelay and (config.blantantDelayValue / 1000) or config.fishingDelay
@@ -569,7 +624,9 @@ function stopAutoFishing()
     end
     isFishing = false
     print("🔴 Kaitun Auto Fishing Stopped")
-    Window:UpdateStatus("🔴 Fishing Stopped", Color3.fromRGB(255, 60, 60))
+    if Window then
+        Window:UpdateStatus("🔴 Fishing Stopped", Color3.fromRGB(255, 60, 60))
+    end
 end
 
 -- KAITUN ROD SHOP SYSTEM
@@ -608,12 +665,16 @@ end
 -- =============================================
 -- INITIALIZE KAITUN UI
 -- =============================================
+-- Create toggle button first
+CreateToggleButton()
+
+-- Then create main UI
 local Window, ScrollFrame = CreateKaitunUI()
 
 -- Create UI Elements
 Window:CreateSection("🎯 KAITUN FISHING CONTROLS")
 
--- Instant Catch Button (NEW)
+-- Instant Catch Button
 local instantCatchButton = Window:CreateButton("⚡ INSTANT CATCH FISHING", "ULTRA FAST - Catch multiple fish instantly", function()
     config.instantCatchActive = not config.instantCatchActive
     if config.instantCatchActive then
@@ -710,7 +771,6 @@ function updateStats()
     statsLabels.earnings.Text = "💰 TOTAL EARNINGS: $" .. stats.totalEarnings
     statsLabels.itemsBought.Text = "🛒 ITEMS BOUGHT: " .. stats.itemsBought
     
-    -- Update speed label based on active mode
     if config.instantCatchActive then
         local instantSpeed = stats.instantCatches / elapsedTime
         statsLabels.speed.Text = "⚡ INSTANT SPEED: " .. string.format("%.1f", instantSpeed) .. " catches/s"
@@ -739,7 +799,6 @@ Window:CreateButton("🌊 BUY WEATHER NOW", "Activate weather boosts instantly",
 end)
 
 Window:CreateButton("🎯 SINGLE INSTANT CATCH", "Perform one instant catch immediately", function()
-    -- Single instant catch
     for i = 1, 3 do
         local events = findFishingEvent()
         for _, event in pairs(events) do
@@ -756,6 +815,26 @@ Window:CreateButton("🎯 SINGLE INSTANT CATCH", "Perform one instant catch imme
     Window:UpdateStatus("🎯 Single Instant Catch Executed!", Color3.fromRGB(255, 255, 0))
 end)
 
+-- UI Control Section
+Window:CreateSection("🔧 UI CONTROLS")
+
+Window:CreateButton("📱 TOGGLE UI VISIBILITY", "Show/Hide the Kaitun UI", function()
+    isUIVisible = not isUIVisible
+    MainFrame.Visible = isUIVisible
+    ToggleButton.Text = isUIVisible and "🔧 CLOSE UI" or "🔧 OPEN UI"
+    Window:UpdateStatus(isUIVisible and "📱 UI Visible" or "📱 UI Hidden")
+end)
+
+Window:CreateButton("🗑️ DESTROY UI", "Completely remove Kaitun UI", function()
+    if ScreenGui then
+        ScreenGui:Destroy()
+    end
+    if ToggleButton then
+        ToggleButton:Destroy()
+    end
+    Window:UpdateStatus("🗑️ UI Destroyed - Reload script to get it back")
+end)
+
 -- Auto start if enabled in Kaitun config
 if Kaitun["Start Kaitun"]["Enable"] and Kaitun["Fishing"]["Auto Fishing"] then
     spawn(function()
@@ -768,9 +847,22 @@ if Kaitun["Start Kaitun"]["Enable"] and Kaitun["Fishing"]["Auto Fishing"] then
     end)
 end
 
-print("🎣 KAITUN FISH IT LOADED - WITH INSTANT CATCH!")
+print("🎣 KAITUN FISH IT LOADED - WITH TOGGLE UI!")
+print("🔧 Use the blue button in top-left to show/hide UI")
 print("⚡ Instant Fishing: " .. tostring(Kaitun["Fishing"]["Instant Fishing"]))
 print("🎯 Instant Catch: READY")
-print("💥 Blantant Fishing: " .. tostring(Kaitun["Fishing"]["Auto Blantant Fishing"]))
 
-Window:UpdateStatus("✅ KAITUN SYSTEM READY - INSTANT CATCH AVAILABLE!", Color3.fromRGB(0, 255, 127))
+Window:UpdateStatus("✅ KAITUN SYSTEM READY - USE TOGGLE BUTTON!", Color3.fromRGB(0, 255, 127))
+
+-- Keybind to toggle UI (Optional)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        isUIVisible = not isUIVisible
+        MainFrame.Visible = isUIVisible
+        ToggleButton.Text = isUIVisible and "🔧 CLOSE UI" or "🔧 OPEN UI"
+    end
+end)
+
+print("🔑 Press RIGHT CTRL to quickly toggle UI visibility")
