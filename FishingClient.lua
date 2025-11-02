@@ -686,56 +686,38 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
 end
 
 -- Create Toggles
-CreateToggle("⚡ INSTANT FISHING", "NO ANIMATION - MAX SPEED", fishingConfig.instantFishing, function(v)
+CreateToggle("Instant Fishing", "⚡ No delay fishing", fishingConfig.instantFishing, function(v)
     fishingConfig.instantFishing = v
     if v then
-        fishingConfig.fishingDelay = 0.001  -- Ultra fast
-        statusLabel.Text = "⚡ INSTANT MODE: NO ANIMATION - MAX SPEED"
-        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-        print("[Fishing] ⚡ INSTANT FISHING ACTIVATED - NO ANIMATION!")
+        fishingConfig.fishingDelay = 0.01
     else
-        fishingConfig.fishingDelay = 0.1    -- Normal speed
-        statusLabel.Text = "🔵 NORMAL MODE: With animations"
-        statusLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-        print("[Fishing] 🔵 Normal fishing mode")
+        fishingConfig.fishingDelay = 0.1
     end
+    print("[Fishing] Instant Fishing:", v)
 end, togglesPanel, 36)
 
-CreateToggle("💥 BLASTANT MODE", "EXTREME SPEED (RISKY)", fishingConfig.blantantMode, function(v)
+CreateToggle("Blantant Mode", "💥 Ultra fast fishing", fishingConfig.blantantMode, function(v)
     fishingConfig.blantantMode = v
     if v then
-        fishingConfig.fishingDelay = 0.0001 -- Extreme speed
-        fishingConfig.instantFishing = true
-        statusLabel.Text = "💥 BLASTANT MODE: EXTREME SPEED - NO ANIMATION"
-        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        print("[Fishing] 💥 BLASTANT MODE ACTIVATED - EXTREME SPEED!")
-    else
         fishingConfig.fishingDelay = 0.001
-        statusLabel.Text = "⚡ INSTANT MODE: NO ANIMATION - MAX SPEED"
-        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-        print("[Fishing] ⚡ Back to instant fishing mode")
+        fishingConfig.instantFishing = true
+    else
+        fishingConfig.fishingDelay = 0.1
+        fishingConfig.instantFishing = false
     end
+    print("[Fishing] Blantant Mode:", v)
 end, togglesPanel, 76)
 
 -- Fishing Button Handler
 fishingButton.MouseButton1Click:Connect(function()
     if fishingActive then
         StopFishing()
-        fishingButton.Text = "🚀 Start Instant Fishing"
+        fishingButton.Text = "🚀 START FISHING"
         fishingButton.BackgroundColor3 = ACCENT
-        statusLabel.Text = "🔴 Fishing Stopped"
-        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
     else
-        StartInstantFishing()
-        fishingButton.Text = "⏹️ Stop Instant Fishing"
+        StartFishing()
+        fishingButton.Text = "⏹️ STOP FISHING"
         fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-        if fishingConfig.blantantMode then
-            statusLabel.Text = "💥 Blantant Mode: " .. string.format("%.1f", fishingConfig.blantantDelay) .. "s Delay"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        else
-            statusLabel.Text = "⚡ Instant Mode: Fishing"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-        end
     end
 end)
 
@@ -896,16 +878,15 @@ closeBtn.MouseButton1Click:Connect(closeUI)
 
 -- Stats Update Loop
 spawn(function()
-    wait(2)
-    if fishingConfig.autoFishing and not fishingActive then
-        StartInstantFishing()
-        fishingButton.Text = "⏹️ STOP INSTANT FISHING"
-        fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-        if fishingConfig.blantantMode then
-            statusLabel.Text = "💥 AUTO-START: BLANTANT MODE " .. string.format("%.1f", fishingConfig.blantantDelay) .. "s"
-        else
-            statusLabel.Text = "⚡ AUTO-START: INSTANT FISHING"
-        end
+    while true do
+        local elapsed = math.max(1, tick() - fishingStats.startTime)
+        local rate = fishingStats.fishCaught / elapsed
+        
+        fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
+        rateLabel.Text = string.format("Rate: %.2f/s", rate)
+        memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
+        
+        wait(0.5)
     end
 end)
 
