@@ -21,8 +21,8 @@ local SECOND = Color3.fromRGB(24,24,26)
 -- FISHING CONFIG
 local fishingConfig = {
     autoFishing = false,
-    instantFishing = true,
-    fishingDelay = 0.1,
+    instantFishing = true, -- Default ON
+    fishingDelay = 0.001,  -- Super fast delay
     blantantMode = false,
     ultraSpeed = false
 }
@@ -31,6 +31,7 @@ local fishingStats = {
     fishCaught = 0,
     startTime = tick(),
     attempts = 0,
+    lastCatchTime = 0
 }
 
 local fishingActive = false
@@ -132,7 +133,7 @@ title.Position = UDim2.new(0,8,0,0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
-title.Text = "⚡ KAITUN FISH IT"
+title.Text = "⚡ KAITUN FISH IT - INSTANT"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = titleBar
@@ -329,7 +330,10 @@ cTitle.TextColor3 = Color3.fromRGB(245,245,245)
 cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
--- FISHING FUNCTIONS (sama seperti sebelumnya)
+-- =============================================
+-- INSTANT FISHING FUNCTIONS - NO ANIMATION
+-- =============================================
+
 local function SafeGetCharacter()
     return player.Character or player.CharacterAdded:Wait()
 end
@@ -341,6 +345,7 @@ end
 
 local function GetFishingRod()
     local success, result = pcall(function()
+        -- Check backpack first
         local backpack = player:FindFirstChild("Backpack")
         if backpack then
             for _, item in pairs(backpack:GetChildren()) do
@@ -353,6 +358,7 @@ local function GetFishingRod()
             end
         end
         
+        -- Check character
         local char = player.Character
         if char then
             for _, item in pairs(char:GetChildren()) do
@@ -375,7 +381,6 @@ local function EquipRod()
     local success = pcall(function()
         local rod = GetFishingRod()
         if not rod then 
-            print("[Fishing] No fishing rod found!")
             return false 
         end
         
@@ -383,7 +388,6 @@ local function EquipRod()
             local humanoid = SafeGetHumanoid()
             if humanoid then
                 humanoid:EquipTool(rod)
-                task.wait(0.3)
                 return true
             end
         end
@@ -417,42 +421,32 @@ local function FindFishingProximityPrompt()
     return success and prompt or nil
 end
 
-local function SimulateKeyPress(keyCode)
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, keyCode, false, game)
-        task.wait(0.001)
-        VirtualInputManager:SendKeyEvent(false, keyCode, false, game)
-    end)
-end
-
-local function SimulateClick()
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0.01)
-        task.wait(0.001)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0.01)
-    end)
-end
-
-local function TryFishingMethod()
-    local success = false
+-- INSTANT FISHING CORE FUNCTION - NO ANIMATION, NO DELAY
+local function InstantFishing()
+    local caught = false
     
+    -- Method 1: Equip rod jika belum equipped
     if not EquipRod() then
         return false
     end
     
+    -- Method 2: Direct ProximityPrompt trigger (INSTANT)
     pcall(function()
         local prompt = FindFishingProximityPrompt()
         if prompt and prompt.Enabled then
+            -- Trigger langsung tanpa delay
             fireproximityprompt(prompt)
-            success = true
+            caught = true
         end
     end)
     
-    if success then
+    if caught then
         fishingStats.fishCaught = fishingStats.fishCaught + 1
+        fishingStats.lastCatchTime = tick()
         return true
     end
     
+    -- Method 3: ClickDetector (INSTANT)
     pcall(function()
         local rod = GetFishingRod()
         if rod and rod.Parent == player.Character then
@@ -461,28 +455,45 @@ local function TryFishingMethod()
                 local clickDetector = handle:FindFirstChild("ClickDetector")
                 if clickDetector then
                     fireclickdetector(clickDetector)
-                    success = true
+                    caught = true
                 end
             end
         end
     end)
     
-    if success then
+    if caught then
         fishingStats.fishCaught = fishingStats.fishCaught + 1
+        fishingStats.lastCatchTime = tick()
         return true
     end
     
-    SimulateClick()
-    SimulateKeyPress(Enum.KeyCode.E)
-    SimulateKeyPress(Enum.KeyCode.F)
+    -- Method 4: Virtual Input sebagai fallback (INSTANT)
+    pcall(function()
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+        
+        caught = true
+    end)
+    
+    if caught then
+        fishingStats.fishCaught = fishingStats.fishCaught + 1
+        fishingStats.lastCatchTime = tick()
+        fishingStats.attempts = fishingStats.attempts + 1
+        return true
+    end
     
     fishingStats.attempts = fishingStats.attempts + 1
-    fishingStats.fishCaught = fishingStats.fishCaught + 1
-    
-    return true
+    return false
 end
 
-local function StartFishing()
+-- ULTRA FAST FISHING LOOP
+local function StartInstantFishing()
     if fishingActive then 
         print("[Fishing] Already fishing!")
         return 
@@ -491,20 +502,21 @@ local function StartFishing()
     fishingActive = true
     fishingStats.startTime = tick()
     
-    print("[Fishing] Starting fishing...")
+    print("[Fishing] ⚡ INSTANT FISHING ACTIVATED - NO ANIMATION!")
+    print("[Fishing] Delay: " .. fishingConfig.fishingDelay .. "s")
     
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
+        -- Instant fishing tanpa delay antara attempts
         local success = pcall(function()
-            TryFishingMethod()
+            InstantFishing()
         end)
         
-        if not success then
-            print("[Fishing] Error in fishing method")
+        -- Delay sangat kecil untuk prevent crash
+        if fishingConfig.fishingDelay > 0 then
+            task.wait(fishingConfig.fishingDelay)
         end
-        
-        task.wait(fishingConfig.fishingDelay)
     end)
 end
 
@@ -517,7 +529,10 @@ local function StopFishing()
     print("[Fishing] Stopped fishing")
 end
 
+-- =============================================
 -- FISHING UI CONTENT
+-- =============================================
+
 local fishingContent = Instance.new("Frame")
 fishingContent.Name = "FishingContent"
 fishingContent.Size = UDim2.new(1, -24, 1, -24)
@@ -528,7 +543,7 @@ fishingContent.Parent = content
 
 -- Stats Panel
 local statsPanel = Instance.new("Frame")
-statsPanel.Size = UDim2.new(1, 0, 0, 80)
+statsPanel.Size = UDim2.new(1, 0, 0, 100)
 statsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 statsPanel.BorderSizePixel = 0
 statsPanel.Parent = fishingContent
@@ -543,7 +558,7 @@ statsTitle.Position = UDim2.new(0,12,0,8)
 statsTitle.BackgroundTransparency = 1
 statsTitle.Font = Enum.Font.GothamBold
 statsTitle.TextSize = 14
-statsTitle.Text = "📊 Fishing Statistics"
+statsTitle.Text = "📊 INSTANT FISHING STATS"
 statsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 statsTitle.TextXAlignment = Enum.TextXAlignment.Left
 statsTitle.Parent = statsPanel
@@ -570,10 +585,21 @@ rateLabel.TextColor3 = Color3.fromRGB(200,220,255)
 rateLabel.TextXAlignment = Enum.TextXAlignment.Left
 rateLabel.Parent = statsPanel
 
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -24, 0, 20)
+statusLabel.Position = UDim2.new(0,12,0,70)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 11
+statusLabel.Text = "⚡ INSTANT MODE: NO ANIMATION"
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = statsPanel
+
 -- Controls Panel
 local controlsPanel = Instance.new("Frame")
 controlsPanel.Size = UDim2.new(1, 0, 0, 180)
-controlsPanel.Position = UDim2.new(0, 0, 0, 92)
+controlsPanel.Position = UDim2.new(0, 0, 0, 112)
 controlsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 controlsPanel.BorderSizePixel = 0
 controlsPanel.Parent = fishingContent
@@ -588,7 +614,7 @@ controlsTitle.Position = UDim2.new(0,12,0,8)
 controlsTitle.BackgroundTransparency = 1
 controlsTitle.Font = Enum.Font.GothamBold
 controlsTitle.TextSize = 14
-controlsTitle.Text = "⚡ Fishing Controls"
+controlsTitle.Text = "⚡ INSTANT FISHING CONTROLS"
 controlsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 controlsTitle.TextXAlignment = Enum.TextXAlignment.Left
 controlsTitle.Parent = controlsPanel
@@ -600,7 +626,7 @@ fishingButton.Position = UDim2.new(0, 12, 0, 44)
 fishingButton.BackgroundColor3 = ACCENT
 fishingButton.Font = Enum.Font.GothamBold
 fishingButton.TextSize = 14
-fishingButton.Text = "🚀 START FISHING"
+fishingButton.Text = "🚀 START INSTANT FISHING"
 fishingButton.TextColor3 = Color3.fromRGB(30,30,30)
 fishingButton.AutoButtonColor = false
 fishingButton.Parent = controlsPanel
@@ -611,8 +637,8 @@ fishingBtnCorner.Parent = fishingButton
 
 -- Toggles Panel
 local togglesPanel = Instance.new("Frame")
-togglesPanel.Size = UDim2.new(1, 0, 0, 120)
-togglesPanel.Position = UDim2.new(0, 0, 0, 284)
+togglesPanel.Size = UDim2.new(1, 0, 0, 150)
+togglesPanel.Position = UDim2.new(0, 0, 0, 304)
 togglesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 togglesPanel.BorderSizePixel = 0
 togglesPanel.Parent = fishingContent
@@ -627,7 +653,7 @@ togglesTitle.Position = UDim2.new(0,12,0,8)
 togglesTitle.BackgroundTransparency = 1
 togglesTitle.Font = Enum.Font.GothamBold
 togglesTitle.TextSize = 14
-togglesTitle.Text = "🔧 Fishing Settings"
+togglesTitle.Text = "🔧 INSTANT SETTINGS"
 togglesTitle.TextColor3 = Color3.fromRGB(235,235,235)
 togglesTitle.TextXAlignment = Enum.TextXAlignment.Left
 togglesTitle.Parent = togglesPanel
@@ -686,38 +712,65 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
 end
 
 -- Create Toggles
-CreateToggle("Instant Fishing", "⚡ No delay fishing", fishingConfig.instantFishing, function(v)
+CreateToggle("⚡ INSTANT FISHING", "NO ANIMATION - MAX SPEED", fishingConfig.instantFishing, function(v)
     fishingConfig.instantFishing = v
     if v then
-        fishingConfig.fishingDelay = 0.01
+        fishingConfig.fishingDelay = 0.001  -- Ultra fast
+        statusLabel.Text = "⚡ INSTANT MODE: NO ANIMATION - MAX SPEED"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        print("[Fishing] ⚡ INSTANT FISHING ACTIVATED - NO ANIMATION!")
     else
-        fishingConfig.fishingDelay = 0.1
+        fishingConfig.fishingDelay = 0.1    -- Normal speed
+        statusLabel.Text = "🔵 NORMAL MODE: With animations"
+        statusLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+        print("[Fishing] 🔵 Normal fishing mode")
     end
-    print("[Fishing] Instant Fishing:", v)
 end, togglesPanel, 36)
 
-CreateToggle("Blantant Mode", "💥 Ultra fast fishing", fishingConfig.blantantMode, function(v)
+CreateToggle("💥 BLASTANT MODE", "EXTREME SPEED (RISKY)", fishingConfig.blantantMode, function(v)
     fishingConfig.blantantMode = v
     if v then
-        fishingConfig.fishingDelay = 0.001
+        fishingConfig.fishingDelay = 0.0001 -- Extreme speed
         fishingConfig.instantFishing = true
+        statusLabel.Text = "💥 BLASTANT MODE: EXTREME SPEED - NO ANIMATION"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        print("[Fishing] 💥 BLASTANT MODE ACTIVATED - EXTREME SPEED!")
     else
-        fishingConfig.fishingDelay = 0.1
-        fishingConfig.instantFishing = false
+        fishingConfig.fishingDelay = 0.001
+        statusLabel.Text = "⚡ INSTANT MODE: NO ANIMATION - MAX SPEED"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        print("[Fishing] ⚡ Back to instant fishing mode")
     end
-    print("[Fishing] Blantant Mode:", v)
 end, togglesPanel, 76)
+
+CreateToggle("🔄 AUTO START", "Start fishing automatically", fishingConfig.autoFishing, function(v)
+    fishingConfig.autoFishing = v
+    if v then
+        print("[Fishing] Auto-start enabled")
+    else
+        print("[Fishing] Auto-start disabled")
+    end
+end, togglesPanel, 116)
 
 -- Fishing Button Handler
 fishingButton.MouseButton1Click:Connect(function()
     if fishingActive then
         StopFishing()
-        fishingButton.Text = "🚀 START FISHING"
+        fishingButton.Text = "🚀 START INSTANT FISHING"
         fishingButton.BackgroundColor3 = ACCENT
+        statusLabel.Text = "🔴 FISHING STOPPED"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
     else
-        StartFishing()
-        fishingButton.Text = "⏹️ STOP FISHING"
+        StartInstantFishing()
+        fishingButton.Text = "⏹️ STOP INSTANT FISHING"
         fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        if fishingConfig.instantFishing then
+            statusLabel.Text = "⚡ INSTANT MODE: FISHING - NO ANIMATION"
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            statusLabel.Text = "🔵 NORMAL MODE: FISHING"
+            statusLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+        end
     end
 end)
 
@@ -879,24 +932,44 @@ closeBtn.MouseButton1Click:Connect(closeUI)
 -- Stats Update Loop
 spawn(function()
     while true do
-        local elapsed = math.max(1, tick() - fishingStats.startTime)
-        local rate = fishingStats.fishCaught / elapsed
+        if fishingActive then
+            local elapsed = math.max(1, tick() - fishingStats.startTime)
+            local rate = fishingStats.fishCaught / elapsed
+            
+            fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
+            rateLabel.Text = string.format("Rate: %.2f/s", rate)
+            memLabel.Text = string.format("Fish: %d | Rate: %.2f/s", fishingStats.fishCaught, rate)
+            
+            -- Update status dengan real-time info
+            if fishingActive then
+                local currentRate = (fishingStats.fishCaught / math.max(1, tick() - fishingStats.startTime))
+                statusLabel.Text = string.format("⚡ FISHING: %d fish | %.2f/s", fishingStats.fishCaught, currentRate)
+            end
+        end
         
-        fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
-        rateLabel.Text = string.format("Rate: %.2f/s", rate)
-        memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
-        
-        wait(0.5)
+        wait(0.3) -- Update lebih cepat untuk instant fishing
+    end
+end)
+
+-- Auto-start fishing jika enabled
+spawn(function()
+    wait(2)
+    if fishingConfig.autoFishing then
+        StartInstantFishing()
+        fishingButton.Text = "⏹️ STOP INSTANT FISHING"
+        fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        statusLabel.Text = "⚡ AUTO-START: INSTANT FISHING - NO ANIMATION"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
     end
 end)
 
 -- Start dengan UI terbuka
 showMainUI()
 
-print("[Kaitun Fish It] UI Loaded Successfully!")
-print("🎣 Click - to minimize to tray")
-print("🎣 Click 🗙 to close to tray") 
-print("🎣 Click tray icon to reopen UI")
+print("[Kaitun Fish It] ⚡ INSTANT FISHING LOADED!")
+print("🎣 Instant Fishing: NO ANIMATION - MAX SPEED")
+print("🎣 Default Delay: " .. fishingConfig.fishingDelay .. "s")
+print("🎣 Click START INSTANT FISHING to begin!")
 
 -- Test jika UI muncul
 wait(1)
