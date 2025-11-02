@@ -351,49 +351,115 @@ local function Cast()
     local rod = GetRod()
     if not rod then return false end
     
-    -- Method 1: Remote events
+    local success = false
+    
+    -- Method 1: Remote events (PRIORITY)
     pcall(function()
         local events = ReplicatedStorage:FindFirstChild("events")
         if events then
             local castEvent = events:FindFirstChild("cast")
-            if castEvent then
+            if castEvent and castEvent:IsA("RemoteEvent") then
                 castEvent:FireServer(100, 1)
+                success = true
             end
         end
     end)
     
     -- Method 2: Tool activate
-    pcall(function()
-        if rod.Parent == player.Character then
+    if rod.Parent == player.Character then
+        pcall(function()
             rod:Activate()
+            success = true
+        end)
+    end
+    
+    -- Method 3: Mouse click simulation
+    pcall(function()
+        local mouse = player:GetMouse()
+        mouse.Button1Down:Fire()
+        task.wait(0.01)
+        mouse.Button1Up:Fire()
+        success = true
+    end)
+    
+    -- Method 4: ProximityPrompt
+    pcall(function()
+        for _, desc in pairs(rod:GetDescendants()) do
+            if desc:IsA("ProximityPrompt") and desc.Enabled then
+                fireproximityprompt(desc)
+                success = true
+            end
         end
     end)
     
-    return true
+    -- Method 5: ClickDetector
+    pcall(function()
+        for _, desc in pairs(rod:GetDescendants()) do
+            if desc:IsA("ClickDetector") then
+                fireclickdetector(desc)
+                success = true
+            end
+        end
+    end)
+    
+    return success
 end
 
 local function AutoReel()
     while config.autoReel and fishingActive do
+        local reelSuccess = false
+        
         pcall(function()
+            -- Check reel UI
             local reelUI = playerGui:FindFirstChild("reel")
-            if reelUI then
+            if reelUI and reelUI.Enabled then
                 local bar = reelUI:FindFirstChild("bar")
                 if bar then
-                    local reelfinish = bar:FindFirstChild("reelfinish")
-                    if reelfinish and reelfinish.Visible then
+                    local playerbar = bar:FindFirstChild("playerbar")
+                    local fish = bar:FindFirstChild("fish")
+                    
+                    -- Check if reel is ready
+                    if playerbar and fish then
                         local events = ReplicatedStorage:FindFirstChild("events")
                         if events then
                             local reelEvent = events:FindFirstChild("reelfinished")
-                            if reelEvent then
+                            if reelEvent and reelEvent:IsA("RemoteEvent") then
                                 reelEvent:FireServer(100, true)
                                 stats.successfulCatch = stats.successfulCatch + 1
                                 stats.fishCaught = stats.fishCaught + 1
+                                reelSuccess = true
                             end
                         end
                     end
                 end
             end
+            
+            -- Fallback: try any reel-related GUI
+            if not reelSuccess then
+                for _, gui in pairs(playerGui:GetChildren()) do
+                    if gui:IsA("ScreenGui") and gui.Enabled then
+                        for _, btn in pairs(gui:GetDescendants()) do
+                            if btn:IsA("TextButton") and btn.Visible then
+                                local btnText = btn.Text and btn.Text:lower() or ""
+                                local btnName = btn.Name:lower()
+                                
+                                if btnText:find("reel") or btnText:find("catch") or 
+                                   btnName:find("reel") or btnName:find("catch") then
+                                    -- Fire button click
+                                    for _, conn in pairs(getconnections(btn.MouseButton1Click)) do
+                                        conn:Fire()
+                                    end
+                                    reelSuccess = true
+                                    break
+                                end
+                            end
+                        end
+                        if reelSuccess then break end
+                    end
+                end
+            end
         end)
+        
         task.wait(0.01)
     end
 end
@@ -401,17 +467,24 @@ end
 local function AutoShake()
     while config.autoShake and fishingActive do
         pcall(function()
+            -- Check shake UI
             local shakeUI = playerGui:FindFirstChild("shakeui")
             if shakeUI and shakeUI.Enabled then
-                local events = ReplicatedStorage:FindFirstChild("events")
-                if events then
-                    local shakeEvent = events:FindFirstChild("shakereeled")
-                    if shakeEvent then
-                        shakeEvent:FireServer(100, true)
+                local button = shakeUI:FindFirstChild("button")
+                local safezone = shakeUI:FindFirstChild("safezone")
+                
+                if button and safezone then
+                    local events = ReplicatedStorage:FindFirstChild("events")
+                    if events then
+                        local shakeEvent = events:FindFirstChild("shakereeled")
+                        if shakeEvent and shakeEvent:IsA("RemoteEvent") then
+                            shakeEvent:FireServer(100, true)
+                        end
                     end
                 end
             end
         end)
+        
         task.wait(0.01)
     end
 end
