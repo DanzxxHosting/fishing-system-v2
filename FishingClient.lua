@@ -1,5 +1,5 @@
 -- UI-Only: Neon Panel (sidebar + content) — paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
--- Tema: hitam matte + merah neon. Toggle dengan tombol - dan 🗙. Safe (UI only).
+-- Tema: hitam matte + merah neon. Toggle dengan tombol - dan 🗙.
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -20,10 +20,10 @@ local SECOND = Color3.fromRGB(24,24,26)
 
 -- FISHING CONFIG
 local fishingConfig = {
-    autoFishing = true,
+    autoFishing = false, -- Nonaktifkan auto start dulu
     instantFishing = true,
     fishingDelay = 0.1,
-    blantantMode = true,
+    blantantMode = false,
     ultraSpeed = false
 }
 
@@ -36,20 +36,21 @@ local fishingStats = {
 local fishingActive = false
 local fishingConnection
 
--- cleanup old if exist
+-- Cleanup old UI
 if playerGui:FindFirstChild("NeonDashboardUI") then
     playerGui.NeonDashboardUI:Destroy()
 end
 
--- ScreenGui
+-- ScreenGui dengan error handling
 local screen = Instance.new("ScreenGui")
 screen.Name = "NeonDashboardUI"
 screen.ResetOnSpawn = false
 screen.Parent = playerGui
-screen.IgnoreGuiInset = true
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Main container (centered)
+print("[UI] ScreenGui created")
+
+-- Main container
 local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
@@ -57,19 +58,20 @@ container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
 container.BackgroundTransparency = 1
 container.Parent = screen
 
--- Outer glow (image behind)
-local glow = Instance.new("ImageLabel", screen)
+-- Outer glow
+local glow = Instance.new("ImageLabel")
 glow.Name = "Glow"
 glow.AnchorPoint = Vector2.new(0.5,0.5)
 glow.Size = UDim2.new(0, WIDTH+80, 0, HEIGHT+80)
-glow.Position = container.Position
+glow.Position = UDim2.new(0.5, 0, 0.5, 0)
 glow.BackgroundTransparency = 1
-glow.Image = "rbxassetid://5050741616" -- radial
+glow.Image = "rbxassetid://5050741616"
 glow.ImageColor3 = ACCENT
 glow.ImageTransparency = 0.92
 glow.ZIndex = 1
+glow.Parent = container
 
--- Card (panel)
+-- Card (panel utama)
 local card = Instance.new("Frame")
 card.Name = "Card"
 card.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
@@ -79,23 +81,26 @@ card.BorderSizePixel = 0
 card.Parent = container
 card.ZIndex = 2
 
-local cardCorner = Instance.new("UICorner", card)
+local cardCorner = Instance.new("UICorner")
 cardCorner.CornerRadius = UDim.new(0, 12)
+cardCorner.Parent = card
 
 -- inner container
-local inner = Instance.new("Frame", card)
+local inner = Instance.new("Frame")
 inner.Name = "Inner"
 inner.Size = UDim2.new(1, -24, 1, -24)
 inner.Position = UDim2.new(0, 12, 0, 12)
 inner.BackgroundTransparency = 1
+inner.Parent = card
 
 -- Title bar dengan window controls
-local titleBar = Instance.new("Frame", inner)
+local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1,0,0,48)
 titleBar.Position = UDim2.new(0,0,0,0)
 titleBar.BackgroundTransparency = 1
+titleBar.Parent = inner
 
-local title = Instance.new("TextLabel", titleBar)
+local title = Instance.new("TextLabel")
 title.Size = UDim2.new(0.6,0,1,0)
 title.Position = UDim2.new(0,8,0,0)
 title.BackgroundTransparency = 1
@@ -104,15 +109,17 @@ title.TextSize = 18
 title.Text = "⚡ KAITUN FISH IT"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = titleBar
 
--- Window Controls (Minimize dan Close)
-local windowControls = Instance.new("Frame", titleBar)
+-- Window Controls
+local windowControls = Instance.new("Frame")
 windowControls.Size = UDim2.new(0, 80, 1, 0)
 windowControls.Position = UDim2.new(1, -85, 0, 0)
 windowControls.BackgroundTransparency = 1
+windowControls.Parent = titleBar
 
 -- Minimize Button (-)
-local minimizeBtn = Instance.new("TextButton", windowControls)
+local minimizeBtn = Instance.new("TextButton")
 minimizeBtn.Size = UDim2.new(0, 32, 0, 32)
 minimizeBtn.Position = UDim2.new(0, 0, 0.5, -16)
 minimizeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -121,12 +128,14 @@ minimizeBtn.TextSize = 16
 minimizeBtn.Text = "-"
 minimizeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
 minimizeBtn.AutoButtonColor = false
+minimizeBtn.Parent = windowControls
 
-local minCorner = Instance.new("UICorner", minimizeBtn)
+local minCorner = Instance.new("UICorner")
 minCorner.CornerRadius = UDim.new(0, 6)
+minCorner.Parent = minimizeBtn
 
 -- Close Button (X)
-local closeBtn = Instance.new("TextButton", windowControls)
+local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 32, 0, 32)
 closeBtn.Position = UDim2.new(0, 40, 0.5, -16)
 closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
@@ -135,11 +144,13 @@ closeBtn.TextSize = 14
 closeBtn.Text = "🗙"
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeBtn.AutoButtonColor = false
+closeBtn.Parent = windowControls
 
-local closeCorner = Instance.new("UICorner", closeBtn)
+local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeBtn
 
-local memLabel = Instance.new("TextLabel", titleBar)
+local memLabel = Instance.new("TextLabel")
 memLabel.Size = UDim2.new(0.4,-100,1,0)
 memLabel.Position = UDim2.new(0.6,8,0,0)
 memLabel.BackgroundTransparency = 1
@@ -148,32 +159,37 @@ memLabel.TextSize = 11
 memLabel.Text = "Memory: 0 KB | Fish: 0"
 memLabel.TextColor3 = Color3.fromRGB(200,200,200)
 memLabel.TextXAlignment = Enum.TextXAlignment.Left
+memLabel.Parent = titleBar
 
 -- left sidebar
-local sidebar = Instance.new("Frame", inner)
+local sidebar = Instance.new("Frame")
 sidebar.Name = "Sidebar"
 sidebar.Size = UDim2.new(0, SIDEBAR_W, 1, -64)
 sidebar.Position = UDim2.new(0, 0, 0, 56)
 sidebar.BackgroundColor3 = SECOND
 sidebar.BorderSizePixel = 0
 sidebar.ZIndex = 3
+sidebar.Parent = inner
 
-local sbCorner = Instance.new("UICorner", sidebar)
+local sbCorner = Instance.new("UICorner")
 sbCorner.CornerRadius = UDim.new(0, 8)
+sbCorner.Parent = sidebar
 
--- sidebar header icon
-local sbHeader = Instance.new("Frame", sidebar)
+-- sidebar header
+local sbHeader = Instance.new("Frame")
 sbHeader.Size = UDim2.new(1,0,0,84)
 sbHeader.BackgroundTransparency = 1
+sbHeader.Parent = sidebar
 
-local logo = Instance.new("ImageLabel", sbHeader)
+local logo = Instance.new("ImageLabel")
 logo.Size = UDim2.new(0,64,0,64)
 logo.Position = UDim2.new(0, 12, 0, 10)
 logo.BackgroundTransparency = 1
-logo.Image = "rbxassetid://3926305904" -- simple icon (roblox)
+logo.Image = "rbxassetid://3926305904"
 logo.ImageColor3 = ACCENT
+logo.Parent = sbHeader
 
-local sTitle = Instance.new("TextLabel", sbHeader)
+local sTitle = Instance.new("TextLabel")
 sTitle.Size = UDim2.new(1,-96,0,32)
 sTitle.Position = UDim2.new(0, 88, 0, 12)
 sTitle.BackgroundTransparency = 1
@@ -182,18 +198,21 @@ sTitle.TextSize = 14
 sTitle.Text = "Kaitun"
 sTitle.TextColor3 = Color3.fromRGB(240,240,240)
 sTitle.TextXAlignment = Enum.TextXAlignment.Left
+sTitle.Parent = sbHeader
 
 -- menu list area
-local menuFrame = Instance.new("Frame", sidebar)
+local menuFrame = Instance.new("Frame")
 menuFrame.Size = UDim2.new(1,-12,1, -108)
 menuFrame.Position = UDim2.new(0, 6, 0, 92)
 menuFrame.BackgroundTransparency = 1
+menuFrame.Parent = sidebar
 
-local menuLayout = Instance.new("UIListLayout", menuFrame)
+local menuLayout = Instance.new("UIListLayout")
 menuLayout.SortOrder = Enum.SortOrder.LayoutOrder
 menuLayout.Padding = UDim.new(0,8)
+menuLayout.Parent = menuFrame
 
--- menu helper
+-- menu helper function
 local function makeMenuItem(name, iconText)
     local row = Instance.new("TextButton")
     row.Size = UDim2.new(1, 0, 0, 44)
@@ -203,15 +222,17 @@ local function makeMenuItem(name, iconText)
     row.Text = ""
     row.Parent = menuFrame
 
-    local corner = Instance.new("UICorner", row)
+    local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0,8)
+    corner.Parent = row
 
-    local left = Instance.new("Frame", row)
+    local left = Instance.new("Frame")
     left.Size = UDim2.new(0,40,1,0)
     left.Position = UDim2.new(0,8,0,0)
     left.BackgroundTransparency = 1
+    left.Parent = row
 
-    local icon = Instance.new("TextLabel", left)
+    local icon = Instance.new("TextLabel")
     icon.Size = UDim2.new(1,0,1,0)
     icon.BackgroundTransparency = 1
     icon.Font = Enum.Font.GothamBold
@@ -220,8 +241,9 @@ local function makeMenuItem(name, iconText)
     icon.TextColor3 = ACCENT
     icon.TextXAlignment = Enum.TextXAlignment.Center
     icon.TextYAlignment = Enum.TextYAlignment.Center
+    icon.Parent = left
 
-    local label = Instance.new("TextLabel", row)
+    local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0.8,0,1,0)
     label.Position = UDim2.new(0,56,0,0)
     label.BackgroundTransparency = 1
@@ -230,6 +252,7 @@ local function makeMenuItem(name, iconText)
     label.Text = name
     label.TextColor3 = Color3.fromRGB(230,230,230)
     label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = row
 
     -- hover effect
     row.MouseEnter:Connect(function()
@@ -242,13 +265,10 @@ local function makeMenuItem(name, iconText)
     return row, label
 end
 
--- menu items (order like photo)
+-- menu items
 local items = {
     {"Fishing", "🎣"},
     {"Teleport", "📍"},
-    {"Spawn Boat", "⛵"},
-    {"Buy Rod", "🪝"},
-    {"Buy Bait", "🍤"},
     {"Settings", "⚙"},
 }
 local menuButtons = {}
@@ -259,18 +279,20 @@ for i, v in ipairs(items) do
 end
 
 -- content panel (right)
-local content = Instance.new("Frame", inner)
+local content = Instance.new("Frame")
 content.Name = "Content"
 content.Size = UDim2.new(1, -SIDEBAR_W - 36, 1, -64)
 content.Position = UDim2.new(0, SIDEBAR_W + 24, 0, 56)
 content.BackgroundColor3 = Color3.fromRGB(18,18,20)
 content.BorderSizePixel = 0
+content.Parent = inner
 
-local contentCorner = Instance.new("UICorner", content)
+local contentCorner = Instance.new("UICorner")
 contentCorner.CornerRadius = UDim.new(0, 8)
+contentCorner.Parent = content
 
 -- content title area
-local cTitle = Instance.new("TextLabel", content)
+local cTitle = Instance.new("TextLabel")
 cTitle.Size = UDim2.new(1, -24, 0, 44)
 cTitle.Position = UDim2.new(0,12,0,12)
 cTitle.BackgroundTransparency = 1
@@ -279,6 +301,7 @@ cTitle.TextSize = 16
 cTitle.Text = "Fishing"
 cTitle.TextColor3 = Color3.fromRGB(245,245,245)
 cTitle.TextXAlignment = Enum.TextXAlignment.Left
+cTitle.Parent = content
 
 -- FISHING FUNCTIONS
 local function SafeGetCharacter()
@@ -327,7 +350,10 @@ end
 local function EquipRod()
     local success = pcall(function()
         local rod = GetFishingRod()
-        if not rod then return false end
+        if not rod then 
+            print("[Fishing] No fishing rod found!")
+            return false 
+        end
         
         if rod.Parent == player.Backpack then
             local humanoid = SafeGetHumanoid()
@@ -351,8 +377,8 @@ local function FindFishingProximityPrompt()
         
         for _, descendant in pairs(char:GetDescendants()) do
             if descendant:IsA("ProximityPrompt") then
-                local objText = descendant.ObjectText and descendant.ObjectText:lower() or "Perfect"
-                local actionText = descendant.ActionText and descendant.ActionText:lower() or "Perfect"
+                local objText = descendant.ObjectText and descendant.ObjectText:lower() or ""
+                local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
                 
                 if objText:find("fish") or objText:find("cast") or objText:find("catch") or
                    actionText:find("fish") or actionText:find("cast") or actionText:find("catch") then
@@ -438,10 +464,15 @@ local function TryFishingMethod()
 end
 
 local function StartFishing()
-    if fishingActive then return end
+    if fishingActive then 
+        print("[Fishing] Already fishing!")
+        return 
+    end
     
     fishingActive = true
     fishingStats.startTime = tick()
+    
+    print("[Fishing] Starting fishing...")
     
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
@@ -449,6 +480,10 @@ local function StartFishing()
         local success = pcall(function()
             TryFishingMethod()
         end)
+        
+        if not success then
+            print("[Fishing] Error in fishing method")
+        end
         
         task.wait(fishingConfig.fishingDelay)
     end)
@@ -460,26 +495,30 @@ local function StopFishing()
         fishingConnection:Disconnect()
         fishingConnection = nil
     end
+    print("[Fishing] Stopped fishing")
 end
 
 -- FISHING UI CONTENT
-local fishingContent = Instance.new("Frame", content)
+local fishingContent = Instance.new("Frame")
 fishingContent.Name = "FishingContent"
 fishingContent.Size = UDim2.new(1, -24, 1, -24)
 fishingContent.Position = UDim2.new(0, 12, 0, 12)
 fishingContent.BackgroundTransparency = 1
 fishingContent.Visible = true
+fishingContent.Parent = content
 
 -- Stats Panel
-local statsPanel = Instance.new("Frame", fishingContent)
+local statsPanel = Instance.new("Frame")
 statsPanel.Size = UDim2.new(1, 0, 0, 80)
 statsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 statsPanel.BorderSizePixel = 0
+statsPanel.Parent = fishingContent
 
-local statsCorner = Instance.new("UICorner", statsPanel)
+local statsCorner = Instance.new("UICorner")
 statsCorner.CornerRadius = UDim.new(0,8)
+statsCorner.Parent = statsPanel
 
-local statsTitle = Instance.new("TextLabel", statsPanel)
+local statsTitle = Instance.new("TextLabel")
 statsTitle.Size = UDim2.new(1, -24, 0, 28)
 statsTitle.Position = UDim2.new(0,12,0,8)
 statsTitle.BackgroundTransparency = 1
@@ -488,8 +527,9 @@ statsTitle.TextSize = 14
 statsTitle.Text = "📊 Fishing Statistics"
 statsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 statsTitle.TextXAlignment = Enum.TextXAlignment.Left
+statsTitle.Parent = statsPanel
 
-local fishCountLabel = Instance.new("TextLabel", statsPanel)
+local fishCountLabel = Instance.new("TextLabel")
 fishCountLabel.Size = UDim2.new(0.5, -8, 0, 24)
 fishCountLabel.Position = UDim2.new(0,12,0,40)
 fishCountLabel.BackgroundTransparency = 1
@@ -498,8 +538,9 @@ fishCountLabel.TextSize = 13
 fishCountLabel.Text = "Fish Caught: 0"
 fishCountLabel.TextColor3 = Color3.fromRGB(200,255,200)
 fishCountLabel.TextXAlignment = Enum.TextXAlignment.Left
+fishCountLabel.Parent = statsPanel
 
-local rateLabel = Instance.new("TextLabel", statsPanel)
+local rateLabel = Instance.new("TextLabel")
 rateLabel.Size = UDim2.new(0.5, -8, 0, 24)
 rateLabel.Position = UDim2.new(0.5,4,0,40)
 rateLabel.BackgroundTransparency = 1
@@ -508,18 +549,21 @@ rateLabel.TextSize = 13
 rateLabel.Text = "Rate: 0/s"
 rateLabel.TextColor3 = Color3.fromRGB(200,220,255)
 rateLabel.TextXAlignment = Enum.TextXAlignment.Left
+rateLabel.Parent = statsPanel
 
 -- Controls Panel
-local controlsPanel = Instance.new("Frame", fishingContent)
+local controlsPanel = Instance.new("Frame")
 controlsPanel.Size = UDim2.new(1, 0, 0, 180)
 controlsPanel.Position = UDim2.new(0, 0, 0, 92)
 controlsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 controlsPanel.BorderSizePixel = 0
+controlsPanel.Parent = fishingContent
 
-local controlsCorner = Instance.new("UICorner", controlsPanel)
+local controlsCorner = Instance.new("UICorner")
 controlsCorner.CornerRadius = UDim.new(0,8)
+controlsCorner.Parent = controlsPanel
 
-local controlsTitle = Instance.new("TextLabel", controlsPanel)
+local controlsTitle = Instance.new("TextLabel")
 controlsTitle.Size = UDim2.new(1, -24, 0, 28)
 controlsTitle.Position = UDim2.new(0,12,0,8)
 controlsTitle.BackgroundTransparency = 1
@@ -528,9 +572,10 @@ controlsTitle.TextSize = 14
 controlsTitle.Text = "⚡ Fishing Controls"
 controlsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 controlsTitle.TextXAlignment = Enum.TextXAlignment.Left
+controlsTitle.Parent = controlsPanel
 
 -- Start/Stop Button
-local fishingButton = Instance.new("TextButton", controlsPanel)
+local fishingButton = Instance.new("TextButton")
 fishingButton.Size = UDim2.new(0, 200, 0, 40)
 fishingButton.Position = UDim2.new(0, 12, 0, 44)
 fishingButton.BackgroundColor3 = ACCENT
@@ -539,21 +584,25 @@ fishingButton.TextSize = 14
 fishingButton.Text = "🚀 START FISHING"
 fishingButton.TextColor3 = Color3.fromRGB(30,30,30)
 fishingButton.AutoButtonColor = false
+fishingButton.Parent = controlsPanel
 
-local fishingBtnCorner = Instance.new("UICorner", fishingButton)
+local fishingBtnCorner = Instance.new("UICorner")
 fishingBtnCorner.CornerRadius = UDim.new(0,6)
+fishingBtnCorner.Parent = fishingButton
 
 -- Toggles Panel
-local togglesPanel = Instance.new("Frame", fishingContent)
+local togglesPanel = Instance.new("Frame")
 togglesPanel.Size = UDim2.new(1, 0, 0, 120)
 togglesPanel.Position = UDim2.new(0, 0, 0, 284)
 togglesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 togglesPanel.BorderSizePixel = 0
+togglesPanel.Parent = fishingContent
 
-local togglesCorner = Instance.new("UICorner", togglesPanel)
+local togglesCorner = Instance.new("UICorner")
 togglesCorner.CornerRadius = UDim.new(0,8)
+togglesCorner.Parent = togglesPanel
 
-local togglesTitle = Instance.new("TextLabel", togglesPanel)
+local togglesTitle = Instance.new("TextLabel")
 togglesTitle.Size = UDim2.new(1, -24, 0, 28)
 togglesTitle.Position = UDim2.new(0,12,0,8)
 togglesTitle.BackgroundTransparency = 1
@@ -562,15 +611,17 @@ togglesTitle.TextSize = 14
 togglesTitle.Text = "🔧 Fishing Settings"
 togglesTitle.TextColor3 = Color3.fromRGB(235,235,235)
 togglesTitle.TextXAlignment = Enum.TextXAlignment.Left
+togglesTitle.Parent = togglesPanel
 
 -- Toggle Helper Function
 local function CreateToggle(name, desc, default, callback, parent, yPos)
-    local frame = Instance.new("Frame", parent)
+    local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -24, 0, 36)
     frame.Position = UDim2.new(0, 12, 0, yPos)
     frame.BackgroundTransparency = 1
+    frame.Parent = parent
 
-    local label = Instance.new("TextLabel", frame)
+    local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0.7, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.Gotham
@@ -578,8 +629,9 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
     label.Text = name
     label.TextColor3 = Color3.fromRGB(230,230,230)
     label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
 
-    local descLabel = Instance.new("TextLabel", frame)
+    local descLabel = Instance.new("TextLabel")
     descLabel.Size = UDim2.new(0.7, 0, 0, 16)
     descLabel.Position = UDim2.new(0, 0, 0, 18)
     descLabel.BackgroundTransparency = 1
@@ -588,8 +640,9 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
     descLabel.Text = desc
     descLabel.TextColor3 = Color3.fromRGB(180,180,180)
     descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.Parent = frame
 
-    local button = Instance.new("TextButton", frame)
+    local button = Instance.new("TextButton")
     button.Size = UDim2.new(0, 60, 0, 24)
     button.Position = UDim2.new(0.75, 0, 0.2, 0)
     button.BackgroundColor3 = default and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
@@ -597,9 +650,11 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
     button.TextSize = 11
     button.Text = default and "ON" or "OFF"
     button.TextColor3 = Color3.fromRGB(30,30,30)
+    button.Parent = frame
 
-    local btnCorner = Instance.new("UICorner", button)
+    local btnCorner = Instance.new("UICorner")
     btnCorner.CornerRadius = UDim.new(0,4)
+    btnCorner.Parent = button
 
     button.MouseButton1Click:Connect(function()
         local new = button.Text == "OFF"
@@ -612,16 +667,17 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
 end
 
 -- Create Toggles
-local instantToggle = CreateToggle("Instant Fishing", "⚡ No delay fishing", fishingConfig.instantFishing, function(v)
+CreateToggle("Instant Fishing", "⚡ No delay fishing", fishingConfig.instantFishing, function(v)
     fishingConfig.instantFishing = v
     if v then
         fishingConfig.fishingDelay = 0.01
     else
         fishingConfig.fishingDelay = 0.1
     end
+    print("[Fishing] Instant Fishing:", v)
 end, togglesPanel, 36)
 
-local blantantToggle = CreateToggle("Blantant Mode", "💥 Ultra fast fishing", fishingConfig.blantantMode, function(v)
+CreateToggle("Blantant Mode", "💥 Ultra fast fishing", fishingConfig.blantantMode, function(v)
     fishingConfig.blantantMode = v
     if v then
         fishingConfig.fishingDelay = 0.001
@@ -630,6 +686,7 @@ local blantantToggle = CreateToggle("Blantant Mode", "💥 Ultra fast fishing", 
         fishingConfig.fishingDelay = 0.1
         fishingConfig.instantFishing = false
     end
+    print("[Fishing] Blantant Mode:", v)
 end, togglesPanel, 76)
 
 -- Fishing Button Handler
@@ -659,25 +716,43 @@ spawn(function()
     end
 end)
 
--- Auto-start fishing if enabled
-spawn(function()
-    wait(2)
-    if fishingConfig.autoFishing then
-        StartFishing()
-        fishingButton.Text = "⏹️ STOP FISHING"
-        fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-    end
-end)
-
--- TELEPORT UI (Sembunyikan dulu)
-local teleportContent = Instance.new("Frame", content)
+-- TELEPORT UI (Placeholder)
+local teleportContent = Instance.new("Frame")
 teleportContent.Name = "TeleportContent"
 teleportContent.Size = UDim2.new(1, -24, 1, -24)
 teleportContent.Position = UDim2.new(0, 12, 0, 12)
 teleportContent.BackgroundTransparency = 1
 teleportContent.Visible = false
+teleportContent.Parent = content
 
--- ... (teleport UI code dari sebelumnya tetap ada di sini)
+local teleportLabel = Instance.new("TextLabel")
+teleportLabel.Size = UDim2.new(1, 0, 1, 0)
+teleportLabel.BackgroundTransparency = 1
+teleportLabel.Font = Enum.Font.GothamBold
+teleportLabel.TextSize = 16
+teleportLabel.Text = "Teleport Feature\n(Coming Soon)"
+teleportLabel.TextColor3 = Color3.fromRGB(200,200,200)
+teleportLabel.TextYAlignment = Enum.TextYAlignment.Center
+teleportLabel.Parent = teleportContent
+
+-- SETTINGS UI (Placeholder)
+local settingsContent = Instance.new("Frame")
+settingsContent.Name = "SettingsContent"
+settingsContent.Size = UDim2.new(1, -24, 1, -24)
+settingsContent.Position = UDim2.new(0, 12, 0, 12)
+settingsContent.BackgroundTransparency = 1
+settingsContent.Visible = false
+settingsContent.Parent = content
+
+local settingsLabel = Instance.new("TextLabel")
+settingsLabel.Size = UDim2.new(1, 0, 1, 0)
+settingsLabel.BackgroundTransparency = 1
+settingsLabel.Font = Enum.Font.GothamBold
+settingsLabel.TextSize = 16
+settingsLabel.Text = "Settings\n(Coming Soon)"
+settingsLabel.TextColor3 = Color3.fromRGB(200,200,200)
+settingsLabel.TextYAlignment = Enum.TextYAlignment.Center
+settingsLabel.Parent = settingsContent
 
 -- menu navigation
 local activeMenu = "Fishing"
@@ -693,18 +768,16 @@ for name, btn in pairs(menuButtons) do
         cTitle.Text = name
         
         -- Show/hide content
-        if name == "Fishing" then
-            fishingContent.Visible = true
-            teleportContent.Visible = false
-        elseif name == "Teleport" then
-            fishingContent.Visible = false
-            teleportContent.Visible = true
-        else
-            fishingContent.Visible = false
-            teleportContent.Visible = true
-        end
+        fishingContent.Visible = (name == "Fishing")
+        teleportContent.Visible = (name == "Teleport")
+        settingsContent.Visible = (name == "Settings")
+        
+        print("[UI] Switched to:", name)
     end)
 end
+
+-- Highlight fishing menu by default
+menuButtons["Fishing"].BackgroundColor3 = Color3.fromRGB(32,8,8)
 
 -- WINDOW CONTROLS FUNCTIONALITY
 local uiOpen = true
@@ -748,9 +821,6 @@ local function closeUI()
     screen.Enabled = false
     uiOpen = false
     print("[UI] Closed")
-    
-    -- Bisa juga destroy kalau mau benar2 hilang:
-    -- screen:Destroy()
 end
 
 -- Button Hover Effects
@@ -775,10 +845,14 @@ end)
 minimizeBtn.MouseButton1Click:Connect(toggleMinimize)
 closeBtn.MouseButton1Click:Connect(closeUI)
 
--- Initial setup: show UI maximized
-toggleMinimize() -- Start minimized
-toggleMinimize() -- Then maximize to show full UI
-
-print("[Kaitun Fish It] Loaded successfully!")
+print("[Kaitun Fish It] UI Loaded Successfully!")
 print("🎣 Use - to minimize and 🗙 to close")
-print("⚡ Fishing system ready!")
+print("⚡ Click START FISHING to begin!")
+
+-- Test jika UI muncul
+wait(1)
+if screen and screen.Parent then
+    print("✅ UI successfully created and visible!")
+else
+    print("❌ UI failed to create!")
+end
