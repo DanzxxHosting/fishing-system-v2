@@ -686,58 +686,38 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
 end
 
 -- Create Toggles
-CreateToggle("⚡ INSTANT FISHING", "No animation - Max speed", fishingConfig.instantFishing, function(v)
+CreateToggle("Instant Fishing", "⚡ No delay fishing", fishingConfig.instantFishing, function(v)
     fishingConfig.instantFishing = v
     if v then
-        fishingConfig.fishingDelay = 0.001
-        statusLabel.Text = "⚡ INSTANT MODE: NO ANIMATION"
-        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        fishingConfig.fishingDelay = 0.01
     else
         fishingConfig.fishingDelay = 0.1
-        statusLabel.Text = "🔵 NORMAL MODE: With animations"
-        statusLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
     end
+    print("[Fishing] Instant Fishing:", v)
 end, togglesPanel, 36)
 
-CreateBlantantDelaySlider(togglesPanel, 72)
-
-CreateToggle("🔄 AUTO START", "Start fishing automatically", fishingConfig.autoFishing, function(v)
-    fishingConfig.autoFishing = v
-    if v and not fishingActive then
-        -- Auto start setelah 2 detik
-        wait(2)
-        if fishingConfig.autoFishing and not fishingActive then
-            StartInstantFishing()
-            fishingButton.Text = "⏹️ STOP INSTANT FISHING"
-            fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-            if fishingConfig.blantantMode then
-                statusLabel.Text = "💥 AUTO-START: BLANTANT MODE " .. string.format("%.1f", fishingConfig.blantantDelay) .. "s"
-            else
-                statusLabel.Text = "⚡ AUTO-START: INSTANT FISHING"
-            end
-        end
+CreateToggle("Blantant Mode", "💥 Ultra fast fishing", fishingConfig.blantantMode, function(v)
+    fishingConfig.blantantMode = v
+    if v then
+        fishingConfig.fishingDelay = 0.001
+        fishingConfig.instantFishing = true
+    else
+        fishingConfig.fishingDelay = 0.1
+        fishingConfig.instantFishing = false
     end
-end, togglesPanel, 156)
+    print("[Fishing] Blantant Mode:", v)
+end, togglesPanel, 76)
 
 -- Fishing Button Handler
 fishingButton.MouseButton1Click:Connect(function()
     if fishingActive then
         StopFishing()
-        fishingButton.Text = "🚀 Start Instant Fishing"
+        fishingButton.Text = "🚀 START FISHING"
         fishingButton.BackgroundColor3 = ACCENT
-        statusLabel.Text = "🔴 Fishing Stopped"
-        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
     else
-        StartInstantFishing()
-        fishingButton.Text = "⏹️ Stop Instant Fishing"
+        StartFishing()
+        fishingButton.Text = "⏹️ STOP FISHING"
         fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-        if fishingConfig.blantantMode then
-            statusLabel.Text = "💥 Blantant Mode: " .. string.format("%.1f", fishingConfig.blantantDelay) .. "s Delay"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        else
-            statusLabel.Text = "⚡ Instant Mode: Fishing"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-        end
     end
 end)
 
