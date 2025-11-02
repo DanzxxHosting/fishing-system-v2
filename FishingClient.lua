@@ -1,5 +1,5 @@
--- UI-Only: Neon Panel (sidebar + content) — paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
--- Tema: hitam matte + merah neon. Toggle dengan tombol - dan 🗙.
+-- UI-Only: Neon Panel dengan Tray Icon — paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
+-- Tema: hitam matte + merah neon. Close/minimize akan menyisakan tray icon.
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -20,7 +20,7 @@ local SECOND = Color3.fromRGB(24,24,26)
 
 -- FISHING CONFIG
 local fishingConfig = {
-    autoFishing = false, -- Nonaktifkan auto start dulu
+    autoFishing = false,
     instantFishing = true,
     fishingDelay = 0.1,
     blantantMode = false,
@@ -41,7 +41,7 @@ if playerGui:FindFirstChild("NeonDashboardUI") then
     playerGui.NeonDashboardUI:Destroy()
 end
 
--- ScreenGui dengan error handling
+-- ScreenGui
 local screen = Instance.new("ScreenGui")
 screen.Name = "NeonDashboardUI"
 screen.ResetOnSpawn = false
@@ -49,6 +49,32 @@ screen.Parent = playerGui
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 print("[UI] ScreenGui created")
+
+-- TRAY ICON (akan muncul ketika UI di close/minimize)
+local trayIcon = Instance.new("ImageButton")
+trayIcon.Name = "TrayIcon"
+trayIcon.Size = UDim2.new(0, 60, 0, 60)
+trayIcon.Position = UDim2.new(1, -70, 0, 20) -- Pojok kanan atas
+trayIcon.BackgroundColor3 = ACCENT
+trayIcon.Image = "rbxassetid://3926305904" -- Fishing icon
+trayIcon.Visible = false -- Mulai dalam keadaan hidden
+trayIcon.ZIndex = 10
+trayIcon.Parent = screen
+
+local trayCorner = Instance.new("UICorner")
+trayCorner.CornerRadius = UDim.new(0, 12)
+trayCorner.Parent = trayIcon
+
+local trayGlow = Instance.new("ImageLabel")
+trayGlow.Name = "TrayGlow"
+trayGlow.Size = UDim2.new(1, 20, 1, 20)
+trayGlow.Position = UDim2.new(0, -10, 0, -10)
+trayGlow.BackgroundTransparency = 1
+trayGlow.Image = "rbxassetid://5050741616"
+trayGlow.ImageColor3 = ACCENT
+trayGlow.ImageTransparency = 0.8
+trayGlow.ZIndex = 9
+trayGlow.Parent = trayIcon
 
 -- Main container
 local container = Instance.new("Frame")
@@ -303,7 +329,7 @@ cTitle.TextColor3 = Color3.fromRGB(245,245,245)
 cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
--- FISHING FUNCTIONS
+-- FISHING FUNCTIONS (sama seperti sebelumnya)
 local function SafeGetCharacter()
     return player.Character or player.CharacterAdded:Wait()
 end
@@ -315,7 +341,6 @@ end
 
 local function GetFishingRod()
     local success, result = pcall(function()
-        -- Check backpack
         local backpack = player:FindFirstChild("Backpack")
         if backpack then
             for _, item in pairs(backpack:GetChildren()) do
@@ -328,7 +353,6 @@ local function GetFishingRod()
             end
         end
         
-        -- Check character
         local char = player.Character
         if char then
             for _, item in pairs(char:GetChildren()) do
@@ -412,12 +436,10 @@ end
 local function TryFishingMethod()
     local success = false
     
-    -- Method 1: Equip Rod
     if not EquipRod() then
         return false
     end
     
-    -- Method 2: ProximityPrompt
     pcall(function()
         local prompt = FindFishingProximityPrompt()
         if prompt and prompt.Enabled then
@@ -431,7 +453,6 @@ local function TryFishingMethod()
         return true
     end
     
-    -- Method 3: ClickDetector
     pcall(function()
         local rod = GetFishingRod()
         if rod and rod.Parent == player.Character then
@@ -451,12 +472,10 @@ local function TryFishingMethod()
         return true
     end
     
-    -- Method 4: Simulate Clicks & Keys
     SimulateClick()
     SimulateKeyPress(Enum.KeyCode.E)
     SimulateKeyPress(Enum.KeyCode.F)
     
-    -- Count as attempt
     fishingStats.attempts = fishingStats.attempts + 1
     fishingStats.fishCaught = fishingStats.fishCaught + 1
     
@@ -702,20 +721,6 @@ fishingButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Stats Update Loop
-spawn(function()
-    while true do
-        local elapsed = math.max(1, tick() - fishingStats.startTime)
-        local rate = fishingStats.fishCaught / elapsed
-        
-        fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
-        rateLabel.Text = string.format("Rate: %.2f/s", rate)
-        memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
-        
-        wait(0.5)
-    end
-end)
-
 -- TELEPORT UI (Placeholder)
 local teleportContent = Instance.new("Frame")
 teleportContent.Name = "TeleportContent"
@@ -758,16 +763,13 @@ settingsLabel.Parent = settingsContent
 local activeMenu = "Fishing"
 for name, btn in pairs(menuButtons) do
     btn.MouseButton1Click:Connect(function()
-        -- highlight selected
         for n, b in pairs(menuButtons) do
             b.BackgroundColor3 = Color3.fromRGB(20,20,20)
         end
         btn.BackgroundColor3 = Color3.fromRGB(32,8,8)
         
-        -- set content title
         cTitle.Text = name
         
-        -- Show/hide content
         fishingContent.Visible = (name == "Fishing")
         teleportContent.Visible = (name == "Teleport")
         settingsContent.Visible = (name == "Settings")
@@ -781,56 +783,85 @@ menuButtons["Fishing"].BackgroundColor3 = Color3.fromRGB(32,8,8)
 
 -- WINDOW CONTROLS FUNCTIONALITY
 local uiOpen = true
-local isMinimized = false
 
--- Minimize/Maximize Function
-local function toggleMinimize()
-    isMinimized = not isMinimized
+-- Show Tray Icon
+local function showTrayIcon()
+    trayIcon.Visible = true
+    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 60, 0, 60)}):Play()
+    TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 0.7}):Play()
+end
+
+-- Hide Tray Icon  
+local function hideTrayIcon()
+    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+    TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
+    wait(0.3)
+    trayIcon.Visible = false
+end
+
+-- Show Main UI
+local function showMainUI()
+    container.Visible = true
+    TweenService:Create(container, TweenInfo.new(0.4), {
+        Size = UDim2.new(0, WIDTH, 0, HEIGHT),
+        Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
+    }):Play()
+    TweenService:Create(glow, TweenInfo.new(0.4), {ImageTransparency = 0.85}):Play()
     
-    if isMinimized then
-        -- Minimize: kecilkan ke pojok kanan atas
-        container.AnchorPoint = Vector2.new(1, 0)
-        container.Position = UDim2.new(1, -20, 0, 20)
-        container.Size = UDim2.new(0, 300, 0, 200)
-        
-        -- Sembunyikan content, hanya tampilkan stats mini
-        inner.Visible = false
-        
-        minimizeBtn.Text = "□" -- Change to maximize icon
-        minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        
-        print("[UI] Minimized to tray")
-    else
-        -- Maximize: kembalikan ke tengah
-        container.AnchorPoint = Vector2.new(0.5, 0.5)
-        container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
-        container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
-        
-        -- Tampilkan kembali content
-        inner.Visible = true
-        
-        minimizeBtn.Text = "-" -- Change back to minimize icon
-        minimizeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        
-        print("[UI] Maximized to full view")
-    end
+    hideTrayIcon()
+    uiOpen = true
+    print("[UI] Main UI shown")
 end
 
--- Close Function
-local function closeUI()
-    screen.Enabled = false
+-- Hide Main UI (ke tray)
+local function hideMainUI()
+    TweenService:Create(container, TweenInfo.new(0.3), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0)
+    }):Play()
+    TweenService:Create(glow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
+    
+    wait(0.3)
+    container.Visible = false
+    
+    showTrayIcon()
     uiOpen = false
-    print("[UI] Closed")
+    print("[UI] Main UI hidden to tray")
 end
 
--- Button Hover Effects
+-- Minimize Function
+local function minimizeUI()
+    hideMainUI()
+end
+
+-- Close Function  
+local function closeUI()
+    hideMainUI()
+end
+
+-- Tray Icon Click - Show Main UI
+trayIcon.MouseButton1Click:Connect(function()
+    showMainUI()
+end)
+
+-- Tray Icon Hover Effects
+trayIcon.MouseEnter:Connect(function()
+    TweenService:Create(trayIcon, TweenInfo.new(0.2), {Size = UDim2.new(0, 70, 0, 70)}):Play()
+    TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.6}):Play()
+end)
+
+trayIcon.MouseLeave:Connect(function()
+    TweenService:Create(trayIcon, TweenInfo.new(0.2), {Size = UDim2.new(0, 60, 0, 60)}):Play()
+    TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.7}):Play()
+end)
+
+-- Window Controls Hover Effects
 minimizeBtn.MouseEnter:Connect(function()
     TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
 end)
 
 minimizeBtn.MouseLeave:Connect(function()
-    local targetColor = isMinimized and Color3.fromRGB(60, 60, 60) or Color3.fromRGB(40, 40, 40)
-    TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+    TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
 end)
 
 closeBtn.MouseEnter:Connect(function()
@@ -842,17 +873,35 @@ closeBtn.MouseLeave:Connect(function()
 end)
 
 -- Button Clicks
-minimizeBtn.MouseButton1Click:Connect(toggleMinimize)
+minimizeBtn.MouseButton1Click:Connect(minimizeUI)
 closeBtn.MouseButton1Click:Connect(closeUI)
 
+-- Stats Update Loop
+spawn(function()
+    while true do
+        local elapsed = math.max(1, tick() - fishingStats.startTime)
+        local rate = fishingStats.fishCaught / elapsed
+        
+        fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
+        rateLabel.Text = string.format("Rate: %.2f/s", rate)
+        memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
+        
+        wait(0.5)
+    end
+end)
+
+-- Start dengan UI terbuka
+showMainUI()
+
 print("[Kaitun Fish It] UI Loaded Successfully!")
-print("🎣 Use - to minimize and 🗙 to close")
-print("⚡ Click START FISHING to begin!")
+print("🎣 Click - to minimize to tray")
+print("🎣 Click 🗙 to close to tray") 
+print("🎣 Click tray icon to reopen UI")
 
 -- Test jika UI muncul
 wait(1)
 if screen and screen.Parent then
-    print("✅ UI successfully created and visible!")
+    print("✅ UI successfully created!")
 else
     print("❌ UI failed to create!")
 end
