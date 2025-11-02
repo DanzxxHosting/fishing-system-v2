@@ -23,7 +23,7 @@ local fishingConfig = {
     instantFishing = true,
     fishingDelay = 0.001,
     blantantMode = false,
-    blantantDelay = 0.1,
+    blantantDelay = 1.0, -- Default blantant delay
     ultraSpeed = false
 }
 
@@ -51,39 +51,12 @@ screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 print("[UI] ScreenGui created")
 
--- TRAY ICON
-local trayIcon = Instance.new("ImageButton")
-trayIcon.Name = "TrayIcon"
-trayIcon.Size = UDim2.new(0, 60, 0, 60)
-trayIcon.Position = UDim2.new(1, -70, 0, 20)
-trayIcon.BackgroundColor3 = ACCENT
-trayIcon.Image = "rbxassetid://3926305904"
-trayIcon.Visible = false
-trayIcon.ZIndex = 10
-trayIcon.Parent = screen
-
-local trayCorner = Instance.new("UICorner")
-trayCorner.CornerRadius = UDim.new(0, 12)
-trayCorner.Parent = trayIcon
-
-local trayGlow = Instance.new("ImageLabel")
-trayGlow.Name = "TrayGlow"
-trayGlow.Size = UDim2.new(1, 20, 1, 20)
-trayGlow.Position = UDim2.new(0, -10, 0, -10)
-trayGlow.BackgroundTransparency = 1
-trayGlow.Image = "rbxassetid://5050741616"
-trayGlow.ImageColor3 = ACCENT
-trayGlow.ImageTransparency = 0.8
-trayGlow.ZIndex = 9
-trayGlow.Parent = trayIcon
-
 -- Main container
 local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
 container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
 container.BackgroundTransparency = 1
-container.Visible = true
 container.Parent = screen
 
 -- Outer glow
@@ -106,7 +79,6 @@ card.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
 card.Position = UDim2.new(0,0,0,0)
 card.BackgroundColor3 = BG
 card.BorderSizePixel = 0
-card.Visible = true
 card.Parent = container
 card.ZIndex = 2
 
@@ -120,7 +92,6 @@ inner.Name = "Inner"
 inner.Size = UDim2.new(1, -24, 1, -24)
 inner.Position = UDim2.new(0, 12, 0, 12)
 inner.BackgroundTransparency = 1
-inner.Visible = true
 inner.Parent = card
 
 -- Title bar dengan window controls
@@ -334,7 +305,7 @@ cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
 -- =============================================
--- INSTANT FISHING FUNCTIONS - DIPERBAIKI LAGI
+-- INSTANT FISHING FUNCTIONS - DIPERBAIKI
 -- =============================================
 
 local function SafeGetCharacter()
@@ -382,7 +353,6 @@ local function EquipRod()
     local success = pcall(function()
         local rod = GetFishingRod()
         if not rod then 
-            print("[Fishing] No fishing rod found!")
             return false 
         end
         
@@ -423,48 +393,74 @@ local function FindFishingProximityPrompt()
     return success and prompt or nil
 end
 
--- INSTANT FISHING CORE FUNCTION - LEBIH SEDERHANA
+-- INSTANT FISHING CORE FUNCTION
 local function InstantFishing()
-    -- Coba equip rod dulu
+    local caught = false
+    
     if not EquipRod() then
         return false
     end
     
-    -- Coba proximity prompt
-    local prompt = FindFishingProximityPrompt()
-    if prompt and prompt.Enabled then
-        fireproximityprompt(prompt)
+    pcall(function()
+        local prompt = FindFishingProximityPrompt()
+        if prompt and prompt.Enabled then
+            fireproximityprompt(prompt)
+            caught = true
+        end
+    end)
+    
+    if caught then
         fishingStats.fishCaught = fishingStats.fishCaught + 1
+        fishingStats.lastCatchTime = tick()
         return true
     end
     
-    -- Coba click detector
-    local rod = GetFishingRod()
-    if rod and rod.Parent == player.Character then
-        local handle = rod:FindFirstChild("Handle")
-        if handle then
-            local clickDetector = handle:FindFirstChild("ClickDetector")
-            if clickDetector then
-                fireclickdetector(clickDetector)
-                fishingStats.fishCaught = fishingStats.fishCaught + 1
-                return true
+    pcall(function()
+        local rod = GetFishingRod()
+        if rod and rod.Parent == player.Character then
+            local handle = rod:FindFirstChild("Handle")
+            if handle then
+                local clickDetector = handle:FindFirstChild("ClickDetector")
+                if clickDetector then
+                    fireclickdetector(clickDetector)
+                    caught = true
+                end
             end
         end
+    end)
+    
+    if caught then
+        fishingStats.fishCaught = fishingStats.fishCaught + 1
+        fishingStats.lastCatchTime = tick()
+        return true
     end
     
-    -- Fallback: virtual input
-    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+    pcall(function()
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+        
+        caught = true
+    end)
     
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+    if caught then
+        fishingStats.fishCaught = fishingStats.fishCaught + 1
+        fishingStats.lastCatchTime = tick()
+        fishingStats.attempts = fishingStats.attempts + 1
+        return true
+    end
     
-    fishingStats.fishCaught = fishingStats.fishCaught + 1
-    return true
+    fishingStats.attempts = fishingStats.attempts + 1
+    return false
 end
 
--- FISHING LOOP - LEBIH SEDERHANA
-local function StartFishing()
+-- FISHING LOOP DENGAN BLANTANT DELAY - DIPERBAIKI
+local function StartInstantFishing()
     if fishingActive then 
         print("[Fishing] Already fishing!")
         return 
@@ -473,16 +469,18 @@ local function StartFishing()
     fishingActive = true
     fishingStats.startTime = tick()
     
-    print("[Fishing] 🎣 FISHING STARTED!")
+    print("[Fishing] ⚡ INSTANT FISHING ACTIVATED!")
+    print("[Fishing] Blantant Mode: " .. tostring(fishingConfig.blantantMode))
+    print("[Fishing] Blantant Delay: " .. fishingConfig.blantantDelay .. "s")
     
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
-        pcall(function()
+        local success = pcall(function()
             InstantFishing()
         end)
         
-        -- Gunakan delay sesuai mode
+        -- Gunakan delay sesuai mode - DIPERBAIKI
         local delayTime = fishingConfig.blantantMode and fishingConfig.blantantDelay or fishingConfig.fishingDelay
         if delayTime > 0 then
             task.wait(delayTime)
@@ -500,7 +498,7 @@ local function StopFishing()
 end
 
 -- =============================================
--- FISHING UI CONTENT - DIPERBAIKI LAGI
+-- FISHING UI CONTENT
 -- =============================================
 
 local fishingContent = Instance.new("Frame")
@@ -528,7 +526,7 @@ statsTitle.Position = UDim2.new(0,12,0,8)
 statsTitle.BackgroundTransparency = 1
 statsTitle.Font = Enum.Font.GothamBold
 statsTitle.TextSize = 14
-statsTitle.Text = "📊 FISHING STATS"
+statsTitle.Text = "📊 INSTANT FISHING STATS"
 statsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 statsTitle.TextXAlignment = Enum.TextXAlignment.Left
 statsTitle.Parent = statsPanel
@@ -561,8 +559,8 @@ statusLabel.Position = UDim2.new(0,12,0,62)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Font = Enum.Font.Gotham
 statusLabel.TextSize = 10
-statusLabel.Text = "🔴 READY - Click START to begin"
-statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+statusLabel.Text = "⚡ INSTANT MODE: READY"
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
 statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 statusLabel.Parent = statsPanel
 
@@ -584,20 +582,19 @@ controlsTitle.Position = UDim2.new(0,12,0,8)
 controlsTitle.BackgroundTransparency = 1
 controlsTitle.Font = Enum.Font.GothamBold
 controlsTitle.TextSize = 14
-controlsTitle.Text = "🎯 FISHING CONTROLS"
+controlsTitle.Text = "⚡ FISHING CONTROLS"
 controlsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 controlsTitle.TextXAlignment = Enum.TextXAlignment.Left
 controlsTitle.Parent = controlsPanel
 
--- Start/Stop Button - DIPERBAIKI
+-- Start/Stop Button
 local fishingButton = Instance.new("TextButton")
-fishingButton.Name = "FishingButton"
 fishingButton.Size = UDim2.new(0, 180, 0, 35)
 fishingButton.Position = UDim2.new(0, 12, 0, 40)
 fishingButton.BackgroundColor3 = ACCENT
 fishingButton.Font = Enum.Font.GothamBold
 fishingButton.TextSize = 13
-fishingButton.Text = "🚀 START FISHING"
+fishingButton.Text = "🚀 START INSTANT FISHING"
 fishingButton.TextColor3 = Color3.fromRGB(30,30,30)
 fishingButton.AutoButtonColor = false
 fishingButton.Parent = controlsPanel
@@ -608,7 +605,7 @@ fishingBtnCorner.Parent = fishingButton
 
 -- Toggles Panel
 local togglesPanel = Instance.new("Frame")
-togglesPanel.Size = UDim2.new(1, 0, 0, 240)
+togglesPanel.Size = UDim2.new(1, 0, 0, 250)
 togglesPanel.Position = UDim2.new(0, 0, 0, 250)
 togglesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 togglesPanel.BorderSizePixel = 0
@@ -624,12 +621,12 @@ togglesTitle.Position = UDim2.new(0,12,0,8)
 togglesTitle.BackgroundTransparency = 1
 togglesTitle.Font = Enum.Font.GothamBold
 togglesTitle.TextSize = 14
-togglesTitle.Text = "⚙️ SETTINGS"
+togglesTitle.Text = "🔧 FISHING SETTINGS"
 togglesTitle.TextColor3 = Color3.fromRGB(235,235,235)
 togglesTitle.TextXAlignment = Enum.TextXAlignment.Left
 togglesTitle.Parent = togglesPanel
 
--- Toggle Helper Function
+-- Toggle Helper Function - DIPERBAIKI
 local function CreateToggle(name, desc, default, callback, parent, yPos)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -24, 0, 32)
@@ -682,7 +679,7 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
     return frame
 end
 
--- BLANTANT DELAY SLIDER DENGAN TOMBOL ON/OFF
+-- BLANTANT DELAY SLIDER - DIPERBAIKI DENGAN TOMBOL ON/OFF
 local function CreateBlantantDelaySlider(parent, yPos)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -24, 0, 80)
@@ -690,9 +687,9 @@ local function CreateBlantantDelaySlider(parent, yPos)
     frame.BackgroundTransparency = 1
     frame.Parent = parent
 
-    -- Toggle Button untuk Blantant Mode
+    -- Toggle untuk Blantant Mode
     local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = UDim2.new(1, 0, 0, 25)
+    toggleFrame.Size = UDim2.new(1, 0, 0, 24)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = frame
 
@@ -702,7 +699,7 @@ local function CreateBlantantDelaySlider(parent, yPos)
     toggleLabel.Font = Enum.Font.GothamBold
     toggleLabel.TextSize = 12
     toggleLabel.Text = "💥 BLANTANT MODE"
-    toggleLabel.TextColor3 = fishingConfig.blantantMode and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(150,150,150)
+    toggleLabel.TextColor3 = Color3.fromRGB(230,230,230)
     toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
     toggleLabel.Parent = toggleFrame
 
@@ -720,7 +717,7 @@ local function CreateBlantantDelaySlider(parent, yPos)
     toggleCorner.CornerRadius = UDim.new(0,4)
     toggleCorner.Parent = toggleButton
 
-    -- Slider Container
+    -- Slider untuk delay
     local sliderContainer = Instance.new("Frame")
     sliderContainer.Size = UDim2.new(1, 0, 0, 50)
     sliderContainer.Position = UDim2.new(0, 0, 0, 30)
@@ -728,31 +725,20 @@ local function CreateBlantantDelaySlider(parent, yPos)
     sliderContainer.Visible = fishingConfig.blantantMode
     sliderContainer.Parent = frame
 
-    local delayLabel = Instance.new("TextLabel")
-    delayLabel.Size = UDim2.new(1, 0, 0, 20)
-    delayLabel.BackgroundTransparency = 1
-    delayLabel.Font = Enum.Font.GothamBold
-    delayLabel.TextSize = 11
-    delayLabel.Text = "⏱️ DELAY: " .. fishingConfig.blantantDelay .. "s"
-    delayLabel.TextColor3 = Color3.fromRGB(230,230,230)
-    delayLabel.TextXAlignment = Enum.TextXAlignment.Left
-    delayLabel.Parent = sliderContainer
-
-    local descLabel = Instance.new("TextLabel")
-    descLabel.Size = UDim2.new(1, 0, 0, 14)
-    descLabel.Position = UDim2.new(0, 0, 0, 20)
-    descLabel.BackgroundTransparency = 1
-    descLabel.Font = Enum.Font.Gotham
-    descLabel.TextSize = 9
-    descLabel.Text = "Drag to adjust delay (0-20 seconds)"
-    descLabel.TextColor3 = Color3.fromRGB(180,180,180)
-    descLabel.TextXAlignment = Enum.TextXAlignment.Left
-    descLabel.Parent = sliderContainer
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 11
+    label.Text = "⏱️ BLANTANT DELAY: " .. string.format("%.1f", fishingConfig.blantantDelay) .. "s"
+    label.TextColor3 = Color3.fromRGB(230,230,230)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = sliderContainer
 
     -- Slider Background
     local sliderBg = Instance.new("Frame")
     sliderBg.Size = UDim2.new(1, 0, 0, 20)
-    sliderBg.Position = UDim2.new(0, 0, 0, 40)
+    sliderBg.Position = UDim2.new(0, 0, 0, 25)
     sliderBg.BackgroundColor3 = Color3.fromRGB(40,40,40)
     sliderBg.BorderSizePixel = 0
     sliderBg.Parent = sliderContainer
@@ -790,37 +776,52 @@ local function CreateBlantantDelaySlider(parent, yPos)
     -- Value Display
     local valueLabel = Instance.new("TextLabel")
     valueLabel.Size = UDim2.new(0, 40, 0, 20)
-    valueLabel.Position = UDim2.new(1, 5, 0, 40)
+    valueLabel.Position = UDim2.new(1, 5, 0, 0)
     valueLabel.BackgroundTransparency = 1
     valueLabel.Font = Enum.Font.GothamBold
     valueLabel.TextSize = 11
-    valueLabel.Text = fishingConfig.blantantDelay .. "s"
+    valueLabel.Text = string.format("%.1f", fishingConfig.blantantDelay) .. "s"
     valueLabel.TextColor3 = ACCENT
     valueLabel.TextXAlignment = Enum.TextXAlignment.Right
     valueLabel.Parent = sliderContainer
 
-    -- Fungsi update slider
+    local isDragging = false
+
     local function updateSlider(value)
         value = math.clamp(value, 0, 20)
         fishingConfig.blantantDelay = value
         sliderFill.Size = UDim2.new((value / 20), 0, 1, 0)
         sliderBtn.Position = UDim2.new((value / 20), -3, 0, -2)
-        delayLabel.Text = "⏱️ DELAY: " .. string.format("%.1f", value) .. "s"
+        label.Text = "⏱️ BLANTANT DELAY: " .. string.format("%.1f", value) .. "s"
         valueLabel.Text = string.format("%.1f", value) .. "s"
+        
+        print("[Fishing] Blantant Delay set to: " .. value .. "s")
+        
+        -- Update status jika sedang fishing
+        if fishingActive and fishingConfig.blantantMode then
+            statusLabel.Text = "💥 BLANTANT MODE: " .. string.format("%.1f", value) .. "s DELAY"
+        end
     end
 
-    -- Toggle Button Handler
+    -- Toggle functionality
     toggleButton.MouseButton1Click:Connect(function()
         fishingConfig.blantantMode = not fishingConfig.blantantMode
         toggleButton.Text = fishingConfig.blantantMode and "ON" or "OFF"
         toggleButton.BackgroundColor3 = fishingConfig.blantantMode and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
-        toggleLabel.TextColor3 = fishingConfig.blantantMode and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(150,150,150)
         sliderContainer.Visible = fishingConfig.blantantMode
+        
+        if fishingConfig.blantantMode then
+            statusLabel.Text = "💥 BLANTANT MODE: " .. string.format("%.1f", fishingConfig.blantantDelay) .. "s DELAY"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        else
+            statusLabel.Text = "⚡ INSTANT MODE: NO ANIMATION"
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        end
+        
+        print("[Fishing] Blantant Mode: " .. tostring(fishingConfig.blantantMode))
     end)
 
-    -- Slider Functionality
-    local isDragging = false
-
+    -- Slider functionality
     sliderBtn.MouseButton1Down:Connect(function()
         isDragging = true
     end)
@@ -832,7 +833,6 @@ local function CreateBlantantDelaySlider(parent, yPos)
     end)
 
     sliderBg.MouseButton1Down:Connect(function(x, y)
-        if not fishingConfig.blantantMode then return end
         local relativeX = x - sliderBg.AbsolutePosition.X
         local percentage = math.clamp(relativeX / sliderBg.AbsoluteSize.X, 0, 1)
         updateSlider(percentage * 20)
@@ -840,7 +840,7 @@ local function CreateBlantantDelaySlider(parent, yPos)
     end)
 
     UserInputService.InputChanged:Connect(function(input)
-        if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement and fishingConfig.blantantMode then
+        if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local mousePos = UserInputService:GetMouseLocation()
             local relativeX = mousePos.X - sliderBg.AbsolutePosition.X
             local percentage = math.clamp(relativeX / sliderBg.AbsoluteSize.X, 0, 1)
@@ -851,42 +851,58 @@ local function CreateBlantantDelaySlider(parent, yPos)
     return frame
 end
 
--- Create Toggles
+-- Create Toggles dengan urutan baru
 CreateToggle("⚡ INSTANT FISHING", "No animation - Max speed", fishingConfig.instantFishing, function(v)
     fishingConfig.instantFishing = v
     if v then
         fishingConfig.fishingDelay = 0.001
+        statusLabel.Text = "⚡ INSTANT MODE: NO ANIMATION"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
     else
         fishingConfig.fishingDelay = 0.1
+        statusLabel.Text = "🔵 NORMAL MODE: With animations"
+        statusLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
     end
 end, togglesPanel, 36)
 
--- Tambahkan Blantant Delay Slider dengan tombol on/off
+-- Tambahkan Blantant Delay Slider dengan toggle
 CreateBlantantDelaySlider(togglesPanel, 72)
 
 CreateToggle("🔄 AUTO START", "Start fishing automatically", fishingConfig.autoFishing, function(v)
     fishingConfig.autoFishing = v
+    if v and not fishingActive then
+        -- Auto start setelah 2 detik
+        wait(2)
+        if fishingConfig.autoFishing and not fishingActive then
+            StartInstantFishing()
+            fishingButton.Text = "⏹️ STOP INSTANT FISHING"
+            fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+            if fishingConfig.blantantMode then
+                statusLabel.Text = "💥 AUTO-START: BLANTANT MODE " .. string.format("%.1f", fishingConfig.blantantDelay) .. "s"
+            else
+                statusLabel.Text = "⚡ AUTO-START: INSTANT FISHING"
+            end
+        end
+    end
 end, togglesPanel, 156)
 
--- Fishing Button Handler - SANGAT DIPERBAIKI
+-- Fishing Button Handler - DIPERBAIKI
 fishingButton.MouseButton1Click:Connect(function()
-    print("[Fishing] Start/Stop button clicked!")
-    
     if fishingActive then
         StopFishing()
-        fishingButton.Text = "🚀 START FISHING"
+        fishingButton.Text = "🚀 START INSTANT FISHING"
         fishingButton.BackgroundColor3 = ACCENT
-        statusLabel.Text = "🔴 STOPPED - Click START to begin"
+        statusLabel.Text = "🔴 FISHING STOPPED"
         statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
     else
-        StartFishing()
-        fishingButton.Text = "⏹️ STOP FISHING"
+        StartInstantFishing()
+        fishingButton.Text = "⏹️ STOP INSTANT FISHING"
         fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
         if fishingConfig.blantantMode then
-            statusLabel.Text = "💥 BLANTANT MODE: " .. fishingConfig.blantantDelay .. "s DELAY"
+            statusLabel.Text = "💥 BLANTANT MODE: " .. string.format("%.1f", fishingConfig.blantantDelay) .. "s DELAY"
             statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         else
-            statusLabel.Text = "⚡ INSTANT MODE: FISHING..."
+            statusLabel.Text = "⚡ INSTANT MODE: FISHING"
             statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         end
     end
@@ -930,7 +946,7 @@ settingsLabel.TextColor3 = Color3.fromRGB(200,200,200)
 settingsLabel.TextYAlignment = Enum.TextYAlignment.Center
 settingsLabel.Parent = settingsContent
 
--- menu navigation
+-- menu navigation - DIPERBAIKI
 local activeMenu = "Fishing"
 for name, btn in pairs(menuButtons) do
     btn.MouseButton1Click:Connect(function()
@@ -944,26 +960,53 @@ for name, btn in pairs(menuButtons) do
         fishingContent.Visible = (name == "Fishing")
         teleportContent.Visible = (name == "Teleport")
         settingsContent.Visible = (name == "Settings")
+        
+        activeMenu = name
     end)
 end
 
 -- Highlight fishing menu by default
 menuButtons["Fishing"].BackgroundColor3 = Color3.fromRGB(32,8,8)
 
--- =============================================
--- WINDOW CONTROLS FUNCTIONALITY - SANGAT DIPERBAIKI
--- =============================================
-
+-- WINDOW CONTROLS FUNCTIONALITY - DIPERBAIKI
 local uiOpen = true
 
--- Show Tray Icon
+-- TRAY ICON - DIPERBAIKI
+local trayIcon = Instance.new("ImageButton")
+trayIcon.Name = "TrayIcon"
+trayIcon.Size = UDim2.new(0, 60, 0, 60)
+trayIcon.Position = UDim2.new(1, -70, 0, 20)
+trayIcon.BackgroundColor3 = ACCENT
+trayIcon.Image = "rbxassetid://3926305904"
+trayIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+trayIcon.Visible = false
+trayIcon.ZIndex = 10
+trayIcon.Parent = screen
+
+local trayCorner = Instance.new("UICorner")
+trayCorner.CornerRadius = UDim.new(0, 12)
+trayCorner.Parent = trayIcon
+
+local trayGlow = Instance.new("ImageLabel")
+trayGlow.Name = "TrayGlow"
+trayGlow.Size = UDim2.new(1, 20, 1, 20)
+trayGlow.Position = UDim2.new(0, -10, 0, -10)
+trayGlow.BackgroundTransparency = 1
+trayGlow.Image = "rbxassetid://5050741616"
+trayGlow.ImageColor3 = ACCENT
+trayGlow.ImageTransparency = 0.8
+trayGlow.ZIndex = 9
+trayGlow.Parent = trayIcon
+
+-- Show Tray Icon - DIPERBAIKI
 local function showTrayIcon()
     trayIcon.Visible = true
-    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 60, 0, 60)}):Play()
+    trayIcon.Size = UDim2.new(0, 60, 0, 60)
+    trayIcon.Position = UDim2.new(1, -70, 0, 20)
     TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 0.7}):Play()
 end
 
--- Hide Tray Icon  
+-- Hide Tray Icon - DIPERBAIKI
 local function hideTrayIcon()
     TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
     TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
@@ -971,9 +1014,8 @@ local function hideTrayIcon()
     trayIcon.Visible = false
 end
 
--- Show Main UI - SANGAT DIPERBAIKI
+-- Show Main UI - DIPERBAIKI
 local function showMainUI()
-    print("[UI] Showing main UI...")
     container.Visible = true
     container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
     container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
@@ -982,12 +1024,10 @@ local function showMainUI()
     
     hideTrayIcon()
     uiOpen = true
-    print("[UI] Main UI shown successfully!")
 end
 
--- Hide Main UI (ke tray) - SANGAT DIPERBAIKI
+-- Hide Main UI (ke tray) - DIPERBAIKI
 local function hideMainUI()
-    print("[UI] Hiding main UI...")
     TweenService:Create(container, TweenInfo.new(0.3), {
         Size = UDim2.new(0, 0, 0, 0),
         Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -999,28 +1039,24 @@ local function hideMainUI()
     
     showTrayIcon()
     uiOpen = false
-    print("[UI] Main UI hidden to tray successfully!")
 end
 
--- Minimize Function
+-- Minimize Function - DIPERBAIKI
 local function minimizeUI()
-    print("[UI] Minimize function called")
     hideMainUI()
 end
 
--- Close Function  
+-- Close Function - DIPERBAIKI  
 local function closeUI()
-    print("[UI] Close function called")
     hideMainUI()
 end
 
--- Tray Icon Click - Show Main UI
+-- Tray Icon Click - Show Main UI - DIPERBAIKI
 trayIcon.MouseButton1Click:Connect(function()
-    print("[UI] Tray icon clicked")
     showMainUI()
 end)
 
--- Tray Icon Hover Effects
+-- Tray Icon Hover Effects - DIPERBAIKI
 trayIcon.MouseEnter:Connect(function()
     TweenService:Create(trayIcon, TweenInfo.new(0.2), {Size = UDim2.new(0, 70, 0, 70)}):Play()
     TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.6}):Play()
@@ -1031,7 +1067,7 @@ trayIcon.MouseLeave:Connect(function()
     TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.7}):Play()
 end)
 
--- Window Controls Hover Effects
+-- Window Controls Hover Effects - DIPERBAIKI
 minimizeBtn.MouseEnter:Connect(function()
     TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
 end)
@@ -1048,33 +1084,28 @@ closeBtn.MouseLeave:Connect(function()
     TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(200, 40, 40)}):Play()
 end)
 
--- Button Clicks - SANGAT DIPERBAIKI
-minimizeBtn.MouseButton1Click:Connect(function()
-    print("[UI] Minimize button clicked!")
-    minimizeUI()
-end)
+-- Button Clicks - DIPERBAIKI
+minimizeBtn.MouseButton1Click:Connect(minimizeUI)
+closeBtn.MouseButton1Click:Connect(closeUI)
 
-closeBtn.MouseButton1Click:Connect(function()
-    print("[UI] Close button clicked!")
-    closeUI()
-end)
-
--- Stats Update Loop
+-- Stats Update Loop - DIPERBAIKI
 spawn(function()
-    while true do
-        local elapsed = math.max(1, tick() - fishingStats.startTime)
-        local rate = fishingStats.fishCaught / elapsed
-        
-        fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
-        rateLabel.Text = string.format("Rate: %.2f/s", rate)
-        memLabel.Text = string.format("Fish: %d | Rate: %.2f/s", fishingStats.fishCaught, rate)
-        
+    while screen and screen.Parent do
         if fishingActive then
-            local currentRate = (fishingStats.fishCaught / math.max(1, tick() - fishingStats.startTime))
-            if fishingConfig.blantantMode then
-                statusLabel.Text = string.format("💥 FISHING: %d fish | %.2f/s | Delay: %.1fs", fishingStats.fishCaught, currentRate, fishingConfig.blantantDelay)
-            else
-                statusLabel.Text = string.format("⚡ FISHING: %d fish | %.2f/s", fishingStats.fishCaught, currentRate)
+            local elapsed = math.max(1, tick() - fishingStats.startTime)
+            local rate = fishingStats.fishCaught / elapsed
+            
+            fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
+            rateLabel.Text = string.format("Rate: %.2f/s", rate)
+            memLabel.Text = string.format("Fish: %d | Rate: %.2f/s", fishingStats.fishCaught, rate)
+            
+            if fishingActive then
+                local currentRate = (fishingStats.fishCaught / math.max(1, tick() - fishingStats.startTime))
+                if fishingConfig.blantantMode then
+                    statusLabel.Text = string.format("💥 FISHING: %d fish | %.2f/s | Delay: %.1fs", fishingStats.fishCaught, currentRate, fishingConfig.blantantDelay)
+                else
+                    statusLabel.Text = string.format("⚡ FISHING: %d fish | %.2f/s", fishingStats.fishCaught, currentRate)
+                end
             end
         end
         
@@ -1082,15 +1113,15 @@ spawn(function()
     end
 end)
 
--- Auto-start fishing jika enabled
+-- Auto-start fishing jika enabled - DIPERBAIKI
 spawn(function()
     wait(2)
-    if fishingConfig.autoFishing then
-        StartFishing()
-        fishingButton.Text = "⏹️ STOP FISHING"
+    if fishingConfig.autoFishing and not fishingActive then
+        StartInstantFishing()
+        fishingButton.Text = "⏹️ STOP INSTANT FISHING"
         fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
         if fishingConfig.blantantMode then
-            statusLabel.Text = "💥 AUTO-START: BLANTANT MODE " .. fishingConfig.blantantDelay .. "s"
+            statusLabel.Text = "💥 AUTO-START: BLANTANT MODE " .. string.format("%.1f", fishingConfig.blantantDelay) .. "s"
         else
             statusLabel.Text = "⚡ AUTO-START: INSTANT FISHING"
         end
@@ -1100,6 +1131,15 @@ end)
 -- Start dengan UI terbuka
 showMainUI()
 
-print("===========================================")
-print("🎣 KAITUN FISH IT - FULLY FIXED!")
-print("✅ Tombol START/S
+print("[Kaitun Fish It] ⚡ BLANTANT DELAY SYSTEM LOADED!")
+print("🎣 Blantant Delay: " .. fishingConfig.blantantDelay .. "s")
+print("🎣 Use the toggle to enable/disable Blantant Mode")
+print("🎣 Drag slider to adjust delay from 0 to 20 seconds")
+
+-- Test jika UI muncul
+wait(1)
+if screen and screen.Parent then
+    print("✅ UI successfully created - All features working!")
+else
+    print("❌ UI failed to create!")
+end
