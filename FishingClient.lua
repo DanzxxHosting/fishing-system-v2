@@ -36,95 +36,6 @@ local fishingStats = {
 local fishingActive = false
 local fishingConnection
 
--- 🎯 PERFECTION FISHING SYSTEM
-local perfectionFishing = {}
-perfectionFishing.Enabled = false
-perfectionFishing.ReactionBase = 0.18 -- reaksi rata-rata manusia
-perfectionFishing.PerfectThreshold = 0.05 -- zona perfect
-perfectionFishing.Active = false
-
--- 🔘 Fungsi untuk menyalakan / mematikan mode perfection
-function perfectionFishing:Toggle(state)
-    perfectionFishing.Enabled = state
-    if state then
-        print("[🎯 PerfectionFishing] Mode ON - Sistem Auto Perfect aktif.")
-        if not perfectionFishing.Active then
-            perfectionFishing.Active = true
-            perfectionFishing:StartPerfectionLoop()
-        end
-    else
-        print("[🎯 PerfectionFishing] Mode OFF.")
-        perfectionFishing.Active = false
-    end
-end
-
--- 🔁 Simulasi progress bar dan deteksi perfect timing
-function perfectionFishing:Perform()
-    if not perfectionFishing.Enabled then return false end
-
-    -- simulasi posisi bar (bergerak dari 0 ke 1)
-    local progress = 0
-    local direction = 1
-    local maxIterations = 100 -- safety limit
-
-    for i = 1, maxIterations do
-        if not perfectionFishing.Enabled then break end
-        
-        progress = progress + (0.03 * direction)
-
-        -- balik arah jika mencapai ujung bar
-        if progress >= 1 then direction = -1 end
-        if progress <= 0 then direction = 1 end
-
-        -- cek posisi mendekati tengah (zona perfect)
-        if math.abs(progress - 0.5) <= perfectionFishing.PerfectThreshold then
-            local delay = perfectionFishing.ReactionBase + math.random(0, 5) / 100
-            task.wait(delay)
-            print(string.format("[✅ PERFECT] Timing %.2fs | Posisi: %.2f", delay, progress))
-
-            -- trigger tangkapan perfect
-            perfectionFishing:CatchFish()
-            return true
-        end
-
-        task.wait(0.05)
-    end
-    return false
-end
-
--- 🐟 Fungsi tangkapan perfect
-function perfectionFishing:CatchFish()
-    if not perfectionFishing.Enabled then return end
-    
-    -- Tambah statistik
-    fishingStats.fishCaught = fishingStats.fishCaught + 1
-    fishingStats.attempts = fishingStats.attempts + 1
-    
-    print("[🐟] Menangkap ikan dengan presisi tinggi... Perfect!")
-    
-    -- efek visual
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "🎯 PERFECT CATCH!",
-        Text = "Timing sempurna! Ikan berhasil ditangkap.",
-        Duration = 2
-    })
-end
-
--- 🔄 Loop utama perfection fishing
-function perfectionFishing:StartPerfectionLoop()
-    spawn(function()
-        while perfectionFishing.Active do
-            if perfectionFishing.Enabled then
-                local success = perfectionFishing:Perform()
-                if success then
-                    task.wait(2.5) -- cooldown setelah perfect catch
-                end
-            end
-            task.wait(0.1)
-        end
-    end)
-end
-
 -- Cleanup old UI
 if playerGui:FindFirstChild("NeonDashboardUI") then
     playerGui.NeonDashboardUI:Destroy()
@@ -698,49 +609,6 @@ local fishingBtnCorner = Instance.new("UICorner")
 fishingBtnCorner.CornerRadius = UDim.new(0,6)
 fishingBtnCorner.Parent = fishingButton
 
--- 🎯 PERFECTION FISHING BUTTON
-local perfectionButton = Instance.new("TextButton")
-perfectionButton.Size = UDim2.new(0, 200, 0, 36)
-perfectionButton.Position = UDim2.new(0, 12, 0, 96)
-perfectionButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-perfectionButton.Font = Enum.Font.GothamBold
-perfectionButton.TextSize = 12
-perfectionButton.Text = "🎯 PERFECTION MODE: OFF"
-perfectionButton.TextColor3 = Color3.fromRGB(255, 100, 100)
-perfectionButton.AutoButtonColor = false
-perfectionButton.Parent = controlsPanel
-
-local perfectionBtnCorner = Instance.new("UICorner")
-perfectionBtnCorner.CornerRadius = UDim.new(0,6)
-perfectionBtnCorner.Parent = perfectionButton
-
--- Perfection Button Handler
-perfectionButton.MouseButton1Click:Connect(function()
-    perfectionFishing:Toggle(not perfectionFishing.Enabled)
-    if perfectionFishing.Enabled then
-        perfectionButton.Text = "🎯 PERFECTION MODE: ON"
-        perfectionButton.BackgroundColor3 = Color3.fromRGB(255, 40, 40)
-        perfectionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    else
-        perfectionButton.Text = "🎯 PERFECTION MODE: OFF"
-        perfectionButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        perfectionButton.TextColor3 = Color3.fromRGB(255, 100, 100)
-    end
-end)
-
--- Hover effects untuk perfection button
-perfectionButton.MouseEnter:Connect(function()
-    TweenService:Create(perfectionButton, TweenInfo.new(0.15), {
-        BackgroundColor3 = perfectionFishing.Enabled and Color3.fromRGB(255, 60, 60) or Color3.fromRGB(60, 60, 60)
-    }):Play()
-end)
-
-perfectionButton.MouseLeave:Connect(function()
-    TweenService:Create(perfectionButton, TweenInfo.new(0.15), {
-        BackgroundColor3 = perfectionFishing.Enabled and Color3.fromRGB(255, 40, 40) or Color3.fromRGB(40, 40, 40)
-    }):Play()
-end)
-
 -- Toggles Panel
 local togglesPanel = Instance.new("Frame")
 togglesPanel.Size = UDim2.new(1, 0, 0, 120)
@@ -1029,7 +897,6 @@ print("[Kaitun Fish It] UI Loaded Successfully!")
 print("🎣 Click - to minimize to tray")
 print("🎣 Click 🗙 to close to tray") 
 print("🎣 Click tray icon to reopen UI")
-print("🎯 Perfection Fishing System Ready!")
 
 -- Test jika UI muncul
 wait(1)
