@@ -531,9 +531,7 @@ end
 local function UltraFastVirtualInput()
     pcall(function()
         local fishingKeys = {
-            Enum.KeyCode.E, Enum.KeyCode.F, Enum.KeyCode.R, 
-            Enum.KeyCode.Space, Enum.KeyCode.Q, Enum.KeyCode.X,
-            Enum.KeyCode.C, Enum.KeyCode.V, Enum.KeyCode.Z
+            Enum.KeyCode.E, Enum.KeyCode.F
         }
         
         for i = 1, 15 do
