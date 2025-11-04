@@ -1,4 +1,4 @@
--- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing (MOBILE COMPATIBLE)
+-- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing
 -- paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
 -- Tema: hitam matte + merah neon. Close/minimize akan menyisakan tray icon.
 
@@ -20,17 +20,16 @@ local ACCENT = Color3.fromRGB(255, 62, 62) -- neon merah
 local BG = Color3.fromRGB(12,12,12) -- hitam matte
 local SECOND = Color3.fromRGB(24,24,26)
 
--- ULTRA FAST FISHING CONFIG
+-- FISHING CONFIG
 local fishingConfig = {
     autoFishing = false,
     instantFishing = true,
-    fishingDelay = 0.0002, -- 5x lebih cepat (dari 0.001)
+    fishingDelay = 0.001,
     blantantMode = false,
-    ultraSpeed = true, -- Mode ultra speed baru
+    ultraSpeed = false,
     perfectCast = true,
     autoReel = true,
-    bypassDetection = true,
-    multiThread = true -- Multi-threading untuk kecepatan maksimal
+    bypassDetection = true
 }
 
 local fishingStats = {
@@ -331,7 +330,7 @@ cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
 -- ═══════════════════════════════════════════════════════════
--- ULTRA FAST FISHING FUNCTIONS (MOBILE COMPATIBLE - NO KEYCODE)
+-- ENHANCED INSTANT FISHING FUNCTIONS
 -- ═══════════════════════════════════════════════════════════
 
 local function SafeGetCharacter()
@@ -386,7 +385,7 @@ local function EquipRod()
             local humanoid = SafeGetHumanoid()
             if humanoid then
                 humanoid:EquipTool(rod)
-                task.wait(0.05)
+                task.wait(0.1)
                 return true
             end
         end
@@ -397,181 +396,46 @@ local function EquipRod()
     return success
 end
 
--- PERFECT CAST FUNCTIONS (MOBILE COMPATIBLE)
-local function EnablePerfectCast()
-    local success = pcall(function()
-        -- Method 1: Remote untuk perfect cast
-        if ReplicatedStorage then
-            for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-                if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                    local name = remote.Name:lower()
-                    if name:find("perfect") or name:find("accuracy") or name:find("precision") then
-                        if remote:IsA("RemoteEvent") then
-                            remote:FireServer(true)
-                            remote:FireServer("Perfect")
-                            remote:FireServer("Enable")
-                        elseif remote:IsA("RemoteFunction") then
-                            remote:InvokeServer(true)
-                            remote:InvokeServer("Perfect")
-                            remote:InvokeServer("Enable")
-                        end
-                    end
-                end
-            end
-        end
-
-        -- Method 2: Mobile compatible virtual input (tanpa keycode)
-        spawn(function()
-            while fishingConfig.perfectCast and fishingActive do
-                -- Gunakan mouse/touch input untuk mobile
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                task.wait(0.02)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-                task.wait(0.3)
-            end
-        end)
-
-        return true
-    end)
-    
-    return success
-end
-
-local function DisablePerfectCast()
-    pcall(function()
-        -- Disable via remotes
-        if ReplicatedStorage then
-            for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-                if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                    local name = remote.Name:lower()
-                    if name:find("perfect") or name:find("accuracy") then
-                        if remote:IsA("RemoteEvent") then
-                            remote:FireServer(false)
-                            remote:FireServer("Normal")
-                        elseif remote:IsA("RemoteFunction") then
-                            remote:InvokeServer(false)
-                            remote:InvokeServer("Normal")
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-
--- ULTRA FAST FISHING METHODS (MOBILE COMPATIBLE - NO KEYCODE)
-local function UltraFastFishProximity()
+-- INSTANT FISHING - Method 1: ProximityPrompt
+local function InstantFishProximity()
     local success = pcall(function()
         local char = SafeGetCharacter()
         if not char then return false end
         
-        local prompts = {}
         for _, descendant in pairs(char:GetDescendants()) do
-            if descendant:IsA("ProximityPrompt") and descendant.Enabled then
-                table.insert(prompts, descendant)
-            end
-        end
-        
-        for _, prompt in ipairs(prompts) do
-            spawn(function()
-                for i = 1, 10 do
-                    fireproximityprompt(prompt)
-                    task.wait(0.0001)
-                end
-            end)
-        end
-        
-        return #prompts > 0
-    end)
-    
-    return success
-end
-
-local function UltraFastFishRemote()
-    local success = pcall(function()
-        if not ReplicatedStorage then return false end
-        
-        local remotes = {}
-        for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-            if (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
-                local name = remote.Name:lower()
-                if name:find("fish") or name:find("cast") or name:find("catch") or name:find("reel") then
-                    table.insert(remotes, remote)
-                end
-            end
-        end
-        
-        for _, remote in ipairs(remotes) do
-            spawn(function()
-                local commands = {"Cast", "Reel", "Catch", "Fish", "Start", "Pull", "Hook"}
-                for _, cmd in ipairs(commands) do
-                    if remote:IsA("RemoteEvent") then
-                        for i = 1, 5 do
-                            remote:FireServer(cmd)
-                            remote:FireServer(cmd, true)
-                            remote:FireServer(cmd, 1.0)
-                            task.wait(0.0001)
-                        end
-                    elseif remote:IsA("RemoteFunction") then
-                        for i = 1, 3 do
-                            pcall(function() remote:InvokeServer(cmd) end)
-                            pcall(function() remote:InvokeServer(cmd, true) end)
-                            task.wait(0.0001)
-                        end
+            if descendant:IsA("ProximityPrompt") then
+                local objText = descendant.ObjectText and descendant.ObjectText:lower() or ""
+                local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
+                
+                if objText:find("fish") or objText:find("cast") or objText:find("catch") or
+                   actionText:find("fish") or actionText:find("cast") or actionText:find("catch") then
+                    
+                    if descendant.Enabled then
+                        fireproximityprompt(descendant)
+                        return true
                     end
                 end
-            end)
+            end
         end
         
-        return #remotes > 0
+        return false
     end)
     
     return success
 end
 
--- MOBILE COMPATIBLE VIRTUAL INPUT (TANPA KEYCODE)
-local function UltraFastVirtualInput()
-    pcall(function()
-        -- Hanya gunakan mouse/touch input untuk mobile compatibility
-        for i = 1, 20 do
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-            task.wait(0.0001)
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-            task.wait(0.0001)
-        end
-        
-        -- Simulate tap gestures untuk mobile (tanpa keycode)
-        for i = 1, 15 do
-            -- Tap di berbagai posisi layar untuk mobile
-            VirtualInputManager:SendMouseButtonEvent(100, 100, 0, true, game, 0)
-            task.wait(0.0001)
-            VirtualInputManager:SendMouseButtonEvent(100, 100, 0, false, game, 0)
-            task.wait(0.0001)
-            
-            VirtualInputManager:SendMouseButtonEvent(200, 200, 0, true, game, 0)
-            task.wait(0.0001)
-            VirtualInputManager:SendMouseButtonEvent(200, 200, 0, false, game, 0)
-            task.wait(0.0001)
-        end
-    end)
-    
-    return true
-end
-
-local function UltraFastClickDetector()
+-- INSTANT FISHING - Method 2: ClickDetector
+local function InstantFishClickDetector()
     local success = pcall(function()
         local rod = GetFishingRod()
-        if not rod then return false end
+        if not rod or rod.Parent ~= player.Character then return false end
         
         local handle = rod:FindFirstChild("Handle")
         if not handle then return false end
         
         local clickDetector = handle:FindFirstChild("ClickDetector")
         if clickDetector then
-            for i = 1, 20 do
-                fireclickdetector(clickDetector)
-                task.wait(0.0001)
-            end
+            fireclickdetector(clickDetector)
             return true
         end
         
@@ -581,39 +445,82 @@ local function UltraFastClickDetector()
     return success
 end
 
-local function UltraFastUIButtons()
+-- INSTANT FISHING - Method 3: RemoteEvent/Function
+local function InstantFishRemote()
     local success = pcall(function()
-        local playerGui = player:WaitForChild("PlayerGui")
-        local buttons = {}
+        if not ReplicatedStorage then return false end
         
-        for _, gui in pairs(playerGui:GetDescendants()) do
-            if (gui:IsA("ImageButton") or gui:IsA("TextButton")) and gui.Visible then
-                local name = gui.Name:lower()
-                local text = gui.Text and gui.Text:lower() or ""
-                
-                if name:find("fish") or name:find("cast") or name:find("reel") or 
-                   name:find("catch") or text:find("fish") or text:find("cast") or
-                   text:find("reel") or text:find("catch") then
-                    table.insert(buttons, gui)
+        -- Cari RemoteEvent fishing
+        for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                local name = remote.Name:lower()
+                if name:find("fish") or name:find("cast") or name:find("catch") or name:find("reel") then
+                    if remote:IsA("RemoteEvent") then
+                        remote:FireServer("Cast")
+                        remote:FireServer("Reel")
+                        remote:FireServer("Catch")
+                        return true
+                    elseif remote:IsA("RemoteFunction") then
+                        remote:InvokeServer("Cast")
+                        remote:InvokeServer("Reel")
+                        remote:InvokeServer("Catch")
+                        return true
+                    end
                 end
             end
         end
         
-        for _, button in ipairs(buttons) do
-            spawn(function()
-                for i = 1, 25 do
-                    pcall(function() button.Activated:Fire() end)
-                    task.wait(0.0001)
-                end
-            end)
-        end
-        
-        return #buttons > 0
+        return false
     end)
     
     return success
 end
 
+-- INSTANT FISHING - Method 4: BindableEvent
+local function InstantFishBindable()
+    local success = pcall(function()
+        local char = SafeGetCharacter()
+        if not char then return false end
+        
+        for _, bindable in pairs(char:GetDescendants()) do
+            if bindable:IsA("BindableEvent") then
+                local name = bindable.Name:lower()
+                if name:find("fish") or name:find("cast") or name:find("catch") then
+                    bindable:Fire()
+                    return true
+                end
+            end
+        end
+        
+        return false
+    end)
+    
+    return success
+end
+
+-- INSTANT FISHING - Method 5: Virtual Input
+local function InstantFishVirtualInput()
+    pcall(function()
+        -- Mouse Click
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        task.wait(0.001)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        
+        -- E key
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        task.wait(0.001)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        
+        -- F key
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+        task.wait(0.001)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+    end)
+    
+    return true
+end
+
+-- INSTANT FISHING - Method 6: Auto Reel
 local function AutoReelFish()
     local success = pcall(function()
         local char = SafeGetCharacter()
@@ -621,6 +528,7 @@ local function AutoReelFish()
         
         local playerGui = player:WaitForChild("PlayerGui")
         
+        -- Cari UI fishing
         for _, gui in pairs(playerGui:GetDescendants()) do
             if gui:IsA("ImageButton") or gui:IsA("TextButton") then
                 local name = gui.Name:lower()
@@ -630,7 +538,7 @@ local function AutoReelFish()
                     if gui.Visible then
                         for i = 1, 50 do
                             gui.Activated:Fire()
-                            task.wait(0.0005)
+                            task.wait(0.001)
                         end
                         return true
                     end
@@ -644,37 +552,47 @@ local function AutoReelFish()
     return success
 end
 
--- MASTER ULTRA FAST FISHING FUNCTION (MOBILE COMPATIBLE)
-local function UltraFastInstantFish()
+-- MASTER INSTANT FISHING FUNCTION
+local function InstantFish()
     if not fishingActive then return end
     
     fishingStats.attempts = fishingStats.attempts + 1
     
+    -- Pastikan rod equipped
     if not EquipRod() then
         return
     end
-
-    if fishingConfig.perfectCast then
-        EnablePerfectCast()
-    end
-
+    
     local success = false
     
-    if fishingConfig.ultraSpeed then
-        spawn(function() if UltraFastFishProximity() then success = true end end)
-        spawn(function() if UltraFastFishRemote() then success = true end end)
-        spawn(function() if UltraFastVirtualInput() then success = true end end)
-        spawn(function() if UltraFastClickDetector() then success = true end end)
-        spawn(function() if UltraFastUIButtons() then success = true end end)
+    -- Try all methods simultaneously for maximum speed
+    if fishingConfig.instantFishing or fishingConfig.blantantMode then
+        -- Method 1: ProximityPrompt (paling umum)
+        if InstantFishProximity() then
+            success = true
+        end
         
-        task.wait(0.001)
+        -- Method 2: ClickDetector
+        if InstantFishClickDetector() then
+            success = true
+        end
         
-    elseif fishingConfig.instantFishing or fishingConfig.blantantMode then
-        if UltraFastFishProximity() then success = true end
-        if UltraFastFishRemote() then success = true end
-        if UltraFastVirtualInput() then success = true end
-        if UltraFastClickDetector() then success = true end
+        -- Method 3: RemoteEvent
+        if InstantFishRemote() then
+            success = true
+        end
         
+        -- Method 4: BindableEvent
+        if InstantFishBindable() then
+            success = true
+        end
+        
+        -- Method 5: Virtual Input
+        if InstantFishVirtualInput() then
+            success = true
+        end
+        
+        -- Method 6: Auto Reel (jika ada minigame)
         if fishingConfig.autoReel then
             AutoReelFish()
         end
@@ -685,8 +603,8 @@ local function UltraFastInstantFish()
     end
 end
 
--- ULTRA FAST FISHING START FUNCTION
-local function StartUltraFastFishing()
+-- Start Fishing dengan connection yang proper
+local function StartFishing()
     if fishingActive then 
         print("[Fishing] Already fishing!")
         return 
@@ -695,51 +613,30 @@ local function StartUltraFastFishing()
     fishingActive = true
     fishingStats.startTime = tick()
     
-    print("[Fishing] 🚀 STARTING ULTRA FAST FISHING (MOBILE COMPATIBLE)")
+    print("[Fishing] Starting instant fishing...")
     print("[Fishing] Delay:", fishingConfig.fishingDelay)
-    print("[Fishing] Multi-Thread:", fishingConfig.multiThread)
     
-    if fishingConfig.perfectCast then
-        EnablePerfectCast()
-    end
-    
+    -- Main fishing loop
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
-        if fishingConfig.multiThread then
-            for i = 1, 3 do
-                spawn(function()
-                    pcall(UltraFastInstantFish)
-                end)
-            end
-        else
-            pcall(UltraFastInstantFish)
-        end
+        pcall(InstantFish)
         
-        if fishingConfig.ultraSpeed then
-            task.wait(0.0002)
-        elseif fishingConfig.blantantMode then
-            task.wait(0.001)
+        -- Delay based on mode
+        if fishingConfig.blantantMode then
+            task.wait(0.001) -- Ultra fast
+        elseif fishingConfig.instantFishing then
+            task.wait(0.01) -- Fast
         else
             task.wait(fishingConfig.fishingDelay)
         end
     end)
     
+    -- Auto reel connection (terpisah untuk minigame)
     if fishingConfig.autoReel then
         reelConnection = RunService.RenderStepped:Connect(function()
             if not fishingActive then return end
-            for i = 1, 3 do
-                pcall(AutoReelFish)
-            end
-        end)
-    end
-    
-    if fishingConfig.ultraSpeed then
-        spawn(function()
-            while fishingActive do
-                pcall(UltraFastVirtualInput)
-                task.wait(0.01)
-            end
+            pcall(AutoReelFish)
         end)
     end
 end
@@ -869,7 +766,7 @@ fishingButton.Position = UDim2.new(0, 12, 0, 40)
 fishingButton.BackgroundColor3 = ACCENT
 fishingButton.Font = Enum.Font.GothamBold
 fishingButton.TextSize = 14
-fishingButton.Text = "🚀 START ULTRA FAST FISHING"
+fishingButton.Text = "🚀 START INSTANT FISHING"
 fishingButton.TextColor3 = Color3.fromRGB(30,30,30)
 fishingButton.AutoButtonColor = false
 fishingButton.Parent = controlsPanel
@@ -892,7 +789,7 @@ statusLabel.Parent = controlsPanel
 
 -- Toggles Panel
 local togglesPanel = Instance.new("Frame")
-togglesPanel.Size = UDim2.new(1, 0, 0, 240)
+togglesPanel.Size = UDim2.new(1, 0, 0, 200)
 togglesPanel.Position = UDim2.new(0, 0, 0, 224)
 togglesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 togglesPanel.BorderSizePixel = 0
@@ -908,7 +805,7 @@ togglesTitle.Position = UDim2.new(0,12,0,8)
 togglesTitle.BackgroundTransparency = 1
 togglesTitle.Font = Enum.Font.GothamBold
 togglesTitle.TextSize = 14
-togglesTitle.Text = "🔧 Ultra Fast Fishing Settings"
+togglesTitle.Text = "🔧 Instant Fishing Settings"
 togglesTitle.TextColor3 = Color3.fromRGB(235,235,235)
 togglesTitle.TextXAlignment = Enum.TextXAlignment.Left
 togglesTitle.Parent = togglesPanel
@@ -966,43 +863,34 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
     return frame
 end
 
--- Create ULTRA FAST Toggles
-CreateToggle("⚡ Ultra Speed", "5x faster multi-thread fishing", fishingConfig.ultraSpeed, function(v)
-    fishingConfig.ultraSpeed = v
+-- Create Toggles
+CreateToggle("⚡ Instant Fishing", "Max speed casting & catching", fishingConfig.instantFishing, function(v)
+    fishingConfig.instantFishing = v
     if v then
-        fishingConfig.fishingDelay = 0.0002
-        fishingConfig.multiThread = true
-        fishingConfig.instantFishing = true
-        print("[Fishing] ⚡ ULTRA SPEED: ENABLED (5x Faster)")
+        fishingConfig.fishingDelay = 0.01
+        print("[Fishing] Instant Fishing: ENABLED")
     else
         fishingConfig.fishingDelay = 0.1
-        fishingConfig.multiThread = false
-        print("[Fishing] Ultra Speed: DISABLED")
+        print("[Fishing] Instant Fishing: DISABLED")
     end
 end, togglesPanel, 36)
 
-CreateToggle("💥 Blatant Mode", "3x faster fishing", fishingConfig.blantantMode, function(v)
+CreateToggle("💥 Blatant Mode", "Ultra fast (may be detected)", fishingConfig.blantantMode, function(v)
     fishingConfig.blantantMode = v
     if v then
         fishingConfig.fishingDelay = 0.001
         fishingConfig.instantFishing = true
-        fishingConfig.ultraSpeed = false
         print("[Fishing] Blatant Mode: ENABLED (0.001s delay)")
     else
         fishingConfig.fishingDelay = 0.1
+        fishingConfig.instantFishing = false
         print("[Fishing] Blatant Mode: DISABLED")
     end
 end, togglesPanel, 76)
 
 CreateToggle("🎯 Perfect Cast", "Always perfect casting", fishingConfig.perfectCast, function(v)
     fishingConfig.perfectCast = v
-    if v then
-        EnablePerfectCast()
-        print("[Fishing] Perfect Cast: ENABLED")
-    else
-        DisablePerfectCast()
-        print("[Fishing] Perfect Cast: DISABLED")
-    end
+    print("[Fishing] Perfect Cast:", v and "ENABLED" or "DISABLED")
 end, togglesPanel, 116)
 
 CreateToggle("🔄 Auto Reel", "Auto reel minigame", fishingConfig.autoReel, function(v)
@@ -1010,30 +898,20 @@ CreateToggle("🔄 Auto Reel", "Auto reel minigame", fishingConfig.autoReel, fun
     print("[Fishing] Auto Reel:", v and "ENABLED" or "DISABLED")
 end, togglesPanel, 156)
 
-CreateToggle("🧵 Multi-Thread", "Parallel execution for max speed", fishingConfig.multiThread, function(v)
-    fishingConfig.multiThread = v
-    if v then
-        fishingConfig.ultraSpeed = true
-        print("[Fishing] Multi-Thread: ENABLED - Maximum performance")
-    else
-        print("[Fishing] Multi-Thread: DISABLED")
-    end
-end, togglesPanel, 196)
-
 -- Fishing Button Handler
 fishingButton.MouseButton1Click:Connect(function()
     if fishingActive then
         StopFishing()
-        fishingButton.Text = "🚀 START ULTRA FAST FISHING"
+        fishingButton.Text = "🚀 START INSTANT FISHING"
         fishingButton.BackgroundColor3 = ACCENT
         statusLabel.Text = "⭕ OFFLINE"
         statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
     else
-        StartUltraFastFishing()
-        fishingButton.Text = "⏹️ STOP ULTRA FISHING"
-        fishingButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-        statusLabel.Text = "⚡ ULTRA FAST ACTIVE"
-        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+        StartFishing()
+        fishingButton.Text = "⏹️ STOP FISHING"
+        fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        statusLabel.Text = "✅ FISHING ACTIVE"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
     end
 end)
 
@@ -1200,29 +1078,16 @@ spawn(function()
         
         fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
         rateLabel.Text = string.format("Rate: %.2f/s", rate)
+        memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
         
-        local speedStatus = ""
-        if fishingConfig.ultraSpeed then
-            speedStatus = " | ⚡ ULTRA SPEED"
-        elseif fishingConfig.blantantMode then
-            speedStatus = " | 💥 FAST"
-        else
-            speedStatus = " | 🐢 NORMAL"
-        end
-        
-        memLabel.Text = string.format("Memory: %d KB | Fish: %d%s", 
-            math.floor(collectgarbage("count")), fishingStats.fishCaught, speedStatus)
-        
-        wait(0.3)
+        wait(0.5)
     end
 end)
 
 -- Start dengan UI terbuka
 showMainUI()
 
-print("[Kaitun Fish It] 🚀 MOBILE COMPATIBLE ULTRA FAST FISHING LOADED!")
-print("📱 100% Compatible with Mobile Devices")
-print("⚡ Ultra Speed Mode: 5x Faster Fishing")
+print("[Kaitun Fish It] UI Loaded Successfully!")
 print("🎣 Click - to minimize to tray")
 print("🎣 Click 🗙 to close to tray") 
 print("🎣 Click tray icon to reopen UI")
