@@ -1,4 +1,4 @@
--- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing
+-- UI-Only: Neon Panel dengan Tray Icon + Auto Start Ultra Fast Fishing (MOBILE COMPATIBLE)
 -- paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
 -- Tema: hitam matte + merah neon. Close/minimize akan menyisakan tray icon.
 
@@ -22,7 +22,7 @@ local SECOND = Color3.fromRGB(24,24,26)
 
 -- ULTRA FAST FISHING CONFIG
 local fishingConfig = {
-    autoFishing = false,
+    autoFishing = true, -- Auto start fishing
     instantFishing = true,
     fishingDelay = 0.0002, -- 5x lebih cepat (dari 0.001)
     blantantMode = false,
@@ -331,7 +331,7 @@ cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
 -- ═══════════════════════════════════════════════════════════
--- ULTRA FAST FISHING FUNCTIONS (5x LEBIH CEPAT)
+-- ULTRA FAST FISHING FUNCTIONS (MOBILE COMPATIBLE)
 -- ═══════════════════════════════════════════════════════════
 
 local function SafeGetCharacter()
@@ -397,7 +397,7 @@ local function EquipRod()
     return success
 end
 
--- PERFECT CAST FUNCTIONS
+-- PERFECT CAST FUNCTIONS (MOBILE COMPATIBLE)
 local function EnablePerfectCast()
     local success = pcall(function()
         -- Method 1: Remote untuk perfect cast
@@ -420,12 +420,13 @@ local function EnablePerfectCast()
             end
         end
 
-        -- Method 2: Virtual input untuk timing sempurna
+        -- Method 2: Mobile compatible - tanpa key input
         spawn(function()
             while fishingConfig.perfectCast and fishingActive do
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                -- Gunakan metode mobile-friendly seperti tap virtual
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
                 task.wait(0.02)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
                 task.wait(0.3)
             end
         end)
@@ -458,7 +459,7 @@ local function DisablePerfectCast()
     end)
 end
 
--- ULTRA FAST FISHING METHODS
+-- ULTRA FAST FISHING METHODS (MOBILE COMPATIBLE)
 local function UltraFastFishProximity()
     local success = pcall(function()
         local char = SafeGetCharacter()
@@ -528,28 +529,29 @@ local function UltraFastFishRemote()
     return success
 end
 
+-- MOBILE COMPATIBLE VIRTUAL INPUT (tanpa KeyCode)
 local function UltraFastVirtualInput()
     pcall(function()
-        local fishingKeys = {
-            Enum.KeyCode.E, Enum.KeyCode.F
-        }
-        
-        for i = 1, 15 do
+        -- Hanya gunakan mouse/touch input untuk mobile compatibility
+        for i = 1, 20 do
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
             task.wait(0.0001)
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
             task.wait(0.0001)
         end
         
-        for _, key in ipairs(fishingKeys) do
-            spawn(function()
-                for i = 1, 8 do
-                    VirtualInputManager:SendKeyEvent(true, key, false, game)
-                    task.wait(0.0001)
-                    VirtualInputManager:SendKeyEvent(false, key, false, game)
-                    task.wait(0.0001)
-                end
-            end)
+        -- Simulate tap gestures untuk mobile
+        for i = 1, 10 do
+            -- Tap di berbagai posisi layar untuk mobile
+            VirtualInputManager:SendMouseButtonEvent(100, 100, 0, true, game, 0)
+            task.wait(0.0001)
+            VirtualInputManager:SendMouseButtonEvent(100, 100, 0, false, game, 0)
+            task.wait(0.0001)
+            
+            VirtualInputManager:SendMouseButtonEvent(200, 200, 0, true, game, 0)
+            task.wait(0.0001)
+            VirtualInputManager:SendMouseButtonEvent(200, 200, 0, false, game, 0)
+            task.wait(0.0001)
         end
     end)
     
@@ -642,7 +644,7 @@ local function AutoReelFish()
     return success
 end
 
--- MASTER ULTRA FAST FISHING FUNCTION
+-- MASTER ULTRA FAST FISHING FUNCTION (MOBILE COMPATIBLE)
 local function UltraFastInstantFish()
     if not fishingActive then return end
     
@@ -686,16 +688,13 @@ end
 -- ULTRA FAST FISHING START FUNCTION
 local function StartUltraFastFishing()
     if fishingActive then 
-        print("[Fishing] Already fishing!")
         return 
     end
     
     fishingActive = true
     fishingStats.startTime = tick()
     
-    print("[Fishing] 🚀 STARTING ULTRA FAST FISHING (5x SPEED)")
-    print("[Fishing] Delay:", fishingConfig.fishingDelay)
-    print("[Fishing] Multi-Thread:", fishingConfig.multiThread)
+    print("[Fishing] 🚀 AUTO STARTING ULTRA FAST FISHING (MOBILE COMPATIBLE)")
     
     if fishingConfig.perfectCast then
         EnablePerfectCast()
@@ -760,7 +759,7 @@ local function StopFishing()
 end
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING UI CONTENT
+-- FISHING UI CONTENT (TANPA TOMBOL START/STOP)
 -- ═══════════════════════════════════════════════════════════
 
 local fishingContent = Instance.new("Frame")
@@ -773,7 +772,7 @@ fishingContent.Parent = content
 
 -- Stats Panel
 local statsPanel = Instance.new("Frame")
-statsPanel.Size = UDim2.new(1, 0, 0, 100)
+statsPanel.Size = UDim2.new(1, 0, 0, 120)
 statsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 statsPanel.BorderSizePixel = 0
 statsPanel.Parent = fishingContent
@@ -788,7 +787,7 @@ statsTitle.Position = UDim2.new(0,12,0,8)
 statsTitle.BackgroundTransparency = 1
 statsTitle.Font = Enum.Font.GothamBold
 statsTitle.TextSize = 14
-statsTitle.Text = "📊 Fishing Statistics"
+statsTitle.Text = "📊 Fishing Statistics - AUTO START"
 statsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 statsTitle.TextXAlignment = Enum.TextXAlignment.Left
 statsTitle.Parent = statsPanel
@@ -837,61 +836,21 @@ successLabel.TextColor3 = Color3.fromRGB(255,200,255)
 successLabel.TextXAlignment = Enum.TextXAlignment.Left
 successLabel.Parent = statsPanel
 
--- Controls Panel
-local controlsPanel = Instance.new("Frame")
-controlsPanel.Size = UDim2.new(1, 0, 0, 100)
-controlsPanel.Position = UDim2.new(0, 0, 0, 112)
-controlsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
-controlsPanel.BorderSizePixel = 0
-controlsPanel.Parent = fishingContent
-
-local controlsCorner = Instance.new("UICorner")
-controlsCorner.CornerRadius = UDim.new(0,8)
-controlsCorner.Parent = controlsPanel
-
-local controlsTitle = Instance.new("TextLabel")
-controlsTitle.Size = UDim2.new(1, -24, 0, 28)
-controlsTitle.Position = UDim2.new(0,12,0,8)
-controlsTitle.BackgroundTransparency = 1
-controlsTitle.Font = Enum.Font.GothamBold
-controlsTitle.TextSize = 14
-controlsTitle.Text = "⚡ Fishing Controls"
-controlsTitle.TextColor3 = Color3.fromRGB(235,235,235)
-controlsTitle.TextXAlignment = Enum.TextXAlignment.Left
-controlsTitle.Parent = controlsPanel
-
--- Start/Stop Button
-local fishingButton = Instance.new("TextButton")
-fishingButton.Size = UDim2.new(0, 200, 0, 50)
-fishingButton.Position = UDim2.new(0, 12, 0, 40)
-fishingButton.BackgroundColor3 = ACCENT
-fishingButton.Font = Enum.Font.GothamBold
-fishingButton.TextSize = 14
-fishingButton.Text = "🚀 START ULTRA FAST FISHING"
-fishingButton.TextColor3 = Color3.fromRGB(30,30,30)
-fishingButton.AutoButtonColor = false
-fishingButton.Parent = controlsPanel
-
-local fishingBtnCorner = Instance.new("UICorner")
-fishingBtnCorner.CornerRadius = UDim.new(0,6)
-fishingBtnCorner.Parent = fishingButton
-
--- Status Indicator
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(0.5, -16, 0, 50)
-statusLabel.Position = UDim2.new(0, 224, 0, 40)
+statusLabel.Size = UDim2.new(1, -24, 0, 24)
+statusLabel.Position = UDim2.new(0,12,0,96)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Font = Enum.Font.GothamBold
 statusLabel.TextSize = 12
-statusLabel.Text = "⭕ OFFLINE"
-statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+statusLabel.Text = "⚡ ULTRA FAST FISHING ACTIVE"
+statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
 statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-statusLabel.Parent = controlsPanel
+statusLabel.Parent = statsPanel
 
 -- Toggles Panel
 local togglesPanel = Instance.new("Frame")
 togglesPanel.Size = UDim2.new(1, 0, 0, 240)
-togglesPanel.Position = UDim2.new(0, 0, 0, 224)
+togglesPanel.Position = UDim2.new(0, 0, 0, 132)
 togglesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 togglesPanel.BorderSizePixel = 0
 togglesPanel.Parent = fishingContent
@@ -971,11 +930,13 @@ CreateToggle("⚡ Ultra Speed", "5x faster multi-thread fishing", fishingConfig.
         fishingConfig.fishingDelay = 0.0002
         fishingConfig.multiThread = true
         fishingConfig.instantFishing = true
-        print("[Fishing] ⚡ ULTRA SPEED: ENABLED (5x Faster)")
+        statusLabel.Text = "⚡ ULTRA FAST FISHING ACTIVE"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
     else
         fishingConfig.fishingDelay = 0.1
         fishingConfig.multiThread = false
-        print("[Fishing] Ultra Speed: DISABLED")
+        statusLabel.Text = "🐢 NORMAL FISHING ACTIVE"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
     end
 end, togglesPanel, 36)
 
@@ -985,10 +946,12 @@ CreateToggle("💥 Blatant Mode", "3x faster fishing", fishingConfig.blantantMod
         fishingConfig.fishingDelay = 0.001
         fishingConfig.instantFishing = true
         fishingConfig.ultraSpeed = false
-        print("[Fishing] Blatant Mode: ENABLED (0.001s delay)")
+        statusLabel.Text = "💥 FAST FISHING ACTIVE"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
     else
         fishingConfig.fishingDelay = 0.1
-        print("[Fishing] Blatant Mode: DISABLED")
+        statusLabel.Text = "🐢 NORMAL FISHING ACTIVE"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
     end
 end, togglesPanel, 76)
 
@@ -996,44 +959,21 @@ CreateToggle("🎯 Perfect Cast", "Always perfect casting", fishingConfig.perfec
     fishingConfig.perfectCast = v
     if v then
         EnablePerfectCast()
-        print("[Fishing] Perfect Cast: ENABLED")
     else
         DisablePerfectCast()
-        print("[Fishing] Perfect Cast: DISABLED")
     end
 end, togglesPanel, 116)
 
 CreateToggle("🔄 Auto Reel", "Auto reel minigame", fishingConfig.autoReel, function(v)
     fishingConfig.autoReel = v
-    print("[Fishing] Auto Reel:", v and "ENABLED" or "DISABLED")
 end, togglesPanel, 156)
 
 CreateToggle("🧵 Multi-Thread", "Parallel execution for max speed", fishingConfig.multiThread, function(v)
     fishingConfig.multiThread = v
     if v then
         fishingConfig.ultraSpeed = true
-        print("[Fishing] Multi-Thread: ENABLED - Maximum performance")
-    else
-        print("[Fishing] Multi-Thread: DISABLED")
     end
 end, togglesPanel, 196)
-
--- Fishing Button Handler
-fishingButton.MouseButton1Click:Connect(function()
-    if fishingActive then
-        StopFishing()
-        fishingButton.Text = "🚀 START ULTRA FAST FISHING"
-        fishingButton.BackgroundColor3 = ACCENT
-        statusLabel.Text = "⭕ OFFLINE"
-        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    else
-        StartUltraFastFishing()
-        fishingButton.Text = "⏹️ STOP ULTRA FISHING"
-        fishingButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-        statusLabel.Text = "⚡ ULTRA FAST ACTIVE"
-        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
-    end
-end)
 
 -- TELEPORT UI (Placeholder)
 local teleportContent = Instance.new("Frame")
@@ -1215,11 +1155,22 @@ spawn(function()
     end
 end)
 
--- Start dengan UI terbuka
-showMainUI()
+-- AUTO START FISHING KETIKA UI DIBUKA
+local function AutoStartFishing()
+    wait(2) -- Tunggu 2 detik setelah UI terbuka
+    if not fishingActive then
+        StartUltraFastFishing()
+        print("[Fishing] 🚀 AUTO STARTED - Mobile Compatible Ultra Fast Fishing")
+    end
+end
 
-print("[Kaitun Fish It] 🚀 ULTRA FAST FISHING LOADED!")
-print("⚡ Ultra Speed Mode: 5x Faster Fishing")
+-- Start dengan UI terbuka dan auto fishing
+showMainUI()
+AutoStartFishing()
+
+print("[Kaitun Fish It] 🚀 MOBILE COMPATIBLE ULTRA FAST FISHING LOADED!")
+print("📱 Compatible with Mobile Devices")
+print("⚡ Auto Started - No Button Required")
 print("🎣 Click - to minimize to tray")
 print("🎣 Click 🗙 to close to tray") 
 print("🎣 Click tray icon to reopen UI")
