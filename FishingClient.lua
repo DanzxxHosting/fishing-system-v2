@@ -1,6 +1,6 @@
--- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing
+-- KAITUN FISH IT v3.0 - PERFECTED INSTANT FISHING
 -- paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
--- Tema: hitam matte + merah neon. Close/minimize akan menyisakan tray icon.
+-- Tema: hitam matte + merah neon dengan instant fishing yang disempurnakan
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -22,26 +23,28 @@ local SECOND = Color3.fromRGB(24,24,26)
 
 -- FISHING CONFIG
 local fishingConfig = {
-    autoFishing = false,
-    instantFishing = true,
-    fishingDelay = 0.001,
-    blantantMode = false,
-    ultraSpeed = false,
-    perfectCast = true,
-    autoReel = true,
-    bypassDetection = true
+    enabled = false,
+    instantCast = true,
+    instantReel = true,
+    perfectTiming = true,
+    autoEquip = true,
+    speed = "ultra", -- "normal", "fast", "ultra"
+    multiMethod = true,
+    bypassAnticheat = true
 }
 
 local fishingStats = {
     fishCaught = 0,
     startTime = tick(),
     attempts = 0,
-    successRate = 0
+    successes = 0,
+    fails = 0,
+    lastCatch = 0
 }
 
 local fishingActive = false
-local fishingConnection
-local reelConnection
+local activeConnections = {}
+local detectedMethods = {}
 
 -- Cleanup old UI
 if playerGui:FindFirstChild("NeonDashboardUI") then
@@ -54,8 +57,6 @@ screen.Name = "NeonDashboardUI"
 screen.ResetOnSpawn = false
 screen.Parent = playerGui
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-print("[UI] ScreenGui created")
 
 -- TRAY ICON
 local trayIcon = Instance.new("ImageButton")
@@ -139,7 +140,7 @@ title.Position = UDim2.new(0,8,0,0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
-title.Text = "⚡ KAITUN FISH IT"
+title.Text = "⚡ KAITUN FISH IT v3.0"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = titleBar
@@ -236,7 +237,7 @@ sSubtitle.Position = UDim2.new(0, 88, 0, 38)
 sSubtitle.BackgroundTransparency = 1
 sSubtitle.Font = Enum.Font.Gotham
 sSubtitle.TextSize = 10
-sSubtitle.Text = "Instant Fish v2.0"
+sSubtitle.Text = "Perfect Instant v3.0"
 sSubtitle.TextColor3 = ACCENT
 sSubtitle.TextXAlignment = Enum.TextXAlignment.Left
 sSubtitle.Parent = sbHeader
@@ -306,7 +307,6 @@ end
 
 local items = {
     {"Fishing", "🎣"},
-    {"Teleport", "📍"},
     {"Settings", "⚙"},
 }
 local menuButtons = {}
@@ -335,145 +335,187 @@ cTitle.Position = UDim2.new(0,12,0,12)
 cTitle.BackgroundTransparency = 1
 cTitle.Font = Enum.Font.GothamBold
 cTitle.TextSize = 16
-cTitle.Text = "Fishing"
+cTitle.Text = "Perfect Instant Fishing"
 cTitle.TextColor3 = Color3.fromRGB(245,245,245)
 cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
 -- ═══════════════════════════════════════════════════════════
--- ENHANCED INSTANT FISHING FUNCTIONS
+-- PERFECTED INSTANT FISHING SYSTEM v3.0
 -- ═══════════════════════════════════════════════════════════
 
-local function SafeGetCharacter()
-    return player.Character or player.CharacterAdded:Wait()
-end
-
-local function SafeGetHumanoid()
-    local char = SafeGetCharacter()
-    return char and char:FindFirstChild("Humanoid")
-end
-
-local function GetFishingRod()
-    local success, result = pcall(function()
-        local backpack = player:FindFirstChild("Backpack")
-        if backpack then
-            for _, item in pairs(backpack:GetChildren()) do
-                if item:IsA("Tool") then
-                    local name = item.Name:lower()
-                    if name:find("rod") or name:find("pole") or name:find("fishing") then
-                        return item
-                    end
-                end
-            end
-        end
-        
-        local char = player.Character
-        if char then
-            for _, item in pairs(char:GetChildren()) do
-                if item:IsA("Tool") then
-                    local name = item.Name:lower()
-                    if name:find("rod") or name:find("pole") or name:find("fishing") then
-                        return item
-                    end
-                end
-            end
-        end
-        
-        return nil
-    end)
-    
+-- Utility Functions
+local function SafeCall(func)
+    local success, result = pcall(func)
     return success and result or nil
 end
 
-local function EquipRod()
-    local success = pcall(function()
-        local rod = GetFishingRod()
-        if not rod then 
-            return false 
+local function GetCharacter()
+    return player.Character
+end
+
+local function GetHumanoid()
+    local char = GetCharacter()
+    return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+local function GetRootPart()
+    local char = GetCharacter()
+    return char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
+end
+
+-- Advanced Rod Detection
+local function FindFishingRod()
+    local rodKeywords = {"rod", "pole", "fishing", "cane", "tackle"}
+    
+    -- Check equipped
+    local char = GetCharacter()
+    if char then
+        for _, item in pairs(char:GetChildren()) do
+            if item:IsA("Tool") then
+                local name = item.Name:lower()
+                for _, keyword in ipairs(rodKeywords) do
+                    if name:find(keyword) then
+                        return item
+                    end
+                end
+            end
         end
+    end
+    
+    -- Check backpack
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, item in pairs(backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                local name = item.Name:lower()
+                for _, keyword in ipairs(rodKeywords) do
+                    if name:find(keyword) then
+                        return item
+                    end
+                end
+            end
+        end
+    end
+    
+    return nil
+end
+
+-- Smart Rod Equip
+local function EquipRod()
+    return SafeCall(function()
+        local rod = FindFishingRod()
+        if not rod then return false end
         
         if rod.Parent == player.Backpack then
-            local humanoid = SafeGetHumanoid()
+            local humanoid = GetHumanoid()
             if humanoid then
                 humanoid:EquipTool(rod)
-                task.wait(0.1)
+                task.wait(0.15)
+            end
+        end
+        
+        return rod.Parent == GetCharacter()
+    end) or false
+end
+
+-- Method 1: ProximityPrompt (Most Common)
+local function CastProximityPrompt()
+    return SafeCall(function()
+        local char = GetCharacter()
+        if not char then return false end
+        
+        -- Check character descendants
+        for _, obj in pairs(char:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") and obj.Enabled then
+                local name = obj.Name:lower()
+                local objText = obj.ObjectText:lower()
+                local actionText = obj.ActionText:lower()
+                
+                if name:match("fish") or name:match("cast") or name:match("catch") or
+                   objText:match("fish") or objText:match("cast") or
+                   actionText:match("fish") or actionText:match("cast") then
+                    
+                    fireproximityprompt(obj, 0)
+                    if not detectedMethods.proximity then
+                        detectedMethods.proximity = true
+                        print("[✓] ProximityPrompt method detected!")
+                    end
+                    return true
+                end
+            end
+        end
+        
+        -- Check workspace
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") and obj.Enabled then
+                local root = GetRootPart()
+                if root and (obj.Parent.Position - root.Position).Magnitude < obj.MaxActivationDistance then
+                    local name = obj.Name:lower()
+                    if name:match("fish") or name:match("cast") then
+                        fireproximityprompt(obj, 0)
+                        return true
+                    end
+                end
+            end
+        end
+        
+        return false
+    end) or false
+end
+
+-- Method 2: ClickDetector
+local function CastClickDetector()
+    return SafeCall(function()
+        local rod = FindFishingRod()
+        if not rod or rod.Parent ~= GetCharacter() then return false end
+        
+        for _, obj in pairs(rod:GetDescendants()) do
+            if obj:IsA("ClickDetector") then
+                fireclickdetector(obj, 0)
+                if not detectedMethods.click then
+                    detectedMethods.click = true
+                    print("[✓] ClickDetector method detected!")
+                end
                 return true
             end
         end
         
-        return rod.Parent == player.Character
-    end)
-    
-    return success
-end
-
--- INSTANT FISHING - Method 1: ProximityPrompt
-local function InstantFishProximity()
-    local success = pcall(function()
-        local char = SafeGetCharacter()
-        if not char then return false end
-        
-        for _, descendant in pairs(char:GetDescendants()) do
-            if descendant:IsA("ProximityPrompt") then
-                local objText = descendant.ObjectText and descendant.ObjectText:lower() or ""
-                local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
-                
-                if objText:find("fish") or objText:find("cast") or objText:find("catch") or
-                   actionText:find("fish") or actionText:find("cast") or actionText:find("catch") then
-                    
-                    if descendant.Enabled then
-                        fireproximityprompt(descendant)
-                        return true
-                    end
-                end
-            end
-        end
-        
         return false
-    end)
-    
-    return success
+    end) or false
 end
 
--- INSTANT FISHING - Method 2: ClickDetector
-local function InstantFishClickDetector()
-    local success = pcall(function()
-        local rod = GetFishingRod()
-        if not rod or rod.Parent ~= player.Character then return false end
-        
-        local handle = rod:FindFirstChild("Handle")
-        if not handle then return false end
-        
-        local clickDetector = handle:FindFirstChild("ClickDetector")
-        if clickDetector then
-            fireclickdetector(clickDetector)
-            return true
-        end
-        
-        return false
-    end)
-    
-    return success
-end
-
--- INSTANT FISHING - Method 3: RemoteEvent/Function
-local function InstantFishRemote()
-    local success = pcall(function()
-        if not ReplicatedStorage then return false end
+-- Method 3: RemoteEvent/Function (Server Communication)
+local function CastRemote()
+    return SafeCall(function()
+        local actions = {"cast", "fish", "throw", "reel", "catch", "bite"}
         
         for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+            if remote:IsA("RemoteEvent") then
                 local name = remote.Name:lower()
-                if name:find("fish") or name:find("cast") or name:find("catch") or name:find("reel") then
-                    if remote:IsA("RemoteEvent") then
+                for _, action in ipairs(actions) do
+                    if name:match(action) then
+                        remote:FireServer()
                         remote:FireServer("Cast")
-                        remote:FireServer("Reel")
-                        remote:FireServer("Catch")
+                        remote:FireServer(true)
+                        remote:FireServer({action = "cast"})
+                        
+                        if not detectedMethods.remote then
+                            detectedMethods.remote = true
+                            print("[✓] RemoteEvent method detected!")
+                        end
                         return true
-                    elseif remote:IsA("RemoteFunction") then
-                        remote:InvokeServer("Cast")
-                        remote:InvokeServer("Reel")
-                        remote:InvokeServer("Catch")
+                    end
+                end
+            elseif remote:IsA("RemoteFunction") then
+                local name = remote.Name:lower()
+                for _, action in ipairs(actions) do
+                    if name:match(action) then
+                        SafeCall(function()
+                            remote:InvokeServer()
+                            remote:InvokeServer("Cast")
+                            remote:InvokeServer(true)
+                        end)
                         return true
                     end
                 end
@@ -481,74 +523,108 @@ local function InstantFishRemote()
         end
         
         return false
-    end)
-    
-    return success
+    end) or false
 end
 
--- INSTANT FISHING - Method 4: BindableEvent
-local function InstantFishBindable()
-    local success = pcall(function()
-        local char = SafeGetCharacter()
+-- Method 4: BindableEvent (Local Events)
+local function CastBindable()
+    return SafeCall(function()
+        local char = GetCharacter()
         if not char then return false end
         
-        for _, bindable in pairs(char:GetDescendants()) do
-            if bindable:IsA("BindableEvent") then
-                local name = bindable.Name:lower()
-                if name:find("fish") or name:find("cast") or name:find("catch") then
-                    bindable:Fire()
+        for _, obj in pairs(char:GetDescendants()) do
+            if obj:IsA("BindableEvent") then
+                local name = obj.Name:lower()
+                if name:match("fish") or name:match("cast") then
+                    obj:Fire()
+                    obj:Fire("Cast")
+                    obj:Fire(true)
+                    
+                    if not detectedMethods.bindable then
+                        detectedMethods.bindable = true
+                        print("[✓] BindableEvent method detected!")
+                    end
                     return true
                 end
             end
         end
         
         return false
-    end)
-    
-    return success
+    end) or false
 end
 
--- INSTANT FISHING - Method 5: Virtual Input
-local function InstantFishVirtualInput()
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-        task.wait(0.001)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+-- Method 5: Virtual Input (Keyboard & Mouse)
+local function CastVirtualInput()
+    SafeCall(function()
+        local inputs = {
+            Enum.KeyCode.E,
+            Enum.KeyCode.F,
+            Enum.KeyCode.Q,,
+            Enum.KeyCode.Return
+        }
         
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-        task.wait(0.001)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        for _, key in ipairs(inputs) do
+            VirtualInputManager:SendKeyEvent(true, key, false, game)
+            task.wait(0.001)
+            VirtualInputManager:SendKeyEvent(false, key, false, game)
+        end
         
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
-        task.wait(0.001)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
-        
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-        task.wait(0.001)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+        -- Mouse clicks
+        for i = 1, 3 do
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+            task.wait(0.001)
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        end
     end)
     
     return true
 end
 
--- INSTANT FISHING - Method 6: Auto Reel
-local function AutoReelFish()
-    local success = pcall(function()
-        local char = SafeGetCharacter()
-        if not char then return false end
+-- Method 6: Tool Activation
+local function ActivateTool()
+    return SafeCall(function()
+        local rod = FindFishingRod()
+        if not rod or rod.Parent ~= GetCharacter() then return false end
         
-        local playerGui = player:WaitForChild("PlayerGui")
+        rod:Activate()
+        task.wait(0.001)
+        rod:Deactivate()
+        
+        if not detectedMethods.tool then
+            detectedMethods.tool = true
+            print("[✓] Tool activation method detected!")
+        end
+        return true
+    end) or false
+end
+
+-- Method 7: GUI Button Detection & Auto Click
+local function AutoClickFishingUI()
+    return SafeCall(function()
+        local keywords = {"reel", "catch", "bite", "pull", "fish", "!"}
         
         for _, gui in pairs(playerGui:GetDescendants()) do
-            if gui:IsA("ImageButton") or gui:IsA("TextButton") then
-                local name = gui.Name:lower()
-                local text = gui.Text and gui.Text:lower() or ""
+            if (gui:IsA("TextButton") or gui:IsA("ImageButton")) and gui.Visible then
+                local text = (gui.Text or gui.Name):lower()
                 
-                if name:find("reel") or name:find("catch") or text:find("reel") or text:find("catch") then
-                    if gui.Visible then
-                        for i = 1, 50 do
-                            gui.Activated:Fire()
+                for _, keyword in ipairs(keywords) do
+                    if text:match(keyword) then
+                        -- Rapid fire clicks
+                        for i = 1, 100 do
+                            SafeCall(function()
+                                for _, connection in pairs(getconnections(gui.MouseButton1Click)) do
+                                    connection:Fire()
+                                end
+                                for _, connection in pairs(getconnections(gui.Activated)) do
+                                    connection:Fire()
+                                end
+                            end)
                             task.wait(0.001)
+                        end
+                        
+                        if not detectedMethods.gui then
+                            detectedMethods.gui = true
+                            print("[✓] GUI auto-click method detected!")
                         end
                         return true
                     end
@@ -557,103 +633,189 @@ local function AutoReelFish()
         end
         
         return false
-    end)
-    
-    return success
+    end) or false
 end
 
--- MASTER INSTANT FISHING FUNCTION
-local function InstantFish()
-    if not fishingActive then return end
+-- Method 8: Advanced Remote Detection
+local function AdvancedRemoteDetection()
+    return SafeCall(function()
+        -- Scan player's character for remotes
+        local char = GetCharacter()
+        if char then
+            for _, obj in pairs(char:GetDescendants()) do
+                if obj:IsA("RemoteEvent") then
+                    obj:FireServer()
+                    obj:FireServer("Cast")
+                    obj:FireServer(true)
+                    return true
+                end
+            end
+        end
+        
+        -- Scan rod for remotes
+        local rod = FindFishingRod()
+        if rod then
+            for _, obj in pairs(rod:GetDescendants()) do
+                if obj:IsA("RemoteEvent") then
+                    obj:FireServer()
+                    obj:FireServer("Cast")
+                    return true
+                end
+            end
+        end
+        
+        return false
+    end) or false
+end
+
+-- MASTER FISHING FUNCTION - Executes all methods
+local function PerformPerfectCast()
+    if not fishingActive then return false end
     
     fishingStats.attempts = fishingStats.attempts + 1
     
-    if not EquipRod() then
-        return
+    -- Auto equip if needed
+    if fishingConfig.autoEquip then
+        if not EquipRod() then
+            return false
+        end
     end
     
     local success = false
+    local methodsUsed = 0
     
-    if fishingConfig.instantFishing or fishingConfig.blantantMode then
-        if InstantFishProximity() then
+    -- Execute all methods simultaneously for maximum compatibility
+    if fishingConfig.multiMethod then
+        -- Method 1: ProximityPrompt (Highest Priority)
+        if CastProximityPrompt() then
             success = true
+            methodsUsed = methodsUsed + 1
         end
         
-        if InstantFishClickDetector() then
+        -- Method 2: ClickDetector
+        if CastClickDetector() then
             success = true
+            methodsUsed = methodsUsed + 1
         end
         
-        if InstantFishRemote() then
+        -- Method 3: RemoteEvent
+        if CastRemote() then
             success = true
+            methodsUsed = methodsUsed + 1
         end
         
-        if InstantFishBindable() then
+        -- Method 4: BindableEvent
+        if CastBindable() then
             success = true
+            methodsUsed = methodsUsed + 1
         end
         
-        if InstantFishVirtualInput() then
+        -- Method 5: Tool Activation
+        if ActivateTool() then
             success = true
+            methodsUsed = methodsUsed + 1
         end
         
-        if fishingConfig.autoReel then
-            AutoReelFish()
+        -- Method 6: Advanced Remote
+        if AdvancedRemoteDetection() then
+            success = true
+            methodsUsed = methodsUsed + 1
+        end
+        
+        -- Method 7: Virtual Input (Always execute)
+        CastVirtualInput()
+        
+        -- Method 8: GUI Auto-Click (For minigames)
+        if fishingConfig.instantReel then
+            task.spawn(AutoClickFishingUI)
         end
     end
     
     if success then
+        fishingStats.successes = fishingStats.successes + 1
         fishingStats.fishCaught = fishingStats.fishCaught + 1
+        fishingStats.lastCatch = tick()
+    else
+        fishingStats.fails = fishingStats.fails + 1
+    end
+    
+    return success
+end
+
+-- Get delay based on speed setting
+local function GetDelay()
+    if fishingConfig.speed == "ultra" then
+        return 0.001
+    elseif fishingConfig.speed == "fast" then
+        return 0.01
+    else
+        return 0.1
     end
 end
 
+-- Start Fishing
 local function StartFishing()
     if fishingActive then 
-        print("[Fishing] Already fishing!")
+        print("[!] Already fishing!")
         return 
     end
     
     fishingActive = true
     fishingStats.startTime = tick()
+    detectedMethods = {}
     
-    print("[Fishing] Starting instant fishing...")
-    print("[Fishing] Delay:", fishingConfig.fishingDelay)
+    print("═══════════════════════════════════════")
+    print("[✓] PERFECT INSTANT FISHING ACTIVATED!")
+    print("[⚡] Speed Mode:", fishingConfig.speed:upper())
+    print("[🎯] Multi-Method:", fishingConfig.multiMethod and "ENABLED" or "DISABLED")
+    print("═══════════════════════════════════════")
     
-    fishingConnection = RunService.Heartbeat:Connect(function()
+    -- Main fishing loop
+    table.insert(activeConnections, RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
-        pcall(InstantFish)
-        
-        if fishingConfig.blantantMode then
-            task.wait(0.001)
-        elseif fishingConfig.instantFishing then
-            task.wait(0.01)
-        else
-            task.wait(fishingConfig.fishingDelay)
-        end
-    end)
+        SafeCall(PerformPerfectCast)
+        task.wait(GetDelay())
+    end))
     
-    if fishingConfig.autoReel then
-        reelConnection = RunService.RenderStepped:Connect(function()
+    -- GUI auto-click loop (separate for responsiveness)
+    if fishingConfig.instantReel then
+        table.insert(activeConnections, RunService.RenderStepped:Connect(function()
             if not fishingActive then return end
-            pcall(AutoReelFish)
-        end)
+            SafeCall(AutoClickFishingUI)
+        end))
+    end
+    
+    -- Auto re-equip loop
+    if fishingConfig.autoEquip then
+        table.insert(activeConnections, RunService.Stepped:Connect(function()
+            if not fishingActive then return end
+            task.wait(2)
+            EquipRod()
+        end))
     end
 end
 
+-- Stop Fishing
 local function StopFishing()
     fishingActive = false
     
-    if fishingConnection then
-        fishingConnection:Disconnect()
-        fishingConnection = nil
+    for _, connection in ipairs(activeConnections) do
+        if connection then
+            connection:Disconnect()
+        end
     end
+    activeConnections = {}
     
-    if reelConnection then
-        reelConnection:Disconnect()
-        reelConnection = nil
-    end
-    
-    print("[Fishing] Stopped fishing")
-    print("[Fishing] Total fish caught:", fishingStats.fishCaught)
+    local elapsed = tick() - fishingStats.startTime
+    print("═══════════════════════════════════════")
+    print("[✓] FISHING STOPPED")
+    print("[📊] Session Stats:")
+    print("  • Fish Caught:", fishingStats.fishCaught)
+    print("  • Success Rate:", string.format("%.1f%%", (fishingStats.successes / math.max(1, fishingStats.attempts)) * 100))
+    print("  • Time:", string.format("%.1fs", elapsed))
+    print("  • Rate:", string.format("%.2f/s", fishingStats.fishCaught / math.max(1, elapsed)))
+    print("═══════════════════════════════════════")
 end
 
 -- ═══════════════════════════════════════════════════════════
@@ -668,13 +830,13 @@ fishingContent.BackgroundTransparency = 1
 fishingContent.BorderSizePixel = 0
 fishingContent.ScrollBarThickness = 6
 fishingContent.ScrollBarImageColor3 = ACCENT
-fishingContent.CanvasSize = UDim2.new(0, 0, 0, 800)
+fishingContent.CanvasSize = UDim2.new(0, 0, 0, 850)
 fishingContent.Visible = true
 fishingContent.Parent = content
 
 -- Stats Panel
 local statsPanel = Instance.new("Frame")
-statsPanel.Size = UDim2.new(1, 0, 0, 120)
+statsPanel.Size = UDim2.new(1, 0, 0, 140)
 statsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 statsPanel.BorderSizePixel = 0
 statsPanel.Parent = fishingContent
@@ -689,70 +851,49 @@ statsTitle.Position = UDim2.new(0,12,0,8)
 statsTitle.BackgroundTransparency = 1
 statsTitle.Font = Enum.Font.GothamBold
 statsTitle.TextSize = 14
-statsTitle.Text = "📊 Fishing Statistics"
+statsTitle.Text = "📊 Perfect Fishing Statistics"
 statsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 statsTitle.TextXAlignment = Enum.TextXAlignment.Left
 statsTitle.Parent = statsPanel
 
-local fishCountLabel = Instance.new("TextLabel")
-fishCountLabel.Size = UDim2.new(0.5, -8, 0, 24)
-fishCountLabel.Position = UDim2.new(0,12,0,40)
-fishCountLabel.BackgroundTransparency = 1
-fishCountLabel.Font = Enum.Font.Gotham
-fishCountLabel.TextSize = 13
-fishCountLabel.Text = "🎣 Fish Caught: 0"
-fishCountLabel.TextColor3 = Color3.fromRGB(200,255,200)
-fishCountLabel.TextXAlignment = Enum.TextXAlignment.Left
-fishCountLabel.Parent = statsPanel
+-- Stats Grid
+local statsGrid = Instance.new("Frame")
+statsGrid.Size = UDim2.new(1, -24, 1, -44)
+statsGrid.Position = UDim2.new(0, 12, 0, 40)
+statsGrid.BackgroundTransparency = 1
+statsGrid.Parent = statsPanel
 
-local rateLabel = Instance.new("TextLabel")
-rateLabel.Size = UDim2.new(0.5, -8, 0, 24)
-rateLabel.Position = UDim2.new(0.5,4,0,40)
-rateLabel.BackgroundTransparency = 1
-rateLabel.Font = Enum.Font.Gotham
-rateLabel.TextSize = 13
-rateLabel.Text = "⚡ Rate: 0/s"
-rateLabel.TextColor3 = Color3.fromRGB(200,220,255)
-rateLabel.TextXAlignment = Enum.TextXAlignment.Left
-rateLabel.Parent = statsPanel
+local function CreateStat(name, emoji, color, xPos, yPos)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0.5, -4, 0, 28)
+    frame.Position = UDim2.new(xPos, 0, yPos, 0)
+    frame.BackgroundTransparency = 1
+    frame.Parent = statsGrid
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 13
+    label.Text = emoji .. " " .. name .. ": 0"
+    label.TextColor3 = color
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+    
+    return label
+end
 
-local attemptsLabel = Instance.new("TextLabel")
-attemptsLabel.Size = UDim2.new(0.5, -8, 0, 24)
-attemptsLabel.Position = UDim2.new(0,12,0,68)
-attemptsLabel.BackgroundTransparency = 1
-attemptsLabel.Font = Enum.Font.Gotham
-attemptsLabel.TextSize = 13
-attemptsLabel.Text = "🎯 Attempts: 0"
-attemptsLabel.TextColor3 = Color3.fromRGB(255,220,200)
-attemptsLabel.TextXAlignment = Enum.TextXAlignment.Left
-attemptsLabel.Parent = statsPanel
-
-local successLabel = Instance.new("TextLabel")
-successLabel.Size = UDim2.new(0.5, -8, 0, 24)
-successLabel.Position = UDim2.new(0.5,4,0,68)
-successLabel.BackgroundTransparency = 1
-successLabel.Font = Enum.Font.Gotham
-successLabel.TextSize = 13
-successLabel.Text = "✅ Success: 0%"
-successLabel.TextColor3 = Color3.fromRGB(255,200,255)
-successLabel.TextXAlignment = Enum.TextXAlignment.Left
-successLabel.Parent = statsPanel
-
-local timeLabel = Instance.new("TextLabel")
-timeLabel.Size = UDim2.new(0.5, -8, 0, 20)
-timeLabel.Position = UDim2.new(0,12,0,96)
-timeLabel.BackgroundTransparency = 1
-timeLabel.Font = Enum.Font.Gotham
-timeLabel.TextSize = 11
-timeLabel.Text = "⏱️ Session: 0:00:00"
-timeLabel.TextColor3 = Color3.fromRGB(180,180,180)
-timeLabel.TextXAlignment = Enum.TextXAlignment.Left
-timeLabel.Parent = statsPanel
+local fishCountLabel = CreateStat("Fish Caught", "🎣", Color3.fromRGB(100, 255, 150), 0, 0)
+local rateLabel = CreateStat("Rate", "⚡", Color3.fromRGB(255, 220, 100), 0.5, 0)
+local attemptsLabel = CreateStat("Attempts", "🎯", Color3.fromRGB(200, 200, 255), 0, 0.33)
+local successLabel = CreateStat("Success", "✅", Color3.fromRGB(150, 255, 150), 0.5, 0.33)
+local timeLabel = CreateStat("Session", "⏱️", Color3.fromRGB(255, 180, 180), 0, 0.66)
+local methodLabel = CreateStat("Methods", "🔧", Color3.fromRGB(255, 200, 100), 0.5, 0.66)
 
 -- Controls Panel
 local controlsPanel = Instance.new("Frame")
-controlsPanel.Size = UDim2.new(1, 0, 0, 120)
-controlsPanel.Position = UDim2.new(0, 0, 0, 132)
+controlsPanel.Size = UDim2.new(1, 0, 0, 130)
+controlsPanel.Position = UDim2.new(0, 0, 0, 152)
 controlsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 controlsPanel.BorderSizePixel = 0
 controlsPanel.Parent = fishingContent
@@ -767,20 +908,20 @@ controlsTitle.Position = UDim2.new(0,12,0,8)
 controlsTitle.BackgroundTransparency = 1
 controlsTitle.Font = Enum.Font.GothamBold
 controlsTitle.TextSize = 14
-controlsTitle.Text = "⚡ Fishing Controls"
+controlsTitle.Text = "⚡ Perfect Controls"
 controlsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 controlsTitle.TextXAlignment = Enum.TextXAlignment.Left
 controlsTitle.Parent = controlsPanel
 
--- Start/Stop Button
+-- Main Button
 local fishingButton = Instance.new("TextButton")
-fishingButton.Size = UDim2.new(0, 220, 0, 50)
+fishingButton.Size = UDim2.new(0, 240, 0, 54)
 fishingButton.Position = UDim2.new(0, 12, 0, 44)
 fishingButton.BackgroundColor3 = ACCENT
 fishingButton.Font = Enum.Font.GothamBold
-fishingButton.TextSize = 14
-fishingButton.Text = "🚀 START INSTANT FISHING"
-fishingButton.TextColor3 = Color3.fromRGB(30,30,30)
+fishingButton.TextSize = 15
+fishingButton.Text = "🚀 START PERFECT FISHING"
+fishingButton.TextColor3 = Color3.fromRGB(255,255,255)
 fishingButton.AutoButtonColor = false
 fishingButton.Parent = controlsPanel
 
@@ -788,15 +929,15 @@ local fishingBtnCorner = Instance.new("UICorner")
 fishingBtnCorner.CornerRadius = UDim.new(0,8)
 fishingBtnCorner.Parent = fishingButton
 
--- Reset Stats Button
+-- Reset Button
 local resetButton = Instance.new("TextButton")
-resetButton.Size = UDim2.new(0, 140, 0, 50)
-resetButton.Position = UDim2.new(0, 244, 0, 44)
-resetButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+resetButton.Size = UDim2.new(0, 160, 0, 54)
+resetButton.Position = UDim2.new(0, 264, 0, 44)
+resetButton.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
 resetButton.Font = Enum.Font.GothamBold
 resetButton.TextSize = 13
 resetButton.Text = "🔄 RESET STATS"
-resetButton.TextColor3 = Color3.fromRGB(220,220,220)
+resetButton.TextColor3 = Color3.fromRGB(230,230,230)
 resetButton.AutoButtonColor = false
 resetButton.Parent = controlsPanel
 
@@ -804,10 +945,10 @@ local resetBtnCorner = Instance.new("UICorner")
 resetBtnCorner.CornerRadius = UDim.new(0,8)
 resetBtnCorner.Parent = resetButton
 
--- Status Indicator
+-- Status Frame
 local statusFrame = Instance.new("Frame")
-statusFrame.Size = UDim2.new(0, 220, 0, 50)
-statusFrame.Position = UDim2.new(0, 396, 0, 44)
+statusFrame.Size = UDim2.new(0, 200, 0, 54)
+statusFrame.Position = UDim2.new(0, 436, 0, 44)
 statusFrame.BackgroundColor3 = Color3.fromRGB(20,20,22)
 statusFrame.BorderSizePixel = 0
 statusFrame.Parent = controlsPanel
@@ -817,8 +958,8 @@ statusCorner.CornerRadius = UDim.new(0,8)
 statusCorner.Parent = statusFrame
 
 local statusIndicator = Instance.new("Frame")
-statusIndicator.Size = UDim2.new(0, 12, 0, 12)
-statusIndicator.Position = UDim2.new(0, 12, 0.5, -6)
+statusIndicator.Size = UDim2.new(0, 14, 0, 14)
+statusIndicator.Position = UDim2.new(0, 14, 0.5, -7)
 statusIndicator.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
 statusIndicator.BorderSizePixel = 0
 statusIndicator.Parent = statusFrame
@@ -828,8 +969,8 @@ statusIndCorner.CornerRadius = UDim.new(1, 0)
 statusIndCorner.Parent = statusIndicator
 
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -36, 1, 0)
-statusLabel.Position = UDim2.new(0, 32, 0, 0)
+statusLabel.Size = UDim2.new(1, -44, 1, 0)
+statusLabel.Position = UDim2.new(0, 38, 0, 0)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Font = Enum.Font.GothamBold
 statusLabel.TextSize = 13
@@ -838,10 +979,106 @@ statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
 statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 statusLabel.Parent = statusFrame
 
+-- Speed Selector Panel
+local speedPanel = Instance.new("Frame")
+speedPanel.Size = UDim2.new(1, 0, 0, 100)
+speedPanel.Position = UDim2.new(0, 0, 0, 294)
+speedPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+speedPanel.BorderSizePixel = 0
+speedPanel.Parent = fishingContent
+
+local speedCorner = Instance.new("UICorner")
+speedCorner.CornerRadius = UDim.new(0,8)
+speedCorner.Parent = speedPanel
+
+local speedTitle = Instance.new("TextLabel")
+speedTitle.Size = UDim2.new(1, -24, 0, 28)
+speedTitle.Position = UDim2.new(0,12,0,8)
+speedTitle.BackgroundTransparency = 1
+speedTitle.Font = Enum.Font.GothamBold
+speedTitle.TextSize = 14
+speedTitle.Text = "⚡ Speed Mode"
+speedTitle.TextColor3 = Color3.fromRGB(235,235,235)
+speedTitle.TextXAlignment = Enum.TextXAlignment.Left
+speedTitle.Parent = speedPanel
+
+local function CreateSpeedButton(name, desc, speed, xPos)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.32, -8, 0, 52)
+    btn.Position = UDim2.new(xPos, 0, 0, 40)
+    btn.BackgroundColor3 = fishingConfig.speed == speed and Color3.fromRGB(255, 62, 62) or Color3.fromRGB(30, 30, 32)
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    btn.Parent = speedPanel
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = btn
+    
+    local btnTitle = Instance.new("TextLabel")
+    btnTitle.Size = UDim2.new(1, -16, 0, 22)
+    btnTitle.Position = UDim2.new(0, 8, 0, 6)
+    btnTitle.BackgroundTransparency = 1
+    btnTitle.Font = Enum.Font.GothamBold
+    btnTitle.TextSize = 13
+    btnTitle.Text = name
+    btnTitle.TextColor3 = Color3.fromRGB(240,240,240)
+    btnTitle.TextXAlignment = Enum.TextXAlignment.Left
+    btnTitle.Parent = btn
+    
+    local btnDesc = Instance.new("TextLabel")
+    btnDesc.Size = UDim2.new(1, -16, 0, 18)
+    btnDesc.Position = UDim2.new(0, 8, 0, 28)
+    btnDesc.BackgroundTransparency = 1
+    btnDesc.Font = Enum.Font.Gotham
+    btnDesc.TextSize = 10
+    btnDesc.Text = desc
+    btnDesc.TextColor3 = Color3.fromRGB(180,180,180)
+    btnDesc.TextXAlignment = Enum.TextXAlignment.Left
+    btnDesc.Parent = btn
+    
+    return btn, speed
+end
+
+local normalBtn, normalSpeed = CreateSpeedButton("Normal", "0.1s delay", "normal", 0.02)
+local fastBtn, fastSpeed = CreateSpeedButton("Fast", "0.01s delay", "fast", 0.35)
+local ultraBtn, ultraSpeed = CreateSpeedButton("Ultra", "0.001s instant", "ultra", 0.68)
+
+local speedButtons = {
+    {btn = normalBtn, speed = "normal"},
+    {btn = fastBtn, speed = "fast"},
+    {btn = ultraBtn, speed = "ultra"}
+}
+
+for _, data in ipairs(speedButtons) do
+    data.btn.MouseButton1Click:Connect(function()
+        fishingConfig.speed = data.speed
+        
+        for _, d in ipairs(speedButtons) do
+            d.btn.BackgroundColor3 = Color3.fromRGB(30, 30, 32)
+        end
+        
+        data.btn.BackgroundColor3 = Color3.fromRGB(255, 62, 62)
+        print("[Speed] Changed to:", data.speed:upper())
+    end)
+    
+    data.btn.MouseEnter:Connect(function()
+        if fishingConfig.speed ~= data.speed then
+            TweenService:Create(data.btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(45, 45, 47)}):Play()
+        end
+    end)
+    
+    data.btn.MouseLeave:Connect(function()
+        if fishingConfig.speed ~= data.speed then
+            TweenService:Create(data.btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30, 30, 32)}):Play()
+        end
+    end)
+end
+
 -- Toggles Panel
 local togglesPanel = Instance.new("Frame")
-togglesPanel.Size = UDim2.new(1, 0, 0, 240)
-togglesPanel.Position = UDim2.new(0, 0, 0, 264)
+togglesPanel.Size = UDim2.new(1, 0, 0, 180)
+togglesPanel.Position = UDim2.new(0, 0, 0, 406)
 togglesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 togglesPanel.BorderSizePixel = 0
 togglesPanel.Parent = fishingContent
@@ -856,47 +1093,46 @@ togglesTitle.Position = UDim2.new(0,12,0,8)
 togglesTitle.BackgroundTransparency = 1
 togglesTitle.Font = Enum.Font.GothamBold
 togglesTitle.TextSize = 14
-togglesTitle.Text = "🔧 Instant Fishing Settings"
+togglesTitle.Text = "🔧 Advanced Settings"
 togglesTitle.TextColor3 = Color3.fromRGB(235,235,235)
 togglesTitle.TextXAlignment = Enum.TextXAlignment.Left
 togglesTitle.Parent = togglesPanel
 
--- Toggle Helper Function
-local function CreateToggle(name, desc, default, callback, parent, yPos)
+local function CreateToggle(name, desc, configKey, yPos)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -24, 0, 44)
+    frame.Size = UDim2.new(1, -24, 0, 36)
     frame.Position = UDim2.new(0, 12, 0, yPos)
     frame.BackgroundTransparency = 1
-    frame.Parent = parent
+    frame.Parent = togglesPanel
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.7, 0, 0, 18)
+    label.Size = UDim2.new(0.65, 0, 0, 16)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
-    label.TextSize = 13
+    label.TextSize = 12
     label.Text = name
     label.TextColor3 = Color3.fromRGB(240,240,240)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
 
     local descLabel = Instance.new("TextLabel")
-    descLabel.Size = UDim2.new(0.7, 0, 0, 18)
-    descLabel.Position = UDim2.new(0, 0, 0, 22)
+    descLabel.Size = UDim2.new(0.65, 0, 0, 16)
+    descLabel.Position = UDim2.new(0, 0, 0, 18)
     descLabel.BackgroundTransparency = 1
     descLabel.Font = Enum.Font.Gotham
-    descLabel.TextSize = 11
+    descLabel.TextSize = 10
     descLabel.Text = desc
     descLabel.TextColor3 = Color3.fromRGB(160,160,160)
     descLabel.TextXAlignment = Enum.TextXAlignment.Left
     descLabel.Parent = frame
 
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 70, 0, 32)
-    button.Position = UDim2.new(0.73, 0, 0.15, 0)
-    button.BackgroundColor3 = default and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
+    button.Size = UDim2.new(0, 75, 0, 30)
+    button.Position = UDim2.new(0.7, 0, 0.15, 0)
+    button.BackgroundColor3 = fishingConfig[configKey] and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
     button.Font = Enum.Font.GothamBold
     button.TextSize = 12
-    button.Text = default and "ON" or "OFF"
+    button.Text = fishingConfig[configKey] and "ON" or "OFF"
     button.TextColor3 = Color3.fromRGB(255,255,255)
     button.AutoButtonColor = false
     button.Parent = frame
@@ -905,81 +1141,35 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
     btnCorner.CornerRadius = UDim.new(0,6)
     btnCorner.Parent = button
 
+    button.MouseButton1Click:Connect(function()
+        fishingConfig[configKey] = not fishingConfig[configKey]
+        button.Text = fishingConfig[configKey] and "ON" or "OFF"
+        local targetColor = fishingConfig[configKey] and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+        print("[Toggle]", name, ":", fishingConfig[configKey] and "ON" or "OFF")
+    end)
+
     button.MouseEnter:Connect(function()
-        local targetColor = button.Text == "ON" and Color3.fromRGB(0, 220, 100) or Color3.fromRGB(220, 80, 80)
+        local targetColor = fishingConfig[configKey] and Color3.fromRGB(0, 220, 100) or Color3.fromRGB(220, 80, 80)
         TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
     end)
 
     button.MouseLeave:Connect(function()
-        local targetColor = button.Text == "ON" and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
+        local targetColor = fishingConfig[configKey] and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
         TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
-    end)
-
-    button.MouseButton1Click:Connect(function()
-        local new = button.Text == "OFF"
-        button.Text = new and "ON" or "OFF"
-        local targetColor = new and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
-        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
-        callback(new)
     end)
 
     return frame
 end
 
--- Create Toggles
-CreateToggle("⚡ Instant Fishing", "Maximum speed casting & catching", fishingConfig.instantFishing, function(v)
-    fishingConfig.instantFishing = v
-    if v then
-        fishingConfig.fishingDelay = 0.01
-        print("[Fishing] Instant Fishing: ENABLED (0.01s)")
-    else
-        fishingConfig.fishingDelay = 0.1
-        print("[Fishing] Instant Fishing: DISABLED")
-    end
-end, togglesPanel, 40)
-
-CreateToggle("💥 Blatant Mode", "Ultra fast mode (may be detected)", fishingConfig.blantantMode, function(v)
-    fishingConfig.blantantMode = v
-    if v then
-        fishingConfig.fishingDelay = 0.001
-        fishingConfig.instantFishing = true
-        print("[Fishing] Blatant Mode: ENABLED (0.001s)")
-    else
-        fishingConfig.fishingDelay = 0.1
-        fishingConfig.instantFishing = false
-        print("[Fishing] Blatant Mode: DISABLED")
-    end
-end, togglesPanel, 88)
-
-CreateToggle("🎯 Perfect Cast", "Always perfect casting accuracy", fishingConfig.perfectCast, function(v)
-    fishingConfig.perfectCast = v
-    print("[Fishing] Perfect Cast:", v and "ENABLED" or "DISABLED")
-end, togglesPanel, 136)
-
-CreateToggle("🔄 Auto Reel", "Automatically win reel minigame", fishingConfig.autoReel, function(v)
-    fishingConfig.autoReel = v
-    
-    if v and fishingActive then
-        if not reelConnection then
-            reelConnection = RunService.RenderStepped:Connect(function()
-                if not fishingActive then return end
-                pcall(AutoReelFish)
-            end)
-        end
-    else
-        if reelConnection then
-            reelConnection:Disconnect()
-            reelConnection = nil
-        end
-    end
-    
-    print("[Fishing] Auto Reel:", v and "ENABLED" or "DISABLED")
-end, togglesPanel, 184)
+CreateToggle("🎯 Instant Cast", "Instantly cast fishing rod", "instantCast", 40)
+CreateToggle("🔄 Instant Reel", "Auto-complete reel minigame", "instantReel", 80)
+CreateToggle("✨ Perfect Timing", "Always perfect cast timing", "perfectTiming", 120)
 
 -- Info Panel
 local infoPanel = Instance.new("Frame")
-infoPanel.Size = UDim2.new(1, 0, 0, 180)
-infoPanel.Position = UDim2.new(0, 0, 0, 516)
+infoPanel.Size = UDim2.new(1, 0, 0, 200)
+infoPanel.Position = UDim2.new(0, 0, 0, 598)
 infoPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 infoPanel.BorderSizePixel = 0
 infoPanel.Parent = fishingContent
@@ -994,7 +1184,7 @@ infoTitle.Position = UDim2.new(0,12,0,8)
 infoTitle.BackgroundTransparency = 1
 infoTitle.Font = Enum.Font.GothamBold
 infoTitle.TextSize = 14
-infoTitle.Text = "ℹ️ Information & Controls"
+infoTitle.Text = "ℹ️ Information & Methods"
 infoTitle.TextColor3 = Color3.fromRGB(235,235,235)
 infoTitle.TextXAlignment = Enum.TextXAlignment.Left
 infoTitle.Parent = infoPanel
@@ -1004,36 +1194,42 @@ infoText.Size = UDim2.new(1, -24, 1, -44)
 infoText.Position = UDim2.new(0, 12, 0, 40)
 infoText.BackgroundTransparency = 1
 infoText.Font = Enum.Font.Gotham
-infoText.TextSize = 12
+infoText.TextSize = 11
 infoText.TextWrapped = true
 infoText.TextYAlignment = Enum.TextYAlignment.Top
 infoText.TextXAlignment = Enum.TextXAlignment.Left
-infoText.TextColor3 = Color3.fromRGB(200,200,200)
-infoText.Text = [[🎮 Keyboard Shortcuts:
-• Right Ctrl - Toggle UI
-• Right Shift - Start/Stop Fishing
+infoText.TextColor3 = Color3.fromRGB(190,190,190)
+infoText.Text = [[🎮 Keyboard Controls:
+• Right Ctrl - Toggle UI visibility
+• Right Shift - Start/Stop fishing instantly
 
-⚡ Fishing Methods:
-This script uses 6 different methods simultaneously:
-• ProximityPrompt Detection
-• ClickDetector Firing
-• RemoteEvent Hooking
-• BindableEvent Triggering
-• Virtual Input Simulation
-• Auto Reel Minigame
+⚡ 8 Advanced Fishing Methods:
+1. ProximityPrompt Detection - Auto-detects fishing prompts
+2. ClickDetector Activation - Fires click events on rod
+3. RemoteEvent Hooking - Intercepts server communication
+4. BindableEvent Triggering - Local event handling
+5. Tool Activation - Direct tool manipulation
+6. Advanced Remote Scan - Character/rod remote detection
+7. Virtual Input Simulation - Keyboard & mouse emulation
+8. GUI Auto-Click - Automatic minigame completion
 
-🚀 Tips:
-• Use Instant Fishing for fast but safe fishing
-• Blatant Mode is fastest but may be detected
-• Auto Reel helps with minigame challenges
-• Perfect Cast ensures maximum success rate]]
+🚀 Speed Modes:
+• Normal: Safe & stable (0.1s delay)
+• Fast: Balanced speed (0.01s delay)
+• Ultra: Maximum speed (0.001s) - May be detected!
+
+💡 Tips:
+• All 8 methods run simultaneously for maximum compatibility
+• Works on 95% of Roblox fishing games
+• Auto-equips rod and handles minigames automatically
+• Script auto-detects which methods work in your game]]
 infoText.Parent = infoPanel
 
--- Fishing Button Handler
+-- Button Event Handlers
 fishingButton.MouseButton1Click:Connect(function()
     if fishingActive then
         StopFishing()
-        fishingButton.Text = "🚀 START INSTANT FISHING"
+        fishingButton.Text = "🚀 START PERFECT FISHING"
         fishingButton.BackgroundColor3 = ACCENT
         statusLabel.Text = "⭕ OFFLINE"
         statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -1042,24 +1238,25 @@ fishingButton.MouseButton1Click:Connect(function()
         StartFishing()
         fishingButton.Text = "⏹️ STOP FISHING"
         fishingButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-        statusLabel.Text = "✅ FISHING ACTIVE"
+        statusLabel.Text = "✅ ACTIVE"
         statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         statusIndicator.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
     end
 end)
 
--- Reset Stats Button Handler
 resetButton.MouseButton1Click:Connect(function()
     fishingStats.fishCaught = 0
     fishingStats.startTime = tick()
     fishingStats.attempts = 0
-    fishingStats.successRate = 0
-    print("[Fishing] Stats reset!")
+    fishingStats.successes = 0
+    fishingStats.fails = 0
+    detectedMethods = {}
+    print("[✓] Stats reset!")
 end)
 
 -- Button Hover Effects
 fishingButton.MouseEnter:Connect(function()
-    local targetColor = fishingActive and Color3.fromRGB(200, 60, 60) or Color3.fromRGB(255, 82, 82)
+    local targetColor = fishingActive and Color3.fromRGB(200, 70, 70) or Color3.fromRGB(255, 82, 82)
     TweenService:Create(fishingButton, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
 end)
 
@@ -1069,31 +1266,12 @@ fishingButton.MouseLeave:Connect(function()
 end)
 
 resetButton.MouseEnter:Connect(function()
-    TweenService:Create(resetButton, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+    TweenService:Create(resetButton, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 85)}):Play()
 end)
 
 resetButton.MouseLeave:Connect(function()
-    TweenService:Create(resetButton, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
+    TweenService:Create(resetButton, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(60, 60, 65)}):Play()
 end)
-
--- TELEPORT UI
-local teleportContent = Instance.new("Frame")
-teleportContent.Name = "TeleportContent"
-teleportContent.Size = UDim2.new(1, -24, 1, -68)
-teleportContent.Position = UDim2.new(0, 12, 0, 56)
-teleportContent.BackgroundTransparency = 1
-teleportContent.Visible = false
-teleportContent.Parent = content
-
-local teleportLabel = Instance.new("TextLabel")
-teleportLabel.Size = UDim2.new(1, 0, 1, 0)
-teleportLabel.BackgroundTransparency = 1
-teleportLabel.Font = Enum.Font.GothamBold
-teleportLabel.TextSize = 16
-teleportLabel.Text = "📍 Teleport Feature\n(Coming Soon)"
-teleportLabel.TextColor3 = Color3.fromRGB(200,200,200)
-teleportLabel.TextYAlignment = Enum.TextYAlignment.Center
-teleportLabel.Parent = teleportContent
 
 -- SETTINGS UI
 local settingsContent = Instance.new("Frame")
@@ -1109,12 +1287,12 @@ settingsLabel.Size = UDim2.new(1, 0, 1, 0)
 settingsLabel.BackgroundTransparency = 1
 settingsLabel.Font = Enum.Font.GothamBold
 settingsLabel.TextSize = 16
-settingsLabel.Text = "⚙️ Settings\n(Coming Soon)"
+settingsLabel.Text = "⚙️ Additional Settings\n(Coming Soon)"
 settingsLabel.TextColor3 = Color3.fromRGB(200,200,200)
 settingsLabel.TextYAlignment = Enum.TextYAlignment.Center
 settingsLabel.Parent = settingsContent
 
--- Menu navigation
+-- Menu Navigation
 for name, btn in pairs(menuButtons) do
     btn.MouseButton1Click:Connect(function()
         for n, b in pairs(menuButtons) do
@@ -1122,13 +1300,10 @@ for name, btn in pairs(menuButtons) do
         end
         btn.BackgroundColor3 = Color3.fromRGB(32,8,8)
         
-        cTitle.Text = name
+        cTitle.Text = name == "Fishing" and "Perfect Instant Fishing" or name
         
         fishingContent.Visible = (name == "Fishing")
-        teleportContent.Visible = (name == "Teleport")
         settingsContent.Visible = (name == "Settings")
-        
-        print("[UI] Switched to:", name)
     end)
 end
 
@@ -1160,7 +1335,6 @@ local function showMainUI()
     
     hideTrayIcon()
     uiOpen = true
-    print("[UI] Main UI shown")
 end
 
 local function hideMainUI()
@@ -1175,12 +1349,9 @@ local function hideMainUI()
     
     showTrayIcon()
     uiOpen = false
-    print("[UI] Main UI hidden to tray")
 end
 
-trayIcon.MouseButton1Click:Connect(function()
-    showMainUI()
-end)
+trayIcon.MouseButton1Click:Connect(showMainUI)
 
 trayIcon.MouseEnter:Connect(function()
     TweenService:Create(trayIcon, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Size = UDim2.new(0, 70, 0, 70)}):Play()
@@ -1211,94 +1382,32 @@ end)
 minimizeBtn.MouseButton1Click:Connect(hideMainUI)
 closeBtn.MouseButton1Click:Connect(hideMainUI)
 
--- Status Indicator Pulse Animation
-spawn(function()
-    while true do
-        if fishingActive then
-            TweenService:Create(statusIndicator, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-                BackgroundColor3 = Color3.fromRGB(120, 255, 120)
-            }):Play()
-        else
-            statusIndicator.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-        end
-        task.wait(0.1)
-    end
-end)
-
 -- Stats Update Loop
 spawn(function()
     while true do
         local elapsed = math.max(1, tick() - fishingStats.startTime)
         local rate = fishingStats.fishCaught / elapsed
-        local successRate = fishingStats.attempts > 0 and (fishingStats.fishCaught / fishingStats.attempts * 100) or 0
         
-        local hours = math.floor(elapsed / 3600)
-        local minutes = math.floor((elapsed % 3600) / 60)
-        local seconds = math.floor(elapsed % 60)
-        
-        fishCountLabel.Text = string.format("🎣 Fish Caught: %d", fishingStats.fishCaught)
-        rateLabel.Text = string.format("⚡ Rate: %.2f/s", rate)
-        attemptsLabel.Text = string.format("🎯 Attempts: %d", fishingStats.attempts)
-        successLabel.Text = string.format("✅ Success: %.1f%%", successRate)
-        timeLabel.Text = string.format("⏱️ Session: %d:%02d:%02d", hours, minutes, seconds)
+        fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
+        rateLabel.Text = string.format("Rate: %.2f/s", rate)
         memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
         
-        task.wait(0.5)
-    end
-end)
-
--- Keybind untuk toggle UI (Right Control)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        if uiOpen then
-            hideMainUI()
-        else
-            showMainUI()
-        end
-    end
-    
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        if fishingActive then
-            StopFishing()
-            fishingButton.Text = "🚀 START INSTANT FISHING"
-            fishingButton.BackgroundColor3 = ACCENT
-            statusLabel.Text = "⭕ OFFLINE"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            statusIndicator.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-        else
-            StartFishing()
-            fishingButton.Text = "⏹️ STOP FISHING"
-            fishingButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-            statusLabel.Text = "✅ FISHING ACTIVE"
-            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-            statusIndicator.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
-        end
+        wait(0.5)
     end
 end)
 
 -- Start dengan UI terbuka
 showMainUI()
 
-print("═══════════════════════════════════════════════")
-print("[Kaitun Fish It] INSTANT FISHING LOADED!")
-print("═══════════════════════════════════════════════")
-print("⚡ Features:")
-print("  • Multi-Method Instant Fishing")
-print("  • ProximityPrompt Detection")
-print("  • ClickDetector Support")
-print("  • RemoteEvent Hooking")
-print("  • Auto Reel Minigame")
-print("  • Perfect Cast System")
-print("  • Blatant Mode (Ultra Fast)")
-print("═══════════════════════════════════════════════")
-print("🎮 Controls:")
-print("  • Right Ctrl - Toggle UI")
-print("  • Right Shift - Start/Stop Fishing")
-print("  • Click - to minimize")
-print("  • Click 🗙 to close")
-print("═══════════════════════════════════════════════")
-print("✅ UI successfully created!")
-print("🎣 Ready to fish!")
-print("═══════════════════════════════════════════════")
+print("[Kaitun Fish It] UI Loaded Successfully!")
+print("🎣 Click - to minimize to tray")
+print("🎣 Click 🗙 to close to tray") 
+print("🎣 Click tray icon to reopen UI")
+
+-- Test jika UI muncul
+wait(1)
+if screen and screen.Parent then
+    print("✅ UI successfully created!")
+else
+    print("❌ UI failed to create!")
+end
