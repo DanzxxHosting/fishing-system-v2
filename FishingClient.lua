@@ -1,6 +1,5 @@
 -- KAITUN FISH IT v3.0 - PERFECTED INSTANT FISHING
 -- paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
--- Tema: hitam matte + merah neon dengan instant fishing yang disempurnakan
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -28,7 +27,7 @@ local fishingConfig = {
     instantReel = true,
     perfectTiming = true,
     autoEquip = true,
-    speed = "ultra", -- "normal", "fast", "ultra"
+    speed = "ultra",
     multiMethod = true,
     bypassAnticheat = true
 }
@@ -341,17 +340,20 @@ cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
 -- ═══════════════════════════════════════════════════════════
--- PERFECTED INSTANT FISHING SYSTEM v3.0
+-- PERFECTED INSTANT FISHING SYSTEM v3.0 - FIXED
 -- ═══════════════════════════════════════════════════════════
 
 -- Utility Functions
-local function SafeCall(func)
-    local success, result = pcall(func)
-    return success and result or nil
+local function SafeCall(func, ...)
+    local success, result = pcall(func, ...)
+    if not success then
+        return nil
+    end
+    return result
 end
 
 local function GetCharacter()
-    return player.Character
+    return player.Character or player.CharacterAdded:Wait()
 end
 
 local function GetHumanoid()
@@ -359,16 +361,11 @@ local function GetHumanoid()
     return char and char:FindFirstChildOfClass("Humanoid")
 end
 
-local function GetRootPart()
-    local char = GetCharacter()
-    return char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
-end
-
 -- Advanced Rod Detection
 local function FindFishingRod()
     local rodKeywords = {"rod", "pole", "fishing", "cane", "tackle"}
     
-    -- Check equipped
+    -- Check equipped first
     local char = GetCharacter()
     if char then
         for _, item in pairs(char:GetChildren()) do
@@ -405,17 +402,25 @@ end
 local function EquipRod()
     return SafeCall(function()
         local rod = FindFishingRod()
-        if not rod then return false end
+        if not rod then 
+            print("[!] No fishing rod found!")
+            return false 
+        end
         
         if rod.Parent == player.Backpack then
             local humanoid = GetHumanoid()
             if humanoid then
                 humanoid:EquipTool(rod)
-                task.wait(0.15)
+                task.wait(0.2)
+                print("[✓] Rod equipped successfully")
             end
         end
         
-        return rod.Parent == GetCharacter()
+        local isEquipped = rod.Parent == GetCharacter()
+        if isEquipped then
+            print("[✓] Rod is equipped and ready")
+        end
+        return isEquipped
     end) or false
 end
 
@@ -424,6 +429,8 @@ local function CastProximityPrompt()
     return SafeCall(function()
         local char = GetCharacter()
         if not char then return false end
+        
+        local foundPrompt = false
         
         -- Check character descendants
         for _, obj in pairs(char:GetDescendants()) do
@@ -436,31 +443,21 @@ local function CastProximityPrompt()
                    objText:match("fish") or objText:match("cast") or
                    actionText:match("fish") or actionText:match("cast") then
                     
-                    fireproximityprompt(obj, 0)
+                    for i = 1, 3 do
+                        fireproximityprompt(obj)
+                        task.wait(0.01)
+                    end
+                    
                     if not detectedMethods.proximity then
                         detectedMethods.proximity = true
                         print("[✓] ProximityPrompt method detected!")
                     end
-                    return true
+                    foundPrompt = true
                 end
             end
         end
         
-        -- Check workspace
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") and obj.Enabled then
-                local root = GetRootPart()
-                if root and (obj.Parent.Position - root.Position).Magnitude < obj.MaxActivationDistance then
-                    local name = obj.Name:lower()
-                    if name:match("fish") or name:match("cast") then
-                        fireproximityprompt(obj, 0)
-                        return true
-                    end
-                end
-            end
-        end
-        
-        return false
+        return foundPrompt
     end) or false
 end
 
@@ -468,11 +465,22 @@ end
 local function CastClickDetector()
     return SafeCall(function()
         local rod = FindFishingRod()
-        if not rod or rod.Parent ~= GetCharacter() then return false end
+        if not rod then return false end
+        
+        -- Equip rod first if needed
+        if rod.Parent ~= GetCharacter() then
+            if not EquipRod() then
+                return false
+            end
+        end
         
         for _, obj in pairs(rod:GetDescendants()) do
             if obj:IsA("ClickDetector") then
-                fireclickdetector(obj, 0)
+                for i = 1, 5 do
+                    fireclickdetector(obj)
+                    task.wait(0.01)
+                end
+                
                 if not detectedMethods.click then
                     detectedMethods.click = true
                     print("[✓] ClickDetector method detected!")
@@ -488,41 +496,43 @@ end
 -- Method 3: RemoteEvent/Function (Server Communication)
 local function CastRemote()
     return SafeCall(function()
-        local actions = {"cast", "fish", "throw", "reel", "catch", "bite"}
+        local actions = {"cast", "fish", "throw", "reel", "catch", "bite", "hook"}
+        local foundRemote = false
         
+        -- Check ReplicatedStorage
         for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
             if remote:IsA("RemoteEvent") then
                 local name = remote.Name:lower()
                 for _, action in ipairs(actions) do
                     if name:match(action) then
+                        -- Try multiple parameter combinations
                         remote:FireServer()
                         remote:FireServer("Cast")
                         remote:FireServer(true)
-                        remote:FireServer({action = "cast"})
+                        remote:FireServer("Fishing")
+                        remote:FireServer("Start")
                         
                         if not detectedMethods.remote then
                             detectedMethods.remote = true
-                            print("[✓] RemoteEvent method detected!")
+                            print("[✓] RemoteEvent method detected:", remote.Name)
                         end
-                        return true
+                        foundRemote = true
                     end
                 end
             elseif remote:IsA("RemoteFunction") then
                 local name = remote.Name:lower()
                 for _, action in ipairs(actions) do
                     if name:match(action) then
-                        SafeCall(function()
-                            remote:InvokeServer()
-                            remote:InvokeServer("Cast")
-                            remote:InvokeServer(true)
-                        end)
-                        return true
+                        SafeCall(function() remote:InvokeServer() end)
+                        SafeCall(function() remote:InvokeServer("Cast") end)
+                        SafeCall(function() remote:InvokeServer(true) end)
+                        foundRemote = true
                     end
                 end
             end
         end
         
-        return false
+        return foundRemote
     end) or false
 end
 
@@ -553,18 +563,27 @@ local function CastBindable()
     end) or false
 end
 
--- Method 5: Virtual Input (Keyboard & Mouse)
+-- Method 5: Virtual Input (Mobile Compatible)
 local function CastVirtualInput()
-    SafeCall(function()
-        -- Mouse clicks
-        for i = 1, 3 do
+    return SafeCall(function()
+        -- Mouse clicks (works on mobile too)
+        for i = 1, 8 do
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
             task.wait(0.001)
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+            task.wait(0.001)
         end
-    end)
-    
-    return true
+        
+        -- Simulate screen taps for mobile
+        for i = 1, 3 do
+            VirtualInputManager:SendMouseButtonEvent(100, 100, 0, true, game, 0)
+            task.wait(0.001)
+            VirtualInputManager:SendMouseButtonEvent(100, 100, 0, false, game, 0)
+            task.wait(0.001)
+        end
+        
+        return true
+    end) or false
 end
 
 -- Method 6: Tool Activation
@@ -573,9 +592,13 @@ local function ActivateTool()
         local rod = FindFishingRod()
         if not rod or rod.Parent ~= GetCharacter() then return false end
         
-        rod:Activate()
-        task.wait(0.001)
-        rod:Deactivate()
+        -- Rapid activation
+        for i = 1, 5 do
+            rod:Activate()
+            task.wait(0.01)
+            rod:Deactivate()
+            task.wait(0.01)
+        end
         
         if not detectedMethods.tool then
             detectedMethods.tool = true
@@ -589,6 +612,7 @@ end
 local function AutoClickFishingUI()
     return SafeCall(function()
         local keywords = {"reel", "catch", "bite", "pull", "fish", "!"}
+        local foundButton = false
         
         for _, gui in pairs(playerGui:GetDescendants()) do
             if (gui:IsA("TextButton") or gui:IsA("ImageButton")) and gui.Visible then
@@ -597,11 +621,9 @@ local function AutoClickFishingUI()
                 for _, keyword in ipairs(keywords) do
                     if text:match(keyword) then
                         -- Rapid fire clicks
-                        for i = 1, 10 do
+                        for i = 1, 15 do
                             SafeCall(function()
-                                if gui:IsA("TextButton") or gui:IsA("ImageButton") then
-                                    gui.Activated:Fire()
-                                end
+                                gui.Activated:Fire()
                             end)
                             task.wait(0.001)
                         end
@@ -610,13 +632,13 @@ local function AutoClickFishingUI()
                             detectedMethods.gui = true
                             print("[✓] GUI auto-click method detected!")
                         end
-                        return true
+                        foundButton = true
                     end
                 end
             end
         end
         
-        return false
+        return foundButton
     end) or false
 end
 
@@ -661,6 +683,7 @@ local function PerformPerfectCast()
     -- Auto equip if needed
     if fishingConfig.autoEquip then
         if not EquipRod() then
+            fishingStats.fails = fishingStats.fails + 1
             return false
         end
     end
@@ -670,48 +693,35 @@ local function PerformPerfectCast()
     
     -- Execute all methods simultaneously for maximum compatibility
     if fishingConfig.multiMethod then
-        -- Method 1: ProximityPrompt (Highest Priority)
-        if CastProximityPrompt() then
-            success = true
-            methodsUsed = methodsUsed + 1
+        -- Run all methods in parallel
+        local methods = {
+            CastProximityPrompt,
+            CastClickDetector,
+            CastRemote,
+            CastBindable,
+            ActivateTool,
+            AdvancedRemoteDetection
+        }
+        
+        for _, method in ipairs(methods) do
+            if method() then
+                success = true
+                methodsUsed = methodsUsed + 1
+            end
         end
         
-        -- Method 2: ClickDetector
-        if CastClickDetector() then
-            success = true
-            methodsUsed = methodsUsed + 1
-        end
-        
-        -- Method 3: RemoteEvent
-        if CastRemote() then
-            success = true
-            methodsUsed = methodsUsed + 1
-        end
-        
-        -- Method 4: BindableEvent
-        if CastBindable() then
-            success = true
-            methodsUsed = methodsUsed + 1
-        end
-        
-        -- Method 5: Tool Activation
-        if ActivateTool() then
-            success = true
-            methodsUsed = methodsUsed + 1
-        end
-        
-        -- Method 6: Advanced Remote
-        if AdvancedRemoteDetection() then
-            success = true
-            methodsUsed = methodsUsed + 1
-        end
-        
-        -- Method 7: Virtual Input (Always execute)
+        -- Always execute virtual input
         CastVirtualInput()
         
-        -- Method 8: GUI Auto-Click (For minigames)
+        -- GUI Auto-Click for minigames
         if fishingConfig.instantReel then
-            task.spawn(AutoClickFishingUI)
+            AutoClickFishingUI()
+        end
+    else
+        -- Single method mode (for testing)
+        if CastProximityPrompt() or CastClickDetector() or CastRemote() then
+            success = true
+            methodsUsed = 1
         end
     end
     
@@ -719,6 +729,7 @@ local function PerformPerfectCast()
         fishingStats.successes = fishingStats.successes + 1
         fishingStats.fishCaught = fishingStats.fishCaught + 1
         fishingStats.lastCatch = tick()
+        print(string.format("[🎣] Fish caught! Total: %d (Methods: %d)", fishingStats.fishCaught, methodsUsed))
     else
         fishingStats.fails = fishingStats.fails + 1
     end
@@ -729,11 +740,11 @@ end
 -- Get delay based on speed setting
 local function GetDelay()
     if fishingConfig.speed == "ultra" then
-        return 0.001
-    elseif fishingConfig.speed == "fast" then
-        return 0.01
-    else
         return 0.1
+    elseif fishingConfig.speed == "fast" then
+        return 0.3
+    else
+        return 0.5
     end
 end
 
@@ -755,28 +766,39 @@ local function StartFishing()
     print("═══════════════════════════════════════")
     
     -- Main fishing loop
-    table.insert(activeConnections, RunService.Heartbeat:Connect(function()
+    local mainLoop = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
-        SafeCall(PerformPerfectCast)
+        local success = SafeCall(PerformPerfectCast)
+        if not success then
+            -- If fishing fails, try equipping rod
+            if fishingConfig.autoEquip then
+                SafeCall(EquipRod)
+            end
+        end
+        
         task.wait(GetDelay())
-    end))
+    end)
+    
+    table.insert(activeConnections, mainLoop)
     
     -- GUI auto-click loop (separate for responsiveness)
     if fishingConfig.instantReel then
-        table.insert(activeConnections, RunService.RenderStepped:Connect(function()
+        local guiLoop = RunService.RenderStepped:Connect(function()
             if not fishingActive then return end
             SafeCall(AutoClickFishingUI)
-        end))
+        end)
+        table.insert(activeConnections, guiLoop)
     end
     
     -- Auto re-equip loop
     if fishingConfig.autoEquip then
-        table.insert(activeConnections, RunService.Stepped:Connect(function()
+        local equipLoop = RunService.Stepped:Connect(function()
             if not fishingActive then return end
-            task.wait(2)
-            EquipRod()
-        end))
+            task.wait(3) -- Re-equip every 3 seconds
+            SafeCall(EquipRod)
+        end)
+        table.insert(activeConnections, equipLoop)
     end
 end
 
@@ -785,25 +807,30 @@ local function StopFishing()
     fishingActive = false
     
     for _, connection in ipairs(activeConnections) do
-        if connection then
+        if connection and connection.Connected then
             connection:Disconnect()
         end
     end
     activeConnections = {}
     
     local elapsed = tick() - fishingStats.startTime
+    local successRate = (fishingStats.successes / math.max(1, fishingStats.attempts)) * 100
+    local rate = fishingStats.fishCaught / math.max(1, elapsed)
+    
     print("═══════════════════════════════════════")
     print("[✓] FISHING STOPPED")
     print("[📊] Session Stats:")
     print("  • Fish Caught:", fishingStats.fishCaught)
-    print("  • Success Rate:", string.format("%.1f%%", (fishingStats.successes / math.max(1, fishingStats.attempts)) * 100))
+    print("  • Attempts:", fishingStats.attempts)
+    print("  • Success Rate:", string.format("%.1f%%", successRate))
     print("  • Time:", string.format("%.1fs", elapsed))
-    print("  • Rate:", string.format("%.2f/s", fishingStats.fishCaught / math.max(1, elapsed)))
+    print("  • Rate:", string.format("%.2f fish/s", rate))
+    print("  • Methods Detected:", #detectedMethods)
     print("═══════════════════════════════════════")
 end
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING UI CONTENT
+-- FISHING UI CONTENT - FIXED
 -- ═══════════════════════════════════════════════════════════
 
 local fishingContent = Instance.new("Frame")
@@ -869,7 +896,6 @@ local rateLabel = CreateStat("Rate", "⚡", Color3.fromRGB(255, 220, 100), 0.5, 
 local attemptsLabel = CreateStat("Attempts", "🎯", Color3.fromRGB(200, 200, 255), 0, 0.33)
 local successLabel = CreateStat("Success", "✅", Color3.fromRGB(150, 255, 150), 0.5, 0.33)
 local timeLabel = CreateStat("Session", "⏱️", Color3.fromRGB(255, 180, 180), 0, 0.66)
-local methodLabel = CreateStat("Methods", "🔧", Color3.fromRGB(255, 200, 100), 0.5, 0.66)
 
 -- Controls Panel
 local controlsPanel = Instance.new("Frame")
@@ -1021,9 +1047,9 @@ local function CreateSpeedButton(name, desc, speed, xPos)
     return btn, speed
 end
 
-local normalBtn, normalSpeed = CreateSpeedButton("Normal", "0.1s delay", "normal", 0.02)
-local fastBtn, fastSpeed = CreateSpeedButton("Fast", "0.01s delay", "fast", 0.35)
-local ultraBtn, ultraSpeed = CreateSpeedButton("Ultra", "0.001s instant", "ultra", 0.68)
+local normalBtn, normalSpeed = CreateSpeedButton("Normal", "0.5s delay", "normal", 0.02)
+local fastBtn, fastSpeed = CreateSpeedButton("Fast", "0.3s delay", "fast", 0.35)
+local ultraBtn, ultraSpeed = CreateSpeedButton("Ultra", "0.1s instant", "ultra", 0.68)
 
 local speedButtons = {
     {btn = normalBtn, speed = "normal"},
@@ -1146,6 +1172,8 @@ end
 CreateToggle("🎯 Instant Cast", "Instantly cast fishing rod", "instantCast", 40)
 CreateToggle("🔄 Instant Reel", "Auto-complete reel minigame", "instantReel", 80)
 CreateToggle("✨ Perfect Timing", "Always perfect cast timing", "perfectTiming", 120)
+CreateToggle("🔧 Multi-Method", "Use all fishing methods", "multiMethod", 160)
+CreateToggle("⚡ Auto Equip", "Auto-equip fishing rod", "autoEquip", 200)
 
 -- Info Panel
 local infoPanel = Instance.new("Frame")
@@ -1180,29 +1208,25 @@ infoText.TextWrapped = true
 infoText.TextYAlignment = Enum.TextYAlignment.Top
 infoText.TextXAlignment = Enum.TextXAlignment.Left
 infoText.TextColor3 = Color3.fromRGB(190,190,190)
-infoText.Text = [[🎮 Keyboard Controls:
-• Right Ctrl - Toggle UI visibility
-• Right Shift - Start/Stop fishing instantly
-
-⚡ 8 Advanced Fishing Methods:
-1. ProximityPrompt Detection - Auto-detects fishing prompts
-2. ClickDetector Activation - Fires click events on rod
-3. RemoteEvent Hooking - Intercepts server communication
-4. BindableEvent Triggering - Local event handling
+infoText.Text = [[⚡ 8 Advanced Fishing Methods:
+1. ProximityPrompt - Auto-detects fishing prompts
+2. ClickDetector - Fires click events on rod
+3. RemoteEvent - Intercepts server communication
+4. BindableEvent - Local event handling
 5. Tool Activation - Direct tool manipulation
-6. Advanced Remote Scan - Character/rod remote detection
-7. Virtual Input Simulation - Keyboard & mouse emulation
+6. Advanced Remote - Character/rod remote detection
+7. Virtual Input - Mouse & touch simulation
 8. GUI Auto-Click - Automatic minigame completion
 
 🚀 Speed Modes:
-• Normal: Safe & stable (0.1s delay)
-• Fast: Balanced speed (0.01s delay)
-• Ultra: Maximum speed (0.001s) - May be detected!
+• Normal: Safe & stable (0.5s delay)
+• Fast: Balanced speed (0.3s delay)
+• Ultra: Maximum speed (0.1s)
 
 💡 Tips:
-• All 8 methods run simultaneously for maximum compatibility
-• Works on 95% of Roblox fishing games
-• Auto-equips rod and handles minigames automatically
+• Make sure you have a fishing rod in your inventory
+• Enable Auto-Equip for best results
+• Multi-Method uses all 8 methods simultaneously
 • Script auto-detects which methods work in your game]]
 infoText.Parent = infoPanel
 
@@ -1219,7 +1243,7 @@ fishingButton.MouseButton1Click:Connect(function()
         StartFishing()
         fishingButton.Text = "⏹️ STOP FISHING"
         fishingButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-        statusLabel.Text = "✅ ACTIVE"
+        statusLabel.Text = "✅ FISHING ACTIVE"
         statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         statusIndicator.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
     end
@@ -1368,9 +1392,13 @@ spawn(function()
     while true do
         local elapsed = math.max(1, tick() - fishingStats.startTime)
         local rate = fishingStats.fishCaught / elapsed
+        local successRate = (fishingStats.successes / math.max(1, fishingStats.attempts)) * 100
         
         fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
         rateLabel.Text = string.format("Rate: %.2f/s", rate)
+        attemptsLabel.Text = string.format("Attempts: %d", fishingStats.attempts)
+        successLabel.Text = string.format("Success: %.1f%%", successRate)
+        timeLabel.Text = string.format("Session: %.1fs", elapsed)
         memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
         
         wait(0.5)
@@ -1380,10 +1408,15 @@ end)
 -- Start dengan UI terbuka
 showMainUI()
 
-print("[Kaitun Fish It] UI Loaded Successfully!")
-print("🎣 Click - to minimize to tray")
-print("🎣 Click 🗙 to close to tray") 
-print("🎣 Click tray icon to reopen UI")
+print("═══════════════════════════════════════")
+print("[⚡ KAITUN FISH IT v3.0 LOADED!]")
+print("🎣 Perfect Instant Fishing System")
+print("📱 Mobile & PC Compatible")
+print("🚀 8 Advanced Fishing Methods")
+print("═══════════════════════════════════════")
+print("[INFO] Make sure you have a fishing rod!")
+print("[INFO] Enable Auto-Equip for best results")
+print("═══════════════════════════════════════")
 
 -- Test jika UI muncul
 wait(1)
