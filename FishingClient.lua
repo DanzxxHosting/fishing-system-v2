@@ -28,7 +28,6 @@ local fishingConfig = {
     instantCast = true,
     instantReel = true,
     perfectTiming = true,
-    autoEquip = true,
     speed = "ultra",
     multiMethod = true,
     bypassAnticheat = true
@@ -69,6 +68,7 @@ local fishingStats = {
 local fishingActive = false
 local activeConnections = {}
 local detectedMethods = {}
+local uiEnabled = true
 
 -- Cleanup old UI
 if playerGui:FindFirstChild("NeonDashboardUI") then
@@ -391,64 +391,7 @@ local function GetHumanoid()
     return char and char:FindFirstChildOfClass("Humanoid")
 end
 
--- Advanced Rod Detection - IMPROVED
-local function FindFishingRod()
-    local rodKeywords = {"rod", "pole", "fishing", "cane", "tackle", "hook", "line"}
-    
-    -- Check equipped first
-    local char = GetCharacter()
-    if char then
-        for _, item in pairs(char:GetChildren()) do
-            if item:IsA("Tool") then
-                local name = item.Name:lower()
-                for _, keyword in ipairs(rodKeywords) do
-                    if name:find(keyword) then
-                        return item
-                    end
-                end
-            end
-        end
-    end
-    
-    -- Check backpack
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        for _, item in pairs(backpack:GetChildren()) do
-            if item:IsA("Tool") then
-                local name = item.Name:lower()
-                for _, keyword in ipairs(rodKeywords) do
-                    if name:find(keyword) then
-                        return item
-                    end
-                end
-            end
-        end
-    end
-    
-    -- Check workspace near player
-    local char = GetCharacter()
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        local rootPart = char.HumanoidRootPart
-        for _, item in pairs(Workspace:GetChildren()) do
-            if item:IsA("Tool") and item:FindFirstChild("Handle") then
-                local distance = (item.Handle.Position - rootPart.Position).Magnitude
-                if distance < 20 then
-                    local name = item.Name:lower()
-                    for _, keyword in ipairs(rodKeywords) do
-                        if name:find(keyword) then
-                            return item
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    return nil
-end
-
-
--- FIXED Fishing Methods
+-- FIXED Fishing Methods - No Auto Equip
 local function CastProximityPrompt()
     return SafeCall(function()
         local char = GetCharacter()
@@ -467,14 +410,14 @@ local function CastProximityPrompt()
                    objText:match("fish") or objText:match("cast") or objText:match("reel") or
                    actionText:match("fish") or actionText:match("cast") or actionText:match("reel") then
                     
-                    for i = 1, 5 do
+                    for i = 1, 3 do
                         fireproximityprompt(obj, 0)
                         task.wait(0.05)
                     end
                     
                     if not detectedMethods.proximity then
                         detectedMethods.proximity = true
-                        print("[✓] ProximityPrompt method detected:", obj.Name)
+                        print("[✓] ProximityPrompt method detected!")
                     end
                     foundPrompt = true
                     return true
@@ -482,12 +425,18 @@ local function CastProximityPrompt()
             end
         end
         
-        -- Check equipped rod
-        local rod = FindFishingRod()
-        if rod and rod.Parent == char then
-            for _, obj in pairs(rod:GetDescendants()) do
-                if obj:IsA("ProximityPrompt") and obj.Enabled then
-                    for i = 1, 5 do
+        -- Check workspace for fishing spots
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") and obj.Enabled then
+                local name = obj.Name:lower()
+                local objText = obj.ObjectText and obj.ObjectText:lower() or ""
+                local actionText = obj.ActionText and obj.ActionText:lower() or ""
+                
+                if name:match("fish") or name:match("cast") or name:match("catch") or
+                   objText:match("fish") or objText:match("cast") or
+                   actionText:match("fish") or actionText:match("cast") then
+                    
+                    for i = 1, 3 do
                         fireproximityprompt(obj, 0)
                         task.wait(0.05)
                     end
@@ -503,30 +452,24 @@ end
 
 local function CastClickDetector()
     return SafeCall(function()
-        local rod = FindFishingRod()
-        if not rod then return false end
-        
-        if rod.Parent ~= GetCharacter() then
-            if not EquipRod() then
-                return false
-            end
-        end
-        
-        for _, obj in pairs(rod:GetDescendants()) do
+        -- Check workspace for clickable fishing spots
+        for _, obj in pairs(Workspace:GetDescendants()) do
             if obj:IsA("ClickDetector") then
-                for i = 1, 8 do
-                    fireclickdetector(obj, 0)
-                    task.wait(0.03)
+                local parentName = obj.Parent and obj.Parent.Name:lower() or ""
+                if parentName:match("fish") or parentName:match("spot") or parentName:match("water") then
+                    for i = 1, 5 do
+                        fireclickdetector(obj, 0)
+                        task.wait(0.03)
+                    end
+                    
+                    if not detectedMethods.click then
+                        detectedMethods.click = true
+                        print("[✓] ClickDetector method detected!")
+                    end
+                    return true
                 end
-                
-                if not detectedMethods.click then
-                    detectedMethods.click = true
-                    print("[✓] ClickDetector method detected!")
-                end
-                return true
             end
         end
-        
         return false
     end) or false
 end
@@ -544,52 +487,27 @@ local function CastRemote()
                 for _, action in ipairs(actions) do
                     if name:match(action) then
                         -- Try different argument patterns
-                        local success = pcall(function() remote:FireServer() end)
-                        if success then foundRemote = true end
+                        pcall(function() remote:FireServer() end)
+                        pcall(function() remote:FireServer("Cast") end)
+                        pcall(function() remote:FireServer(true) end)
+                        pcall(function() remote:FireServer("Fishing") end)
+                        pcall(function() remote:FireServer("Start") end)
                         
-                        success = pcall(function() remote:FireServer("Cast") end)
-                        if success then foundRemote = true end
-                        
-                        success = pcall(function() remote:FireServer(true) end)
-                        if success then foundRemote = true end
-                        
-                        success = pcall(function() remote:FireServer("Fishing") end)
-                        if success then foundRemote = true end
-                        
-                        success = pcall(function() remote:FireServer("Start") end)
-                        if success then foundRemote = true end
-                        
-                        if foundRemote and not detectedMethods.remote then
+                        if not detectedMethods.remote then
                             detectedMethods.remote = true
                             print("[✓] RemoteEvent method detected:", remote.Name)
                         end
+                        foundRemote = true
                     end
                 end
             elseif remote:IsA("RemoteFunction") then
                 local name = remote.Name:lower()
                 for _, action in ipairs(actions) do
                     if name:match(action) then
-                        local success = pcall(function() remote:InvokeServer() end)
-                        if success then foundRemote = true end
-                        
-                        success = pcall(function() remote:InvokeServer("Cast") end)
-                        if success then foundRemote = true end
-                        
-                        success = pcall(function() remote:InvokeServer(true) end)
-                        if success then foundRemote = true end
-                    end
-                end
-            end
-        end
-        
-        -- Check Workspace for fishing-related remotes
-        for _, remote in pairs(Workspace:GetDescendants()) do
-            if remote:IsA("RemoteEvent") then
-                local name = remote.Name:lower()
-                for _, action in ipairs(actions) do
-                    if name:match(action) then
-                        local success = pcall(function() remote:FireServer() end)
-                        if success then foundRemote = true end
+                        pcall(function() remote:InvokeServer() end)
+                        pcall(function() remote:InvokeServer("Cast") end)
+                        pcall(function() remote:InvokeServer(true) end)
+                        foundRemote = true
                     end
                 end
             end
@@ -616,7 +534,7 @@ local function CastBindableEvent()
                         
                         if not detectedMethods.bindable then
                             detectedMethods.bindable = true
-                            print("[✓] BindableEvent method detected:", bindable.Name)
+                            print("[✓] BindableEvent method detected!")
                         end
                         foundBindable = true
                     end
@@ -657,20 +575,11 @@ local function CastVirtualInput()
     end) or false
 end
 
--- MASTER FISHING FUNCTION - IMPROVED
+-- MASTER FISHING FUNCTION - SIMPLIFIED
 local function PerformPerfectCast()
     if not fishingActive then return false end
     
     fishingStats.attempts = fishingStats.attempts + 1
-    
-    -- Auto equip rod if enabled
-    if fishingConfig.autoEquip then
-        if not EquipRod() then
-            fishingStats.fails = fishingStats.fails + 1
-            print("[!] Failed to equip rod - attempt", fishingStats.attempts)
-            return false
-        end
-    end
     
     local success = false
     local methodsUsed = 0
@@ -717,11 +626,11 @@ end
 -- Get delay based on speed setting
 local function GetDelay()
     if fishingConfig.speed == "ultra" then
-        return 0.2  -- Reduced for stability
+        return 0.3
     elseif fishingConfig.speed == "fast" then
-        return 0.4
+        return 0.6
     else
-        return 0.8
+        return 1.0
     end
 end
 
@@ -739,7 +648,6 @@ local function StartFishing()
     print("═══════════════════════════════════════")
     print("[✓] PERFECT INSTANT FISHING ACTIVATED!")
     print("[⚡] Speed Mode:", fishingConfig.speed:upper())
-    print("[🎣] Auto Equip:", fishingConfig.autoEquip and "ON" or "OFF")
     print("[🔧] Multi-Method:", fishingConfig.multiMethod and "ON" or "OFF")
     print("═══════════════════════════════════════")
     
@@ -751,13 +659,7 @@ local function StartFishing()
         end
         
         local success = SafeCall(PerformPerfectCast)
-        if success then
-            -- Success delay (shorter)
-            task.wait(GetDelay() * 0.5)
-        else
-            -- Failure delay (longer)
-            task.wait(GetDelay())
-        end
+        task.wait(GetDelay())
     end)
     
     table.insert(activeConnections, mainLoop)
@@ -1009,9 +911,9 @@ local function CreateSpeedButton(name, desc, speed, xPos)
     return btn, speed
 end
 
-local normalBtn, normalSpeed = CreateSpeedButton("Normal", "0.8s delay", "normal", 0.02)
-local fastBtn, fastSpeed = CreateSpeedButton("Fast", "0.4s delay", "fast", 0.35)
-local ultraBtn, ultraSpeed = CreateSpeedButton("Ultra", "0.2s instant", "ultra", 0.68)
+local normalBtn, normalSpeed = CreateSpeedButton("Normal", "1.0s delay", "normal", 0.02)
+local fastBtn, fastSpeed = CreateSpeedButton("Fast", "0.6s delay", "fast", 0.35)
+local ultraBtn, ultraSpeed = CreateSpeedButton("Ultra", "0.3s instant", "ultra", 0.68)
 
 local speedButtons = {
     {btn = normalBtn, speed = "normal"},
@@ -1115,29 +1017,258 @@ CreateToggle("✨ Perfect Timing", "Always perfect cast timing", "perfectTiming"
 CreateToggle("🔧 Multi-Method", "Use all fishing methods", "multiMethod", 160)
 
 -- ═══════════════════════════════════════════════════════════
--- UI INTERACTIONS & ANIMATIONS
+-- PLAYER MODS UI CONTENT - FIXED SLIDERS
+-- ═══════════════════════════════════════════════════════════
+
+local playerContent = Instance.new("ScrollingFrame")
+playerContent.Name = "PlayerContent"
+playerContent.Size = UDim2.new(1, -24, 1, -68)
+playerContent.Position = UDim2.new(0, 12, 0, 56)
+playerContent.BackgroundTransparency = 1
+playerContent.BorderSizePixel = 0
+playerContent.ScrollBarThickness = 6
+playerContent.ScrollBarImageColor3 = ACCENT
+playerContent.CanvasSize = UDim2.new(0, 0, 0, 600)
+playerContent.Visible = false
+playerContent.Parent = content
+
+local playerTitle = Instance.new("TextLabel")
+playerTitle.Size = UDim2.new(1, -24, 0, 44)
+playerTitle.Position = UDim2.new(0,12,0,12)
+playerTitle.BackgroundTransparency = 1
+playerTitle.Font = Enum.Font.GothamBold
+playerTitle.TextSize = 16
+playerTitle.Text = "👤 Player Modifications"
+playerTitle.TextColor3 = Color3.fromRGB(245,245,245)
+playerTitle.TextXAlignment = Enum.TextXAlignment.Left
+playerTitle.Parent = playerContent
+
+-- Player Modifications Functions
+local function ApplyPlayerMods()
+    SafeCall(function()
+        local humanoid = GetHumanoid()
+        if humanoid then
+            humanoid.WalkSpeed = featureConfig.walkSpeed
+            humanoid.JumpPower = featureConfig.jumpPower
+        end
+    end)
+end
+
+-- Walk Speed Slider - FIXED
+local walkSpeedFrame = Instance.new("Frame")
+walkSpeedFrame.Size = UDim2.new(1, -24, 0, 80)
+walkSpeedFrame.Position = UDim2.new(0, 12, 0, 60)
+walkSpeedFrame.BackgroundTransparency = 1
+walkSpeedFrame.Parent = playerContent
+
+local walkSpeedLabel = Instance.new("TextLabel")
+walkSpeedLabel.Size = UDim2.new(1, 0, 0, 24)
+walkSpeedLabel.BackgroundTransparency = 1
+walkSpeedLabel.Font = Enum.Font.GothamBold
+walkSpeedLabel.TextSize = 14
+walkSpeedLabel.Text = "🚶 Walk Speed: " .. featureConfig.walkSpeed
+walkSpeedLabel.TextColor3 = Color3.fromRGB(240,240,240)
+walkSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+walkSpeedLabel.Parent = walkSpeedFrame
+
+local walkSpeedSlider = Instance.new("Frame")
+walkSpeedSlider.Size = UDim2.new(1, 0, 0, 30)
+walkSpeedSlider.Position = UDim2.new(0, 0, 0, 30)
+walkSpeedSlider.BackgroundColor3 = Color3.fromRGB(40,40,45)
+walkSpeedSlider.BorderSizePixel = 0
+walkSpeedSlider.Parent = walkSpeedFrame
+
+local walkSpeedCorner = Instance.new("UICorner")
+walkSpeedCorner.CornerRadius = UDim.new(0,6)
+walkSpeedCorner.Parent = walkSpeedSlider
+
+local walkSpeedFill = Instance.new("Frame")
+walkSpeedFill.Size = UDim2.new((featureConfig.walkSpeed - 16) / 50, 0, 1, 0)
+walkSpeedFill.BackgroundColor3 = ACCENT
+walkSpeedFill.BorderSizePixel = 0
+walkSpeedFill.Parent = walkSpeedSlider
+
+local walkSpeedFillCorner = Instance.new("UICorner")
+walkSpeedFillCorner.CornerRadius = UDim.new(0,6)
+walkSpeedFillCorner.Parent = walkSpeedFill
+
+-- FIXED Walk Speed Slider Functionality
+walkSpeedSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            local mouse = UserInputService:GetMouseLocation()
+            local sliderPos = walkSpeedSlider.AbsolutePosition
+            local sliderSize = walkSpeedSlider.AbsoluteSize.X
+            local relativeX = math.clamp(mouse.X - sliderPos.X, 0, sliderSize)
+            local percentage = relativeX / sliderSize
+            
+            featureConfig.walkSpeed = math.floor(16 + (percentage * 50))
+            walkSpeedLabel.Text = "🚶 Walk Speed: " .. featureConfig.walkSpeed
+            walkSpeedFill.Size = UDim2.new(percentage, 0, 1, 0)
+            
+            ApplyPlayerMods()
+        end)
+        
+        local function endDrag(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                connection:Disconnect()
+            end
+        end
+        
+        UserInputService.InputEnded:Connect(endDrag)
+    end
+end)
+
+-- Jump Power Slider - FIXED
+local jumpPowerFrame = Instance.new("Frame")
+jumpPowerFrame.Size = UDim2.new(1, -24, 0, 80)
+jumpPowerFrame.Position = UDim2.new(0, 12, 0, 160)
+jumpPowerFrame.BackgroundTransparency = 1
+jumpPowerFrame.Parent = playerContent
+
+local jumpPowerLabel = Instance.new("TextLabel")
+jumpPowerLabel.Size = UDim2.new(1, 0, 0, 24)
+jumpPowerLabel.BackgroundTransparency = 1
+jumpPowerLabel.Font = Enum.Font.GothamBold
+jumpPowerLabel.TextSize = 14
+jumpPowerLabel.Text = "🦘 Jump Power: " .. featureConfig.jumpPower
+jumpPowerLabel.TextColor3 = Color3.fromRGB(240,240,240)
+jumpPowerLabel.TextXAlignment = Enum.TextXAlignment.Left
+jumpPowerLabel.Parent = jumpPowerFrame
+
+local jumpPowerSlider = Instance.new("Frame")
+jumpPowerSlider.Size = UDim2.new(1, 0, 0, 30)
+jumpPowerSlider.Position = UDim2.new(0, 0, 0, 30)
+jumpPowerSlider.BackgroundColor3 = Color3.fromRGB(40,40,45)
+jumpPowerSlider.BorderSizePixel = 0
+jumpPowerSlider.Parent = jumpPowerFrame
+
+local jumpPowerCorner = Instance.new("UICorner")
+jumpPowerCorner.CornerRadius = UDim.new(0,6)
+jumpPowerCorner.Parent = jumpPowerSlider
+
+local jumpPowerFill = Instance.new("Frame")
+jumpPowerFill.Size = UDim2.new((featureConfig.jumpPower - 50) / 100, 0, 1, 0)
+jumpPowerFill.BackgroundColor3 = ACCENT
+jumpPowerFill.BorderSizePixel = 0
+jumpPowerFill.Parent = jumpPowerSlider
+
+local jumpPowerFillCorner = Instance.new("UICorner")
+jumpPowerFillCorner.CornerRadius = UDim.new(0,6)
+jumpPowerFillCorner.Parent = jumpPowerFill
+
+-- FIXED Jump Power Slider Functionality
+jumpPowerSlider.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            local mouse = UserInputService:GetMouseLocation()
+            local sliderPos = jumpPowerSlider.AbsolutePosition
+            local sliderSize = jumpPowerSlider.AbsoluteSize.X
+            local relativeX = math.clamp(mouse.X - sliderPos.X, 0, sliderSize)
+            local percentage = relativeX / sliderSize
+            
+            featureConfig.jumpPower = math.floor(50 + (percentage * 100))
+            jumpPowerLabel.Text = "🦘 Jump Power: " .. featureConfig.jumpPower
+            jumpPowerFill.Size = UDim2.new(percentage, 0, 1, 0)
+            
+            ApplyPlayerMods()
+        end)
+        
+        local function endDrag(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                connection:Disconnect()
+            end
+        end
+        
+        UserInputService.InputEnded:Connect(endDrag)
+    end
+end)
+
+-- Player Toggles
+local function CreatePlayerToggle(name, desc, configKey, yPos)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -24, 0, 36)
+    frame.Position = UDim2.new(0, 12, 0, yPos)
+    frame.BackgroundTransparency = 1
+    frame.Parent = playerContent
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.65, 0, 0, 16)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 12
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(240,240,240)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Size = UDim2.new(0.65, 0, 0, 16)
+    descLabel.Position = UDim2.new(0, 0, 0, 18)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Font = Enum.Font.Gotham
+    descLabel.TextSize = 10
+    descLabel.Text = desc
+    descLabel.TextColor3 = Color3.fromRGB(160,160,160)
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.Parent = frame
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 75, 0, 30)
+    button.Position = UDim2.new(0.7, 0, 0.15, 0)
+    button.BackgroundColor3 = featureConfig[configKey] and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 12
+    button.Text = featureConfig[configKey] and "ON" or "OFF"
+    button.TextColor3 = Color3.fromRGB(255,255,255)
+    button.AutoButtonColor = false
+    button.Parent = frame
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0,6)
+    btnCorner.Parent = button
+
+    button.MouseButton1Click:Connect(function()
+        featureConfig[configKey] = not featureConfig[configKey]
+        button.Text = featureConfig[configKey] and "ON" or "OFF"
+        local targetColor = featureConfig[configKey] and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+        
+        print("[Player]", name, ":", featureConfig[configKey] and "ON" or "OFF")
+    end)
+
+    return frame
+end
+
+CreatePlayerToggle("∞ Infinite Jump", "Jump infinitely in air", "infiniteJump", 260)
+CreatePlayerToggle("🚫 No Clip", "Walk through walls", "noClip", 300)
+CreatePlayerToggle("📡 Fishing Radar", "Show fishing spots", "fishingRadar", 340)
+
+-- ═══════════════════════════════════════════════════════════
+-- UI INTERACTIONS & ANIMATIONS - FIXED
 -- ═══════════════════════════════════════════════════════════
 
 -- Content Management
 local currentContent = fishingContent
 local contents = {
     Fishing = fishingContent,
-    Teleport = Instance.new("Frame"), -- Placeholder
-    Player = Instance.new("Frame"), -- Placeholder  
-    Shop = Instance.new("Frame"), -- Placeholder
-    Quests = Instance.new("Frame"), -- Placeholder
-    Visual = Instance.new("Frame"), -- Placeholder
-    Settings = Instance.new("Frame") -- Placeholder
+    Player = playerContent
+    -- Other contents can be added here as needed
 }
 
 -- Menu Navigation
 for name, btn in pairs(menuButtons) do
     btn.MouseButton1Click:Connect(function()
         -- Update content title
-        cTitle.Text = btn:FindFirstChildOfClass("TextLabel").Text
+        local label = btn:FindFirstChildOfClass("TextLabel")
+        if label then
+            cTitle.Text = label.Text
+        end
         
         -- Hide all contents
-        for _, contentFrame in pairs(contents) do
+        for contentName, contentFrame in pairs(contents) do
             if contentFrame then
                 contentFrame.Visible = false
             end
@@ -1147,6 +1278,11 @@ for name, btn in pairs(menuButtons) do
         if contents[name] then
             contents[name].Visible = true
             currentContent = contents[name]
+        else
+            -- Default to fishing if content not implemented
+            fishingContent.Visible = true
+            currentContent = fishingContent
+            cTitle.Text = "Perfect Instant Fishing"
         end
         
         -- Update menu highlight
@@ -1188,10 +1324,8 @@ resetButton.MouseButton1Click:Connect(function()
     print("[Stats] Fishing statistics reset!")
 end)
 
--- Window Controls
+-- FIXED Window Controls
 local minimized = false
-local originalSize = container.Size
-local originalPosition = container.Position
 
 minimizeBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
@@ -1201,20 +1335,25 @@ minimizeBtn.MouseButton1Click:Connect(function()
         inner.Visible = false
         minimizeBtn.Text = "+"
     else
-        container.Size = originalSize
+        container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
         glow.Size = UDim2.new(0, WIDTH+80, 0, HEIGHT+80)
         inner.Visible = true
         minimizeBtn.Text = "-"
     end
 end)
 
+-- FIXED Close/Open UI System
 closeBtn.MouseButton1Click:Connect(function()
-    screen.Enabled = false
+    uiEnabled = false
+    container.Visible = false
+    glow.Visible = false
     trayIcon.Visible = true
 end)
 
 trayIcon.MouseButton1Click:Connect(function()
-    screen.Enabled = true
+    uiEnabled = true
+    container.Visible = true
+    glow.Visible = true
     trayIcon.Visible = false
 end)
 
@@ -1276,17 +1415,18 @@ end)
 -- Character respawn handler
 player.CharacterAdded:Connect(function()
     task.wait(2) -- Wait for character to load
-    print("[System] Character respawned - fishing system ready")
+    ApplyPlayerMods()
+    print("[System] Character respawned - systems ready")
 end)
 
 -- Initial setup
+ApplyPlayerMods()
 print("═══════════════════════════════════════")
 print("⚡ KAITUN FISH IT v4.0 LOADED!")
 print("🎣 FIXED Perfect Instant Fishing System")
-print("• Improved Rod Detection")
-print("• Enhanced Method Detection") 
-print("• Better Error Handling")
-print("• Stable Timing System")
+print("👤 Working Player Modifications")
+print("🔧 Fixed UI Close/Open System")
+print("🎯 Working Speed/Jump Sliders")
 print("═══════════════════════════════════════")
 
 -- Cleanup on script termination
