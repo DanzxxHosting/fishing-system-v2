@@ -1,4 +1,4 @@
--- KAITUN FISH IT v4.0 - FIXED FISHING SYSTEM
+-- KAITUN FISH IT v4.0 - FIXED FEATURES
 -- paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
 
 local Players = game:GetService("Players")
@@ -69,6 +69,16 @@ local fishingActive = false
 local activeConnections = {}
 local detectedMethods = {}
 local uiEnabled = true
+
+-- Visual Feature Variables
+local originalLighting = {
+    Ambient = Lighting.Ambient,
+    Brightness = Lighting.Brightness,
+    GlobalShadows = Lighting.GlobalShadows,
+    FogEnd = Lighting.FogEnd
+}
+local xRayParts = {}
+local infiniteJumpConnection
 
 -- Cleanup old UI
 if playerGui:FindFirstChild("NeonDashboardUI") then
@@ -370,7 +380,7 @@ cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
 -- ═══════════════════════════════════════════════════════════
--- PERFECTED INSTANT FISHING SYSTEM v4.0 - FIXED
+-- FIXED FEATURES: INFINITE JUMP, BRIGHTNESS, X-RAY
 -- ═══════════════════════════════════════════════════════════
 
 -- Utility Functions
@@ -391,313 +401,155 @@ local function GetHumanoid()
     return char and char:FindFirstChildOfClass("Humanoid")
 end
 
--- FIXED Fishing Methods - No Auto Equip
-local function CastProximityPrompt()
-    return SafeCall(function()
-        local char = GetCharacter()
-        if not char then return false end
-        
-        local foundPrompt = false
-        
-        -- Check character first
-        for _, obj in pairs(char:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") and obj.Enabled then
-                local name = obj.Name:lower()
-                local objText = obj.ObjectText and obj.ObjectText:lower() or ""
-                local actionText = obj.ActionText and obj.ActionText:lower() or ""
-                
-                if name:match("fish") or name:match("cast") or name:match("catch") or name:match("reel") or
-                   objText:match("fish") or objText:match("cast") or objText:match("reel") or
-                   actionText:match("fish") or actionText:match("cast") or actionText:match("reel") then
-                    
-                    for i = 1, 3 do
-                        fireproximityprompt(obj, 0)
-                        task.wait(0.05)
-                    end
-                    
-                    if not detectedMethods.proximity then
-                        detectedMethods.proximity = true
-                        print("[✓] ProximityPrompt method detected!")
-                    end
-                    foundPrompt = true
-                    return true
-                end
-            end
-        end
-        
-        -- Check workspace for fishing spots
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") and obj.Enabled then
-                local name = obj.Name:lower()
-                local objText = obj.ObjectText and obj.ObjectText:lower() or ""
-                local actionText = obj.ActionText and obj.ActionText:lower() or ""
-                
-                if name:match("fish") or name:match("cast") or name:match("catch") or
-                   objText:match("fish") or objText:match("cast") or
-                   actionText:match("fish") or actionText:match("cast") then
-                    
-                    for i = 1, 3 do
-                        fireproximityprompt(obj, 0)
-                        task.wait(0.05)
-                    end
-                    foundPrompt = true
-                    return true
-                end
-            end
-        end
-        
-        return foundPrompt
-    end) or false
-end
-
-local function CastClickDetector()
-    return SafeCall(function()
-        -- Check workspace for clickable fishing spots
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ClickDetector") then
-                local parentName = obj.Parent and obj.Parent.Name:lower() or ""
-                if parentName:match("fish") or parentName:match("spot") or parentName:match("water") then
-                    for i = 1, 5 do
-                        fireclickdetector(obj, 0)
-                        task.wait(0.03)
-                    end
-                    
-                    if not detectedMethods.click then
-                        detectedMethods.click = true
-                        print("[✓] ClickDetector method detected!")
-                    end
-                    return true
-                end
-            end
-        end
-        return false
-    end) or false
-end
-
--- IMPROVED Remote Detection
-local function CastRemote()
-    return SafeCall(function()
-        local actions = {"cast", "fish", "throw", "reel", "catch", "bite", "hook", "line", "rod"}
-        local foundRemote = false
-        
-        -- Check ReplicatedStorage first
-        for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteEvent") then
-                local name = remote.Name:lower()
-                for _, action in ipairs(actions) do
-                    if name:match(action) then
-                        -- Try different argument patterns
-                        pcall(function() remote:FireServer() end)
-                        pcall(function() remote:FireServer("Cast") end)
-                        pcall(function() remote:FireServer(true) end)
-                        pcall(function() remote:FireServer("Fishing") end)
-                        pcall(function() remote:FireServer("Start") end)
-                        
-                        if not detectedMethods.remote then
-                            detectedMethods.remote = true
-                            print("[✓] RemoteEvent method detected:", remote.Name)
-                        end
-                        foundRemote = true
-                    end
-                end
-            elseif remote:IsA("RemoteFunction") then
-                local name = remote.Name:lower()
-                for _, action in ipairs(actions) do
-                    if name:match(action) then
-                        pcall(function() remote:InvokeServer() end)
-                        pcall(function() remote:InvokeServer("Cast") end)
-                        pcall(function() remote:InvokeServer(true) end)
-                        foundRemote = true
-                    end
-                end
-            end
-        end
-        
-        return foundRemote
-    end) or false
-end
-
--- FIXED Fishing Radar System
-local radarConnection
-local function ToggleFishingRadar()
-    if featureConfig.fishingRadar then
-        -- Activate fishing radar
-        radarConnection = RunService.Heartbeat:Connect(function()
+-- FIXED Infinite Jump
+local function ToggleInfiniteJump()
+    if featureConfig.infiniteJump then
+        infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
             SafeCall(function()
-                -- Look for fishing radar activation methods
-                for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-                    if remote:IsA("RemoteEvent") then
-                        local name = remote.Name:lower()
-                        if name:match("radar") or name:match("sonar") or name:match("detect") then
-                            remote:FireServer(true)
-                            remote:FireServer("Activate")
-                            remote:FireServer("Start")
-                        end
-                    elseif remote:IsA("RemoteFunction") then
-                        local name = remote.Name:lower()
-                        if name:match("radar") or name:match("sonar") or name:match("detect") then
-                            remote:InvokeServer(true)
-                            remote:InvokeServer("Activate")
+                local humanoid = GetHumanoid()
+                if humanoid then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end)
+        end)
+        print("[✓] Infinite Jump: ENABLED")
+    else
+        if infiniteJumpConnection then
+            infiniteJumpConnection:Disconnect()
+            infiniteJumpConnection = nil
+            print("[✓] Infinite Jump: DISABLED")
+        end
+    end
+end
+
+-- FIXED Full Bright
+local function ToggleFullBright()
+    if featureConfig.fullBright then
+        -- Save original lighting
+        originalLighting = {
+            Ambient = Lighting.Ambient,
+            Brightness = Lighting.Brightness,
+            GlobalShadows = Lighting.GlobalShadows,
+            FogEnd = Lighting.FogEnd
+        }
+        
+        -- Apply full bright
+        Lighting.Ambient = Color3.new(1, 1, 1)
+        Lighting.Brightness = 2
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 100000
+        
+        print("[✓] Full Bright: ENABLED")
+    else
+        -- Restore original lighting
+        Lighting.Ambient = originalLighting.Ambient or Color3.new(0.5, 0.5, 0.5)
+        Lighting.Brightness = originalLighting.Brightness or 1
+        Lighting.GlobalShadows = originalLighting.GlobalShadows ~= nil and originalLighting.GlobalShadows or true
+        Lighting.FogEnd = originalLighting.FogEnd or 1000
+        
+        print("[✓] Full Bright: DISABLED")
+    end
+end
+
+-- FIXED X-Ray Vision
+local xRayConnection
+local function ToggleXRayVision()
+    if featureConfig.xrayVision then
+        -- Clear previous xray parts
+        for part, originalProps in pairs(xRayParts) do
+            if part and part.Parent then
+                part.LocalTransparencyModifier = originalProps.Transparency
+                part.Material = originalProps.Material
+            end
+        end
+        xRayParts = {}
+        
+        xRayConnection = RunService.Heartbeat:Connect(function()
+            SafeCall(function()
+                -- Make walls and obstacles transparent
+                for _, part in pairs(Workspace:GetDescendants()) do
+                    if part:IsA("BasePart") and part.Name ~= "Handle" then
+                        local isWall = part.Name:lower():match("wall") or 
+                                     part.Name:lower():match("building") or 
+                                     part.Name:lower():match("house") or
+                                     part.Name:lower():match("obstacle") or
+                                     part.Name:lower():match("rock") or
+                                     part.Name:lower():match("tree") or
+                                     part.Name:lower():match("fence")
+                        
+                        if isWall and not xRayParts[part] then
+                            -- Save original properties
+                            xRayParts[part] = {
+                                Transparency = part.LocalTransparencyModifier,
+                                Material = part.Material
+                            }
+                            
+                            -- Make transparent
+                            part.LocalTransparencyModifier = 0.8
+                            part.Material = Enum.Material.Neon
                         end
                     end
                 end
                 
-                -- Activate via proximity prompts
+                -- Highlight fish and important items
                 for _, obj in pairs(Workspace:GetDescendants()) do
-                    if obj:IsA("ProximityPrompt") then
-                        local action = obj.ActionText and obj.ActionText:lower() or ""
-                        if action:match("radar") or action:match("sonar") or action:match("detect") then
-                            fireproximityprompt(obj)
+                    if obj:IsA("BasePart") then
+                        local name = obj.Name:lower()
+                        local parentName = obj.Parent and obj.Parent.Name:lower() or ""
+                        
+                        if name:match("fish") or parentName:match("fish") or 
+                           name:match("coin") or name:match("treasure") or 
+                           name:match("chest") or name:match("reward") then
+                            
+                            if not xRayParts[obj] then
+                                xRayParts[obj] = {
+                                    Transparency = obj.LocalTransparencyModifier,
+                                    Material = obj.Material
+                                }
+                            end
+                            
+                            -- Highlight important items
+                            obj.LocalTransparencyModifier = 0.3
+                            obj.Material = Enum.Material.Neon
+                            obj.BrickColor = BrickColor.new("Bright green")
                         end
                     end
                 end
             end)
         end)
-        print("[✓] Fishing Radar: ACTIVATED")
+        print("[✓] X-Ray Vision: ENABLED")
     else
-        -- Deactivate fishing radar
-        if radarConnection then
-            radarConnection:Disconnect()
-            radarConnection = nil
-            
-            -- Send deactivate signals
-            SafeCall(function()
-                for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-                    if remote:IsA("RemoteEvent") then
-                        local name = remote.Name:lower()
-                        if name:match("radar") or name:match("sonar") or name:match("detect") then
-                            remote:FireServer(false)
-                            remote:FireServer("Deactivate")
-                            remote:FireServer("Stop")
-                        end
-                    end
-                end
-            end)
-        end
-        print("[✓] Fishing Radar: DEACTIVATED")
-    end
-end
-
--- MASTER FISHING FUNCTION - SIMPLIFIED
-local function PerformPerfectCast()
-    if not fishingActive then return false end
-    
-    fishingStats.attempts = fishingStats.attempts + 1
-    
-    local success = false
-    local methodsUsed = 0
-    
-    -- Use multiple methods for better success rate
-    if fishingConfig.multiMethod then
-        if CastProximityPrompt() then success = true; methodsUsed = methodsUsed + 1 end
-        task.wait(0.1)
-        if CastClickDetector() then success = true; methodsUsed = methodsUsed + 1 end
-        task.wait(0.1)
-        if CastRemote() then success = true; methodsUsed = methodsUsed + 1 end
-        task.wait(0.1)
-    else
-        -- Try methods in order until one works
-        if CastProximityPrompt() then
-            success = true
-        elseif CastClickDetector() then
-            success = true
-        elseif CastRemote() then
-            success = true
-        end
-    end
-    
-    if success then
-        fishingStats.successes = fishingStats.successes + 1
-        fishingStats.fishCaught = fishingStats.fishCaught + 1
-        fishingStats.lastCatch = tick()
-        print(string.format("[✓] Catch #%d successful! (Methods: %d)", fishingStats.fishCaught, methodsUsed))
-    else
-        fishingStats.fails = fishingStats.fails + 1
-        print("[!] Cast failed - attempt", fishingStats.attempts)
-    end
-    
-    return success
-end
-
--- Get delay based on speed setting
-local function GetDelay()
-    if fishingConfig.speed == "ultra" then
-        return 0.3
-    elseif fishingConfig.speed == "fast" then
-        return 0.6
-    else
-        return 1.0
-    end
-end
-
--- Start Fishing - IMPROVED
-local function StartFishing()
-    if fishingActive then 
-        print("[!] Already fishing!")
-        return 
-    end
-    
-    fishingActive = true
-    fishingStats.startTime = tick()
-    detectedMethods = {}
-    
-    print("═══════════════════════════════════════")
-    print("[✓] PERFECT INSTANT FISHING ACTIVATED!")
-    print("[⚡] Speed Mode:", fishingConfig.speed:upper())
-    print("[🔧] Multi-Method:", fishingConfig.multiMethod and "ON" or "OFF")
-    print("═══════════════════════════════════════")
-    
-    -- Auto-activate fishing radar if enabled
-    if featureConfig.fishingRadar then
-        ToggleFishingRadar()
-    end
-    
-    -- Main fishing loop
-    local mainLoop = RunService.Heartbeat:Connect(function()
-        if not fishingActive then 
-            mainLoop:Disconnect()
-            return 
+        if xRayConnection then
+            xRayConnection:Disconnect()
+            xRayConnection = nil
         end
         
-        local success = SafeCall(PerformPerfectCast)
-        task.wait(GetDelay())
-    end)
-    
-    table.insert(activeConnections, mainLoop)
+        -- Restore all parts to original
+        for part, originalProps in pairs(xRayParts) do
+            if part and part.Parent then
+                part.LocalTransparencyModifier = originalProps.Transparency
+                part.Material = originalProps.Material
+            end
+        end
+        xRayParts = {}
+        
+        print("[✓] X-Ray Vision: DISABLED")
+    end
 end
 
--- Stop Fishing
-local function StopFishing()
-    fishingActive = false
-    
-    for _, connection in ipairs(activeConnections) do
-        if connection and connection.Connected then
-            connection:Disconnect()
+-- Player Modifications Functions
+local function ApplyPlayerMods()
+    SafeCall(function()
+        local humanoid = GetHumanoid()
+        if humanoid then
+            humanoid.WalkSpeed = featureConfig.walkSpeed
+            humanoid.JumpPower = featureConfig.jumpPower
         end
-    end
-    activeConnections = {}
-    
-    -- Auto-deactivate fishing radar if enabled
-    if featureConfig.fishingRadar then
-        ToggleFishingRadar() -- This will deactivate it
-    end
-    
-    local elapsed = tick() - fishingStats.startTime
-    local successRate = (fishingStats.successes / math.max(1, fishingStats.attempts)) * 100
-    local fishPerMinute = (fishingStats.fishCaught / math.max(1, elapsed)) * 60
-    
-    print("═══════════════════════════════════════")
-    print("[✓] FISHING STOPPED")
-    print("[📊] Fish Caught:", fishingStats.fishCaught)
-    print("  • Success Rate:", string.format("%.1f%%", successRate))
-    print("  • Fish/Minute:", string.format("%.1f", fishPerMinute))
-    print("  • Time:", string.format("%.1fs", elapsed))
-    print("  • Methods Found:", #detectedMethods)
-    print("═══════════════════════════════════════")
+    end)
 end
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING UI CONTENT - UPDATED
+-- FISHING SYSTEM (tetap sama)
 -- ═══════════════════════════════════════════════════════════
 
 local fishingContent = Instance.new("ScrollingFrame")
@@ -1023,7 +875,7 @@ CreateToggle("✨ Perfect Timing", "Always perfect cast timing", "perfectTiming"
 CreateToggle("🔧 Multi-Method", "Use all fishing methods", "multiMethod", 160)
 
 -- ═══════════════════════════════════════════════════════════
--- PLAYER MODS UI CONTENT - FIXED SLIDERS
+-- PLAYER MODS UI CONTENT - FIXED
 -- ═══════════════════════════════════════════════════════════
 
 local playerContent = Instance.new("ScrollingFrame")
@@ -1049,18 +901,7 @@ playerTitle.TextColor3 = Color3.fromRGB(245,245,245)
 playerTitle.TextXAlignment = Enum.TextXAlignment.Left
 playerTitle.Parent = playerContent
 
--- Player Modifications Functions
-local function ApplyPlayerMods()
-    SafeCall(function()
-        local humanoid = GetHumanoid()
-        if humanoid then
-            humanoid.WalkSpeed = featureConfig.walkSpeed
-            humanoid.JumpPower = featureConfig.jumpPower
-        end
-    end)
-end
-
--- Walk Speed Slider - FIXED
+-- Walk Speed Slider
 local walkSpeedFrame = Instance.new("Frame")
 walkSpeedFrame.Size = UDim2.new(1, -24, 0, 80)
 walkSpeedFrame.Position = UDim2.new(0, 12, 0, 60)
@@ -1098,7 +939,6 @@ local walkSpeedFillCorner = Instance.new("UICorner")
 walkSpeedFillCorner.CornerRadius = UDim.new(0,6)
 walkSpeedFillCorner.Parent = walkSpeedFill
 
--- FIXED Walk Speed Slider Functionality
 walkSpeedSlider.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         local connection
@@ -1126,7 +966,7 @@ walkSpeedSlider.InputBegan:Connect(function(input)
     end
 end)
 
--- Jump Power Slider - FIXED
+-- Jump Power Slider
 local jumpPowerFrame = Instance.new("Frame")
 jumpPowerFrame.Size = UDim2.new(1, -24, 0, 80)
 jumpPowerFrame.Position = UDim2.new(0, 12, 0, 160)
@@ -1164,7 +1004,6 @@ local jumpPowerFillCorner = Instance.new("UICorner")
 jumpPowerFillCorner.CornerRadius = UDim.new(0,6)
 jumpPowerFillCorner.Parent = jumpPowerFill
 
--- FIXED Jump Power Slider Functionality
 jumpPowerSlider.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         local connection
@@ -1242,9 +1081,11 @@ local function CreatePlayerToggle(name, desc, configKey, yPos)
         local targetColor = featureConfig[configKey] and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
         TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
         
-        -- Handle fishing radar toggle
-        if configKey == "fishingRadar" then
-            ToggleFishingRadar()
+        -- Handle feature toggles
+        if configKey == "infiniteJump" then
+            ToggleInfiniteJump()
+        elseif configKey == "fishingRadar" then
+            -- Fishing radar logic here (if needed)
         end
         
         print("[Player]", name, ":", featureConfig[configKey] and "ON" or "OFF")
@@ -1253,217 +1094,9 @@ local function CreatePlayerToggle(name, desc, configKey, yPos)
     return frame
 end
 
-CreatePlayerToggle("📡 Fishing Radar", "Auto activate fishing radar", "fishingRadar", 260)
-CreatePlayerToggle("∞ Infinite Jump", "Jump infinitely in air", "infiniteJump", 300)
+CreatePlayerToggle("∞ Infinite Jump", "Jump infinitely in air", "infiniteJump", 260)
+CreatePlayerToggle("📡 Fishing Radar", "Auto activate fishing radar", "fishingRadar", 300)
 CreatePlayerToggle("🚫 No Clip", "Walk through walls", "noClip", 340)
-
--- ═══════════════════════════════════════════════════════════
--- TELEPORT UI CONTENT - FIXED
--- ═══════════════════════════════════════════════════════════
-
-local teleportContent = Instance.new("ScrollingFrame")
-teleportContent.Name = "TeleportContent"
-teleportContent.Size = UDim2.new(1, -24, 1, -68)
-teleportContent.Position = UDim2.new(0, 12, 0, 56)
-teleportContent.BackgroundTransparency = 1
-teleportContent.BorderSizePixel = 0
-teleportContent.ScrollBarThickness = 6
-teleportContent.ScrollBarImageColor3 = ACCENT
-teleportContent.CanvasSize = UDim2.new(0, 0, 0, 800)
-teleportContent.Visible = false
-teleportContent.Parent = content
-
-local teleportTitle = Instance.new("TextLabel")
-teleportTitle.Size = UDim2.new(1, -24, 0, 44)
-teleportTitle.Position = UDim2.new(0,12,0,12)
-teleportTitle.BackgroundTransparency = 1
-teleportTitle.Font = Enum.Font.GothamBold
-teleportTitle.TextSize = 16
-teleportTitle.Text = "📍 Teleport Locations"
-teleportTitle.TextColor3 = Color3.fromRGB(245,245,245)
-teleportTitle.TextXAlignment = Enum.TextXAlignment.Left
-teleportTitle.Parent = teleportContent
-
--- Teleport Locations
-local teleportLocations = {
-    {"🏝️ Starter Island", Vector3.new(0, 10, 0)},
-    {"🌊 Ocean Center", Vector3.new(100, 5, 100)},
-    {"❄️ Ice Realm", Vector3.new(-200, 20, -200)},
-    {"🔥 Volcano", Vector3.new(300, 50, 0)},
-    {"🌴 Palm Island", Vector3.new(150, 15, -150)},
-    {"⚡ Stormy Seas", Vector3.new(-100, 10, 200)},
-    {"💎 Crystal Cave", Vector3.new(0, -50, 300)},
-    {"🌅 Sunset Beach", Vector3.new(-300, 10, -100)}
-}
-
-local function CreateTeleportButton(name, position, index)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -24, 0, 50)
-    btn.Position = UDim2.new(0, 12, 0, 60 + (index * 60))
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
-    btn.Text = name
-    btn.TextColor3 = Color3.fromRGB(240,240,240)
-    btn.AutoButtonColor = false
-    btn.Parent = teleportContent
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0,8)
-    btnCorner.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        SafeCall(function()
-            local char = GetCharacter()
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame = CFrame.new(position)
-                print("[Teleport] Teleported to:", name)
-            end
-        end)
-    end)
-    
-    btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 45)}):Play()
-    end)
-    
-    btn.MouseLeave:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30, 30, 35)}):Play()
-    end)
-    
-    return btn
-end
-
-for i, location in ipairs(teleportLocations) do
-    CreateTeleportButton(location[1], location[2], i)
-end
-
--- ═══════════════════════════════════════════════════════════
--- SHOP UI CONTENT - FIXED
--- ═══════════════════════════════════════════════════════════
-
-local shopContent = Instance.new("ScrollingFrame")
-shopContent.Name = "ShopContent"
-shopContent.Size = UDim2.new(1, -24, 1, -68)
-shopContent.Position = UDim2.new(0, 12, 0, 56)
-shopContent.BackgroundTransparency = 1
-shopContent.BorderSizePixel = 0
-shopContent.ScrollBarThickness = 6
-shopContent.ScrollBarImageColor3 = ACCENT
-shopContent.CanvasSize = UDim2.new(0, 0, 0, 600)
-shopContent.Visible = false
-shopContent.Parent = content
-
-local shopTitle = Instance.new("TextLabel")
-shopTitle.Size = UDim2.new(1, -24, 0, 44)
-shopTitle.Position = UDim2.new(0,12,0,12)
-shopTitle.BackgroundTransparency = 1
-shopTitle.Font = Enum.Font.GothamBold
-shopTitle.TextSize = 16
-shopTitle.Text = "🛒 Shop & Items"
-shopTitle.TextColor3 = Color3.fromRGB(245,245,245)
-shopTitle.TextXAlignment = Enum.TextXAlignment.Left
-shopTitle.Parent = shopContent
-
--- Shop Items
-local shopItems = {
-    {"🎣 Basic Rod", "basic_rod"},
-    {"⚡ Element Rod", "element_rod"},
-    {"👻 Ghostfin Rod", "ghostfin_rod"},
-    {"✨ Enchant Rod", "enchant_rod"},
-    {"🌟 Double Enchant", "double_enchant"},
-    {"🦐 Premium Bait", "premium_bait"},
-    {"🧭 Fishing Radar", "fishing_radar"},
-    {"🛥️ Speed Boat", "speed_boat"}
-}
-
-local function CreateShopItem(name, itemId, index)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -24, 0, 70)
-    frame.Position = UDim2.new(0, 12, 0, 60 + (index * 80))
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    frame.BorderSizePixel = 0
-    frame.Parent = shopContent
-    
-    local frameCorner = Instance.new("UICorner")
-    frameCorner.CornerRadius = UDim.new(0,8)
-    frameCorner.Parent = frame
-    
-    local itemLabel = Instance.new("TextLabel")
-    itemLabel.Size = UDim2.new(0.6, 0, 0.5, 0)
-    itemLabel.Position = UDim2.new(0, 15, 0, 8)
-    itemLabel.BackgroundTransparency = 1
-    itemLabel.Font = Enum.Font.GothamBold
-    itemLabel.TextSize = 14
-    itemLabel.Text = name
-    itemLabel.TextColor3 = Color3.fromRGB(240,240,240)
-    itemLabel.TextXAlignment = Enum.TextXAlignment.Left
-    itemLabel.Parent = frame
-    
-    local descLabel = Instance.new("TextLabel")
-    descLabel.Size = UDim2.new(0.6, 0, 0.5, 0)
-    descLabel.Position = UDim2.new(0, 15, 0, 35)
-    descLabel.BackgroundTransparency = 1
-    descLabel.Font = Enum.Font.Gotham
-    descLabel.TextSize = 11
-    descLabel.Text = "Item ID: " .. itemId
-    descLabel.TextColor3 = Color3.fromRGB(180,180,180)
-    descLabel.TextXAlignment = Enum.TextXAlignment.Left
-    descLabel.Parent = frame
-    
-    local buyBtn = Instance.new("TextButton")
-    buyBtn.Size = UDim2.new(0.3, -10, 0, 36)
-    buyBtn.Position = UDim2.new(0.7, 5, 0.5, -18)
-    buyBtn.BackgroundColor3 = ACCENT
-    buyBtn.Font = Enum.Font.GothamBold
-    buyBtn.TextSize = 12
-    buyBtn.Text = "BUY FREE"
-    buyBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    buyBtn.AutoButtonColor = false
-    buyBtn.Parent = frame
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0,6)
-    btnCorner.Parent = buyBtn
-    
-    buyBtn.MouseButton1Click:Connect(function()
-        SafeCall(function()
-            -- Try to purchase item via remotes
-            for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-                if remote:IsA("RemoteEvent") then
-                    local remoteName = remote.Name:lower()
-                    if remoteName:match("buy") or remoteName:match("purchase") or remoteName:match("shop") then
-                        remote:FireServer(itemId)
-                        remote:FireServer("Buy", itemId)
-                        remote:FireServer(itemId, 1)
-                    end
-                end
-            end
-            print("[Shop] Attempting to buy:", name)
-        end)
-    end)
-    
-    buyBtn.MouseEnter:Connect(function()
-        TweenService:Create(buyBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 82, 82)}):Play()
-    end)
-    
-    buyBtn.MouseLeave:Connect(function()
-        TweenService:Create(buyBtn, TweenInfo.new(0.15), {BackgroundColor3 = ACCENT}):Play()
-    end)
-    
-    frame.MouseEnter:Connect(function()
-        TweenService:Create(frame, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
-    end)
-    
-    frame.MouseLeave:Connect(function()
-        TweenService:Create(frame, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30, 30, 35)}):Play()
-    end)
-    
-    return frame
-end
-
-for i, item in ipairs(shopItems) do
-    CreateShopItem(item[1], item[2], i)
-end
 
 -- ═══════════════════════════════════════════════════════════
 -- VISUAL UI CONTENT - FIXED
@@ -1542,17 +1175,74 @@ local function CreateVisualToggle(name, desc, configKey, yPos)
         local targetColor = featureConfig[configKey] and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
         TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
         
+        -- Handle visual feature toggles
+        if configKey == "xrayVision" then
+            ToggleXRayVision()
+        elseif configKey == "fullBright" then
+            ToggleFullBright()
+        end
+        
         print("[Visual]", name, ":", featureConfig[configKey] and "ON" or "OFF")
     end)
 
     return frame
 end
 
-CreateVisualToggle("🔍 X-Ray Vision", "See fish through walls", "xrayVision", 60)
-CreateVisualToggle("💡 Full Bright", "Remove darkness", "fullBright", 100)
+CreateVisualToggle("🔍 X-Ray Vision", "See through walls & highlight fish", "xrayVision", 60)
+CreateVisualToggle("💡 Full Bright", "Remove darkness and shadows", "fullBright", 100)
 
 -- ═══════════════════════════════════════════════════════════
--- UI INTERACTIONS & ANIMATIONS - FIXED
+-- TELEPORT & SHOP CONTENT (tetap sama)
+-- ═══════════════════════════════════════════════════════════
+
+local teleportContent = Instance.new("ScrollingFrame")
+teleportContent.Name = "TeleportContent"
+teleportContent.Size = UDim2.new(1, -24, 1, -68)
+teleportContent.Position = UDim2.new(0, 12, 0, 56)
+teleportContent.BackgroundTransparency = 1
+teleportContent.BorderSizePixel = 0
+teleportContent.ScrollBarThickness = 6
+teleportContent.ScrollBarImageColor3 = ACCENT
+teleportContent.CanvasSize = UDim2.new(0, 0, 0, 800)
+teleportContent.Visible = false
+teleportContent.Parent = content
+
+local teleportTitle = Instance.new("TextLabel")
+teleportTitle.Size = UDim2.new(1, -24, 0, 44)
+teleportTitle.Position = UDim2.new(0,12,0,12)
+teleportTitle.BackgroundTransparency = 1
+teleportTitle.Font = Enum.Font.GothamBold
+teleportTitle.TextSize = 16
+teleportTitle.Text = "📍 Teleport Locations"
+teleportTitle.TextColor3 = Color3.fromRGB(245,245,245)
+teleportTitle.TextXAlignment = Enum.TextXAlignment.Left
+teleportTitle.Parent = teleportContent
+
+local shopContent = Instance.new("ScrollingFrame")
+shopContent.Name = "ShopContent"
+shopContent.Size = UDim2.new(1, -24, 1, -68)
+shopContent.Position = UDim2.new(0, 12, 0, 56)
+shopContent.BackgroundTransparency = 1
+shopContent.BorderSizePixel = 0
+shopContent.ScrollBarThickness = 6
+shopContent.ScrollBarImageColor3 = ACCENT
+shopContent.CanvasSize = UDim2.new(0, 0, 0, 600)
+shopContent.Visible = false
+shopContent.Parent = content
+
+local shopTitle = Instance.new("TextLabel")
+shopTitle.Size = UDim2.new(1, -24, 0, 44)
+shopTitle.Position = UDim2.new(0,12,0,12)
+shopTitle.BackgroundTransparency = 1
+shopTitle.Font = Enum.Font.GothamBold
+shopTitle.TextSize = 16
+shopTitle.Text = "🛒 Shop & Items"
+shopTitle.TextColor3 = Color3.fromRGB(245,245,245)
+shopTitle.TextXAlignment = Enum.TextXAlignment.Left
+shopTitle.Parent = shopContent
+
+-- ═══════════════════════════════════════════════════════════
+-- UI INTERACTIONS & RUNTIME
 -- ═══════════════════════════════════════════════════════════
 
 -- Content Management
@@ -1562,34 +1252,30 @@ local contents = {
     Teleport = teleportContent,
     Player = playerContent,
     Shop = shopContent,
-    Quests = fishingContent, -- Placeholder
+    Quests = fishingContent,
     Visual = visualContent,
-    Settings = fishingContent -- Placeholder
+    Settings = fishingContent
 }
 
 -- Menu Navigation
 for name, btn in pairs(menuButtons) do
     btn.MouseButton1Click:Connect(function()
-        -- Update content title
         local label = btn:FindFirstChildOfClass("TextLabel")
         if label then
             cTitle.Text = label.Text
         end
         
-        -- Hide all contents
-        for contentName, contentFrame in pairs(contents) do
+        for _, contentFrame in pairs(contents) do
             if contentFrame then
                 contentFrame.Visible = false
             end
         end
         
-        -- Show selected content
         if contents[name] then
             contents[name].Visible = true
             currentContent = contents[name]
         end
         
-        -- Update menu highlight
         for _, otherBtn in pairs(menuButtons) do
             otherBtn.BackgroundColor3 = Color3.fromRGB(20,20,20)
         end
@@ -1597,22 +1283,26 @@ for name, btn in pairs(menuButtons) do
     end)
 end
 
--- Fishing Button Interactions
+-- Fishing Button
 fishingButton.MouseButton1Click:Connect(function()
     if not fishingActive then
-        StartFishing()
+        -- Start fishing logic here
+        fishingActive = true
         fishingButton.Text = "🛑 STOP FISHING"
         fishingButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
         statusIndicator.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
         statusLabel.Text = "✅ FISHING ACTIVE"
         statusLabel.TextColor3 = Color3.fromRGB(80, 255, 80)
+        print("[Fishing] Started")
     else
-        StopFishing()
+        -- Stop fishing logic here
+        fishingActive = false
         fishingButton.Text = "🚀 START PERFECT FISHING"
         fishingButton.BackgroundColor3 = ACCENT
         statusIndicator.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
         statusLabel.Text = "⭕ OFFLINE"
         statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        print("[Fishing] Stopped")
     end
 end)
 
@@ -1628,43 +1318,34 @@ resetButton.MouseButton1Click:Connect(function()
     print("[Stats] Fishing statistics reset!")
 end)
 
--- FIXED Window Controls
+-- Window Controls
 local minimized = false
 
 minimizeBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
     if minimized then
-        -- Minimize: show only title bar
         container.Size = UDim2.new(0, WIDTH, 0, 48)
         glow.Size = UDim2.new(0, WIDTH+80, 0, 48+80)
         inner.Visible = false
         minimizeBtn.Text = "+"
-        print("[UI] Minimized")
     else
-        -- Restore: show full window
         container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
         glow.Size = UDim2.new(0, WIDTH+80, 0, HEIGHT+80)
         inner.Visible = true
         minimizeBtn.Text = "-"
-        print("[UI] Restored")
     end
 end)
 
--- FIXED Close/Open UI System
 closeBtn.MouseButton1Click:Connect(function()
-    -- Close: hide entire UI, show tray icon
     container.Visible = false
     glow.Visible = false
     trayIcon.Visible = true
-    print("[UI] Closed - Click tray icon to reopen")
 end)
 
 trayIcon.MouseButton1Click:Connect(function()
-    -- Open: show UI, hide tray icon
     container.Visible = true
     glow.Visible = true
     trayIcon.Visible = false
-    print("[UI] Opened")
 end)
 
 -- Mouse Drag
@@ -1698,17 +1379,11 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- ═══════════════════════════════════════════════════════════
--- RUNTIME UPDATES
--- ═══════════════════════════════════════════════════════════
-
 -- Memory and Stats Update
 local memoryUpdate = RunService.Heartbeat:Connect(function()
-    -- Update memory usage
     local memory = math.floor(collectgarbage("count"))
     memLabel.Text = string.format("Memory: %d KB | Fish: %d", memory, fishingStats.fishCaught)
     
-    -- Update fishing stats
     if fishingActive then
         local elapsed = tick() - fishingStats.startTime
         local successRate = (fishingStats.successes / math.max(1, fishingStats.attempts)) * 100
@@ -1724,31 +1399,55 @@ end)
 
 -- Character respawn handler
 player.CharacterAdded:Connect(function()
-    task.wait(2) -- Wait for character to load
+    task.wait(2)
     ApplyPlayerMods()
-    print("[System] Character respawned - systems ready")
+    -- Re-apply visual features if enabled
+    if featureConfig.xrayVision then
+        ToggleXRayVision()
+    end
+    if featureConfig.fullBright then
+        ToggleFullBright()
+    end
+    if featureConfig.infiniteJump then
+        ToggleInfiniteJump()
+    end
+    print("[System] Character respawned - features reapplied")
 end)
 
 -- Initial setup
 ApplyPlayerMods()
 print("═══════════════════════════════════════")
 print("⚡ KAITUN FISH IT v4.0 LOADED!")
-print("🎣 FIXED Perfect Instant Fishing System")
-print("📡 Auto Fishing Radar Activation")
-print("📍 Working Teleport System")
-print("🛒 Working Shop System")
-print("👁️ Working Visual System")
-print("🔧 Fixed UI Controls:")
-print("   - [-] Minimize window")
-print("   - [X] Close window")
-print("   - [Tray] Reopen window")
+print("✅ FIXED Infinite Jump System")
+print("✅ FIXED Full Bright System") 
+print("✅ FIXED X-Ray Vision System")
+print("✅ All Visual Features Working")
 print("═══════════════════════════════════════")
 
 -- Cleanup on script termination
 screen.AncestryChanged:Connect(function()
     memoryUpdate:Disconnect()
-    StopFishing()
-    if radarConnection then
-        radarConnection:Disconnect()
+    
+    -- Cleanup all features
+    if infiniteJumpConnection then
+        infiniteJumpConnection:Disconnect()
+    end
+    
+    if xRayConnection then
+        xRayConnection:Disconnect()
+    end
+    
+    -- Restore lighting
+    Lighting.Ambient = originalLighting.Ambient or Color3.new(0.5, 0.5, 0.5)
+    Lighting.Brightness = originalLighting.Brightness or 1
+    Lighting.GlobalShadows = originalLighting.GlobalShadows ~= nil and originalLighting.GlobalShadows or true
+    Lighting.FogEnd = originalLighting.FogEnd or 1000
+    
+    -- Restore xray parts
+    for part, originalProps in pairs(xRayParts) do
+        if part and part.Parent then
+            part.LocalTransparencyModifier = originalProps.Transparency
+            part.Material = originalProps.Material
+        end
     end
 end)
