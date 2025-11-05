@@ -16,8 +16,8 @@ local playerGui = player:WaitForChild("PlayerGui")
 local WIDTH = 920
 local HEIGHT = 520
 local SIDEBAR_W = 220
-local ACCENT = Color3.fromRGB(255, 62, 62) -- neon merah
-local BG = Color3.fromRGB(12,12,12) -- hitam matte
+local ACCENT = Color3.fromRGB(255, 62, 62)
+local BG = Color3.fromRGB(12,12,12)
 local SECOND = Color3.fromRGB(24,24,26)
 
 -- FISHING CONFIG
@@ -229,6 +229,17 @@ sTitle.Text = "Kaitun"
 sTitle.TextColor3 = Color3.fromRGB(240,240,240)
 sTitle.TextXAlignment = Enum.TextXAlignment.Left
 sTitle.Parent = sbHeader
+
+local sSubtitle = Instance.new("TextLabel")
+sSubtitle.Size = UDim2.new(1,-96,0,20)
+sSubtitle.Position = UDim2.new(0, 88, 0, 38)
+sSubtitle.BackgroundTransparency = 1
+sSubtitle.Font = Enum.Font.Gotham
+sSubtitle.TextSize = 10
+sSubtitle.Text = "Instant Fish v2.0"
+sSubtitle.TextColor3 = ACCENT
+sSubtitle.TextXAlignment = Enum.TextXAlignment.Left
+sSubtitle.Parent = sbHeader
 
 -- Menu
 local menuFrame = Instance.new("Frame")
@@ -450,7 +461,6 @@ local function InstantFishRemote()
     local success = pcall(function()
         if not ReplicatedStorage then return false end
         
-        -- Cari RemoteEvent fishing
         for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
             if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
                 local name = remote.Name:lower()
@@ -501,20 +511,21 @@ end
 -- INSTANT FISHING - Method 5: Virtual Input
 local function InstantFishVirtualInput()
     pcall(function()
-        -- Mouse Click
         VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
         task.wait(0.001)
         VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
         
-        -- E key
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
         task.wait(0.001)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
         
-        -- F key
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
         task.wait(0.001)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+        
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+        task.wait(0.001)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
     end)
     
     return true
@@ -528,7 +539,6 @@ local function AutoReelFish()
         
         local playerGui = player:WaitForChild("PlayerGui")
         
-        -- Cari UI fishing
         for _, gui in pairs(playerGui:GetDescendants()) do
             if gui:IsA("ImageButton") or gui:IsA("TextButton") then
                 local name = gui.Name:lower()
@@ -558,41 +568,33 @@ local function InstantFish()
     
     fishingStats.attempts = fishingStats.attempts + 1
     
-    -- Pastikan rod equipped
     if not EquipRod() then
         return
     end
     
     local success = false
     
-    -- Try all methods simultaneously for maximum speed
     if fishingConfig.instantFishing or fishingConfig.blantantMode then
-        -- Method 1: ProximityPrompt (paling umum)
         if InstantFishProximity() then
             success = true
         end
         
-        -- Method 2: ClickDetector
         if InstantFishClickDetector() then
             success = true
         end
         
-        -- Method 3: RemoteEvent
         if InstantFishRemote() then
             success = true
         end
         
-        -- Method 4: BindableEvent
         if InstantFishBindable() then
             success = true
         end
         
-        -- Method 5: Virtual Input
         if InstantFishVirtualInput() then
             success = true
         end
         
-        -- Method 6: Auto Reel (jika ada minigame)
         if fishingConfig.autoReel then
             AutoReelFish()
         end
@@ -603,7 +605,6 @@ local function InstantFish()
     end
 end
 
--- Start Fishing dengan connection yang proper
 local function StartFishing()
     if fishingActive then 
         print("[Fishing] Already fishing!")
@@ -616,23 +617,20 @@ local function StartFishing()
     print("[Fishing] Starting instant fishing...")
     print("[Fishing] Delay:", fishingConfig.fishingDelay)
     
-    -- Main fishing loop
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
         pcall(InstantFish)
         
-        -- Delay based on mode
         if fishingConfig.blantantMode then
-            task.wait(0.001) -- Ultra fast
+            task.wait(0.001)
         elseif fishingConfig.instantFishing then
-            task.wait(0.01) -- Fast
+            task.wait(0.01)
         else
             task.wait(fishingConfig.fishingDelay)
         end
     end)
     
-    -- Auto reel connection (terpisah untuk minigame)
     if fishingConfig.autoReel then
         reelConnection = RunService.RenderStepped:Connect(function()
             if not fishingActive then return end
@@ -662,17 +660,21 @@ end
 -- FISHING UI CONTENT
 -- ═══════════════════════════════════════════════════════════
 
-local fishingContent = Instance.new("Frame")
+local fishingContent = Instance.new("ScrollingFrame")
 fishingContent.Name = "FishingContent"
-fishingContent.Size = UDim2.new(1, -24, 1, -24)
-fishingContent.Position = UDim2.new(0, 12, 0, 12)
+fishingContent.Size = UDim2.new(1, -24, 1, -68)
+fishingContent.Position = UDim2.new(0, 12, 0, 56)
 fishingContent.BackgroundTransparency = 1
+fishingContent.BorderSizePixel = 0
+fishingContent.ScrollBarThickness = 6
+fishingContent.ScrollBarImageColor3 = ACCENT
+fishingContent.CanvasSize = UDim2.new(0, 0, 0, 800)
 fishingContent.Visible = true
 fishingContent.Parent = content
 
 -- Stats Panel
 local statsPanel = Instance.new("Frame")
-statsPanel.Size = UDim2.new(1, 0, 0, 100)
+statsPanel.Size = UDim2.new(1, 0, 0, 120)
 statsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 statsPanel.BorderSizePixel = 0
 statsPanel.Parent = fishingContent
@@ -698,7 +700,7 @@ fishCountLabel.Position = UDim2.new(0,12,0,40)
 fishCountLabel.BackgroundTransparency = 1
 fishCountLabel.Font = Enum.Font.Gotham
 fishCountLabel.TextSize = 13
-fishCountLabel.Text = "Fish Caught: 0"
+fishCountLabel.Text = "🎣 Fish Caught: 0"
 fishCountLabel.TextColor3 = Color3.fromRGB(200,255,200)
 fishCountLabel.TextXAlignment = Enum.TextXAlignment.Left
 fishCountLabel.Parent = statsPanel
@@ -709,7 +711,7 @@ rateLabel.Position = UDim2.new(0.5,4,0,40)
 rateLabel.BackgroundTransparency = 1
 rateLabel.Font = Enum.Font.Gotham
 rateLabel.TextSize = 13
-rateLabel.Text = "Rate: 0/s"
+rateLabel.Text = "⚡ Rate: 0/s"
 rateLabel.TextColor3 = Color3.fromRGB(200,220,255)
 rateLabel.TextXAlignment = Enum.TextXAlignment.Left
 rateLabel.Parent = statsPanel
@@ -720,7 +722,7 @@ attemptsLabel.Position = UDim2.new(0,12,0,68)
 attemptsLabel.BackgroundTransparency = 1
 attemptsLabel.Font = Enum.Font.Gotham
 attemptsLabel.TextSize = 13
-attemptsLabel.Text = "Attempts: 0"
+attemptsLabel.Text = "🎯 Attempts: 0"
 attemptsLabel.TextColor3 = Color3.fromRGB(255,220,200)
 attemptsLabel.TextXAlignment = Enum.TextXAlignment.Left
 attemptsLabel.Parent = statsPanel
@@ -731,15 +733,26 @@ successLabel.Position = UDim2.new(0.5,4,0,68)
 successLabel.BackgroundTransparency = 1
 successLabel.Font = Enum.Font.Gotham
 successLabel.TextSize = 13
-successLabel.Text = "Success: 0%"
+successLabel.Text = "✅ Success: 0%"
 successLabel.TextColor3 = Color3.fromRGB(255,200,255)
 successLabel.TextXAlignment = Enum.TextXAlignment.Left
 successLabel.Parent = statsPanel
 
+local timeLabel = Instance.new("TextLabel")
+timeLabel.Size = UDim2.new(0.5, -8, 0, 20)
+timeLabel.Position = UDim2.new(0,12,0,96)
+timeLabel.BackgroundTransparency = 1
+timeLabel.Font = Enum.Font.Gotham
+timeLabel.TextSize = 11
+timeLabel.Text = "⏱️ Session: 0:00:00"
+timeLabel.TextColor3 = Color3.fromRGB(180,180,180)
+timeLabel.TextXAlignment = Enum.TextXAlignment.Left
+timeLabel.Parent = statsPanel
+
 -- Controls Panel
 local controlsPanel = Instance.new("Frame")
-controlsPanel.Size = UDim2.new(1, 0, 0, 100)
-controlsPanel.Position = UDim2.new(0, 0, 0, 112)
+controlsPanel.Size = UDim2.new(1, 0, 0, 120)
+controlsPanel.Position = UDim2.new(0, 0, 0, 132)
 controlsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 controlsPanel.BorderSizePixel = 0
 controlsPanel.Parent = fishingContent
@@ -761,8 +774,8 @@ controlsTitle.Parent = controlsPanel
 
 -- Start/Stop Button
 local fishingButton = Instance.new("TextButton")
-fishingButton.Size = UDim2.new(0, 200, 0, 50)
-fishingButton.Position = UDim2.new(0, 12, 0, 40)
+fishingButton.Size = UDim2.new(0, 220, 0, 50)
+fishingButton.Position = UDim2.new(0, 12, 0, 44)
 fishingButton.BackgroundColor3 = ACCENT
 fishingButton.Font = Enum.Font.GothamBold
 fishingButton.TextSize = 14
@@ -772,25 +785,63 @@ fishingButton.AutoButtonColor = false
 fishingButton.Parent = controlsPanel
 
 local fishingBtnCorner = Instance.new("UICorner")
-fishingBtnCorner.CornerRadius = UDim.new(0,6)
+fishingBtnCorner.CornerRadius = UDim.new(0,8)
 fishingBtnCorner.Parent = fishingButton
 
+-- Reset Stats Button
+local resetButton = Instance.new("TextButton")
+resetButton.Size = UDim2.new(0, 140, 0, 50)
+resetButton.Position = UDim2.new(0, 244, 0, 44)
+resetButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+resetButton.Font = Enum.Font.GothamBold
+resetButton.TextSize = 13
+resetButton.Text = "🔄 RESET STATS"
+resetButton.TextColor3 = Color3.fromRGB(220,220,220)
+resetButton.AutoButtonColor = false
+resetButton.Parent = controlsPanel
+
+local resetBtnCorner = Instance.new("UICorner")
+resetBtnCorner.CornerRadius = UDim.new(0,8)
+resetBtnCorner.Parent = resetButton
+
 -- Status Indicator
+local statusFrame = Instance.new("Frame")
+statusFrame.Size = UDim2.new(0, 220, 0, 50)
+statusFrame.Position = UDim2.new(0, 396, 0, 44)
+statusFrame.BackgroundColor3 = Color3.fromRGB(20,20,22)
+statusFrame.BorderSizePixel = 0
+statusFrame.Parent = controlsPanel
+
+local statusCorner = Instance.new("UICorner")
+statusCorner.CornerRadius = UDim.new(0,8)
+statusCorner.Parent = statusFrame
+
+local statusIndicator = Instance.new("Frame")
+statusIndicator.Size = UDim2.new(0, 12, 0, 12)
+statusIndicator.Position = UDim2.new(0, 12, 0.5, -6)
+statusIndicator.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+statusIndicator.BorderSizePixel = 0
+statusIndicator.Parent = statusFrame
+
+local statusIndCorner = Instance.new("UICorner")
+statusIndCorner.CornerRadius = UDim.new(1, 0)
+statusIndCorner.Parent = statusIndicator
+
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(0.5, -16, 0, 50)
-statusLabel.Position = UDim2.new(0, 224, 0, 40)
+statusLabel.Size = UDim2.new(1, -36, 1, 0)
+statusLabel.Position = UDim2.new(0, 32, 0, 0)
 statusLabel.BackgroundTransparency = 1
 statusLabel.Font = Enum.Font.GothamBold
-statusLabel.TextSize = 12
+statusLabel.TextSize = 13
 statusLabel.Text = "⭕ OFFLINE"
 statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
 statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-statusLabel.Parent = controlsPanel
+statusLabel.Parent = statusFrame
 
 -- Toggles Panel
 local togglesPanel = Instance.new("Frame")
-togglesPanel.Size = UDim2.new(1, 0, 0, 200)
-togglesPanel.Position = UDim2.new(0, 0, 0, 224)
+togglesPanel.Size = UDim2.new(1, 0, 0, 240)
+togglesPanel.Position = UDim2.new(0, 0, 0, 264)
 togglesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 togglesPanel.BorderSizePixel = 0
 togglesPanel.Parent = fishingContent
@@ -813,50 +864,62 @@ togglesTitle.Parent = togglesPanel
 -- Toggle Helper Function
 local function CreateToggle(name, desc, default, callback, parent, yPos)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -24, 0, 36)
+    frame.Size = UDim2.new(1, -24, 0, 44)
     frame.Position = UDim2.new(0, 12, 0, yPos)
     frame.BackgroundTransparency = 1
     frame.Parent = parent
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.7, 0, 0, 16)
+    label.Size = UDim2.new(0.7, 0, 0, 18)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
-    label.TextSize = 12
+    label.TextSize = 13
     label.Text = name
-    label.TextColor3 = Color3.fromRGB(230,230,230)
+    label.TextColor3 = Color3.fromRGB(240,240,240)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = frame
 
     local descLabel = Instance.new("TextLabel")
-    descLabel.Size = UDim2.new(0.7, 0, 0, 16)
-    descLabel.Position = UDim2.new(0, 0, 0, 18)
+    descLabel.Size = UDim2.new(0.7, 0, 0, 18)
+    descLabel.Position = UDim2.new(0, 0, 0, 22)
     descLabel.BackgroundTransparency = 1
     descLabel.Font = Enum.Font.Gotham
-    descLabel.TextSize = 10
+    descLabel.TextSize = 11
     descLabel.Text = desc
-    descLabel.TextColor3 = Color3.fromRGB(180,180,180)
+    descLabel.TextColor3 = Color3.fromRGB(160,160,160)
     descLabel.TextXAlignment = Enum.TextXAlignment.Left
     descLabel.Parent = frame
 
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 60, 0, 24)
-    button.Position = UDim2.new(0.75, 0, 0.2, 0)
-    button.BackgroundColor3 = default and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+    button.Size = UDim2.new(0, 70, 0, 32)
+    button.Position = UDim2.new(0.73, 0, 0.15, 0)
+    button.BackgroundColor3 = default and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
     button.Font = Enum.Font.GothamBold
-    button.TextSize = 11
+    button.TextSize = 12
     button.Text = default and "ON" or "OFF"
-    button.TextColor3 = Color3.fromRGB(30,30,30)
+    button.TextColor3 = Color3.fromRGB(255,255,255)
+    button.AutoButtonColor = false
     button.Parent = frame
 
     local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0,4)
+    btnCorner.CornerRadius = UDim.new(0,6)
     btnCorner.Parent = button
+
+    button.MouseEnter:Connect(function()
+        local targetColor = button.Text == "ON" and Color3.fromRGB(0, 220, 100) or Color3.fromRGB(220, 80, 80)
+        TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+    end)
+
+    button.MouseLeave:Connect(function()
+        local targetColor = button.Text == "ON" and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
+        TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+    end)
 
     button.MouseButton1Click:Connect(function()
         local new = button.Text == "OFF"
         button.Text = new and "ON" or "OFF"
-        button.BackgroundColor3 = new and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+        local targetColor = new and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
         callback(new)
     end)
 
@@ -864,39 +927,107 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
 end
 
 -- Create Toggles
-CreateToggle("⚡ Instant Fishing", "Max speed casting & catching", fishingConfig.instantFishing, function(v)
+CreateToggle("⚡ Instant Fishing", "Maximum speed casting & catching", fishingConfig.instantFishing, function(v)
     fishingConfig.instantFishing = v
     if v then
         fishingConfig.fishingDelay = 0.01
-        print("[Fishing] Instant Fishing: ENABLED")
+        print("[Fishing] Instant Fishing: ENABLED (0.01s)")
     else
         fishingConfig.fishingDelay = 0.1
         print("[Fishing] Instant Fishing: DISABLED")
     end
-end, togglesPanel, 36)
+end, togglesPanel, 40)
 
-CreateToggle("💥 Blatant Mode", "Ultra fast (may be detected)", fishingConfig.blantantMode, function(v)
+CreateToggle("💥 Blatant Mode", "Ultra fast mode (may be detected)", fishingConfig.blantantMode, function(v)
     fishingConfig.blantantMode = v
     if v then
         fishingConfig.fishingDelay = 0.001
         fishingConfig.instantFishing = true
-        print("[Fishing] Blatant Mode: ENABLED (0.001s delay)")
+        print("[Fishing] Blatant Mode: ENABLED (0.001s)")
     else
         fishingConfig.fishingDelay = 0.1
         fishingConfig.instantFishing = false
         print("[Fishing] Blatant Mode: DISABLED")
     end
-end, togglesPanel, 76)
+end, togglesPanel, 88)
 
-CreateToggle("🎯 Perfect Cast", "Always perfect casting", fishingConfig.perfectCast, function(v)
+CreateToggle("🎯 Perfect Cast", "Always perfect casting accuracy", fishingConfig.perfectCast, function(v)
     fishingConfig.perfectCast = v
     print("[Fishing] Perfect Cast:", v and "ENABLED" or "DISABLED")
-end, togglesPanel, 116)
+end, togglesPanel, 136)
 
-CreateToggle("🔄 Auto Reel", "Auto reel minigame", fishingConfig.autoReel, function(v)
+CreateToggle("🔄 Auto Reel", "Automatically win reel minigame", fishingConfig.autoReel, function(v)
     fishingConfig.autoReel = v
+    
+    if v and fishingActive then
+        if not reelConnection then
+            reelConnection = RunService.RenderStepped:Connect(function()
+                if not fishingActive then return end
+                pcall(AutoReelFish)
+            end)
+        end
+    else
+        if reelConnection then
+            reelConnection:Disconnect()
+            reelConnection = nil
+        end
+    end
+    
     print("[Fishing] Auto Reel:", v and "ENABLED" or "DISABLED")
-end, togglesPanel, 156)
+end, togglesPanel, 184)
+
+-- Info Panel
+local infoPanel = Instance.new("Frame")
+infoPanel.Size = UDim2.new(1, 0, 0, 180)
+infoPanel.Position = UDim2.new(0, 0, 0, 516)
+infoPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+infoPanel.BorderSizePixel = 0
+infoPanel.Parent = fishingContent
+
+local infoCorner = Instance.new("UICorner")
+infoCorner.CornerRadius = UDim.new(0,8)
+infoCorner.Parent = infoPanel
+
+local infoTitle = Instance.new("TextLabel")
+infoTitle.Size = UDim2.new(1, -24, 0, 28)
+infoTitle.Position = UDim2.new(0,12,0,8)
+infoTitle.BackgroundTransparency = 1
+infoTitle.Font = Enum.Font.GothamBold
+infoTitle.TextSize = 14
+infoTitle.Text = "ℹ️ Information & Controls"
+infoTitle.TextColor3 = Color3.fromRGB(235,235,235)
+infoTitle.TextXAlignment = Enum.TextXAlignment.Left
+infoTitle.Parent = infoPanel
+
+local infoText = Instance.new("TextLabel")
+infoText.Size = UDim2.new(1, -24, 1, -44)
+infoText.Position = UDim2.new(0, 12, 0, 40)
+infoText.BackgroundTransparency = 1
+infoText.Font = Enum.Font.Gotham
+infoText.TextSize = 12
+infoText.TextWrapped = true
+infoText.TextYAlignment = Enum.TextYAlignment.Top
+infoText.TextXAlignment = Enum.TextXAlignment.Left
+infoText.TextColor3 = Color3.fromRGB(200,200,200)
+infoText.Text = [[🎮 Keyboard Shortcuts:
+• Right Ctrl - Toggle UI
+• Right Shift - Start/Stop Fishing
+
+⚡ Fishing Methods:
+This script uses 6 different methods simultaneously:
+• ProximityPrompt Detection
+• ClickDetector Firing
+• RemoteEvent Hooking
+• BindableEvent Triggering
+• Virtual Input Simulation
+• Auto Reel Minigame
+
+🚀 Tips:
+• Use Instant Fishing for fast but safe fishing
+• Blatant Mode is fastest but may be detected
+• Auto Reel helps with minigame challenges
+• Perfect Cast ensures maximum success rate]]
+infoText.Parent = infoPanel
 
 -- Fishing Button Handler
 fishingButton.MouseButton1Click:Connect(function()
@@ -906,20 +1037,50 @@ fishingButton.MouseButton1Click:Connect(function()
         fishingButton.BackgroundColor3 = ACCENT
         statusLabel.Text = "⭕ OFFLINE"
         statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        statusIndicator.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
     else
         StartFishing()
         fishingButton.Text = "⏹️ STOP FISHING"
-        fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        fishingButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
         statusLabel.Text = "✅ FISHING ACTIVE"
         statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        statusIndicator.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
     end
 end)
 
--- TELEPORT UI (Placeholder)
+-- Reset Stats Button Handler
+resetButton.MouseButton1Click:Connect(function()
+    fishingStats.fishCaught = 0
+    fishingStats.startTime = tick()
+    fishingStats.attempts = 0
+    fishingStats.successRate = 0
+    print("[Fishing] Stats reset!")
+end)
+
+-- Button Hover Effects
+fishingButton.MouseEnter:Connect(function()
+    local targetColor = fishingActive and Color3.fromRGB(200, 60, 60) or Color3.fromRGB(255, 82, 82)
+    TweenService:Create(fishingButton, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+end)
+
+fishingButton.MouseLeave:Connect(function()
+    local targetColor = fishingActive and Color3.fromRGB(180, 50, 50) or ACCENT
+    TweenService:Create(fishingButton, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+end)
+
+resetButton.MouseEnter:Connect(function()
+    TweenService:Create(resetButton, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+end)
+
+resetButton.MouseLeave:Connect(function()
+    TweenService:Create(resetButton, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
+end)
+
+-- TELEPORT UI
 local teleportContent = Instance.new("Frame")
 teleportContent.Name = "TeleportContent"
-teleportContent.Size = UDim2.new(1, -24, 1, -24)
-teleportContent.Position = UDim2.new(0, 12, 0, 12)
+teleportContent.Size = UDim2.new(1, -24, 1, -68)
+teleportContent.Position = UDim2.new(0, 12, 0, 56)
 teleportContent.BackgroundTransparency = 1
 teleportContent.Visible = false
 teleportContent.Parent = content
@@ -929,16 +1090,16 @@ teleportLabel.Size = UDim2.new(1, 0, 1, 0)
 teleportLabel.BackgroundTransparency = 1
 teleportLabel.Font = Enum.Font.GothamBold
 teleportLabel.TextSize = 16
-teleportLabel.Text = "Teleport Feature\n(Coming Soon)"
+teleportLabel.Text = "📍 Teleport Feature\n(Coming Soon)"
 teleportLabel.TextColor3 = Color3.fromRGB(200,200,200)
 teleportLabel.TextYAlignment = Enum.TextYAlignment.Center
 teleportLabel.Parent = teleportContent
 
--- SETTINGS UI (Placeholder)
+-- SETTINGS UI
 local settingsContent = Instance.new("Frame")
 settingsContent.Name = "SettingsContent"
-settingsContent.Size = UDim2.new(1, -24, 1, -24)
-settingsContent.Position = UDim2.new(0, 12, 0, 12)
+settingsContent.Size = UDim2.new(1, -24, 1, -68)
+settingsContent.Position = UDim2.new(0, 12, 0, 56)
 settingsContent.BackgroundTransparency = 1
 settingsContent.Visible = false
 settingsContent.Parent = content
@@ -948,13 +1109,12 @@ settingsLabel.Size = UDim2.new(1, 0, 1, 0)
 settingsLabel.BackgroundTransparency = 1
 settingsLabel.Font = Enum.Font.GothamBold
 settingsLabel.TextSize = 16
-settingsLabel.Text = "Settings\n(Coming Soon)"
+settingsLabel.Text = "⚙️ Settings\n(Coming Soon)"
 settingsLabel.TextColor3 = Color3.fromRGB(200,200,200)
 settingsLabel.TextYAlignment = Enum.TextYAlignment.Center
 settingsLabel.Parent = settingsContent
 
--- menu navigation
-local activeMenu = "Fishing"
+-- Menu navigation
 for name, btn in pairs(menuButtons) do
     btn.MouseButton1Click:Connect(function()
         for n, b in pairs(menuButtons) do
@@ -972,50 +1132,45 @@ for name, btn in pairs(menuButtons) do
     end)
 end
 
--- Highlight fishing menu by default
 menuButtons["Fishing"].BackgroundColor3 = Color3.fromRGB(32,8,8)
 
--- WINDOW CONTROLS FUNCTIONALITY
+-- WINDOW CONTROLS
 local uiOpen = true
 
--- Show Tray Icon
 local function showTrayIcon()
     trayIcon.Visible = true
-    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 60, 0, 60)}):Play()
+    TweenService:Create(trayIcon, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Size = UDim2.new(0, 60, 0, 60)}):Play()
     TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 0.7}):Play()
 end
 
--- Hide Tray Icon  
 local function hideTrayIcon()
-    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-    TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
-    wait(0.3)
+    TweenService:Create(trayIcon, TweenInfo.new(0.25), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+    TweenService:Create(trayGlow, TweenInfo.new(0.25), {ImageTransparency = 1}):Play()
+    task.wait(0.25)
     trayIcon.Visible = false
 end
 
--- Show Main UI
 local function showMainUI()
     container.Visible = true
-    TweenService:Create(container, TweenInfo.new(0.4), {
+    TweenService:Create(container, TweenInfo.new(0.4, Enum.EasingStyle.Back), {
         Size = UDim2.new(0, WIDTH, 0, HEIGHT),
         Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
     }):Play()
-    TweenService:Create(glow, TweenInfo.new(0.4), {ImageTransparency = 0.85}):Play()
+    TweenService:Create(glow, TweenInfo.new(0.4), {ImageTransparency = 0.88}):Play()
     
     hideTrayIcon()
     uiOpen = true
     print("[UI] Main UI shown")
 end
 
--- Hide Main UI (ke tray)
 local function hideMainUI()
-    TweenService:Create(container, TweenInfo.new(0.3), {
+    TweenService:Create(container, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
         Size = UDim2.new(0, 0, 0, 0),
         Position = UDim2.new(0.5, 0, 0.5, 0)
     }):Play()
     TweenService:Create(glow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
     
-    wait(0.3)
+    task.wait(0.3)
     container.Visible = false
     
     showTrayIcon()
@@ -1023,33 +1178,20 @@ local function hideMainUI()
     print("[UI] Main UI hidden to tray")
 end
 
--- Minimize Function
-local function minimizeUI()
-    hideMainUI()
-end
-
--- Close Function  
-local function closeUI()
-    hideMainUI()
-end
-
--- Tray Icon Click - Show Main UI
 trayIcon.MouseButton1Click:Connect(function()
     showMainUI()
 end)
 
--- Tray Icon Hover Effects
 trayIcon.MouseEnter:Connect(function()
-    TweenService:Create(trayIcon, TweenInfo.new(0.2), {Size = UDim2.new(0, 70, 0, 70)}):Play()
-    TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.6}):Play()
+    TweenService:Create(trayIcon, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Size = UDim2.new(0, 70, 0, 70)}):Play()
+    TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.5}):Play()
 end)
 
 trayIcon.MouseLeave:Connect(function()
-    TweenService:Create(trayIcon, TweenInfo.new(0.2), {Size = UDim2.new(0, 60, 0, 60)}):Play()
+    TweenService:Create(trayIcon, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Size = UDim2.new(0, 60, 0, 60)}):Play()
     TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.7}):Play()
 end)
 
--- Window Controls Hover Effects
 minimizeBtn.MouseEnter:Connect(function()
     TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
 end)
@@ -1066,36 +1208,97 @@ closeBtn.MouseLeave:Connect(function()
     TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(200, 40, 40)}):Play()
 end)
 
--- Button Clicks
-minimizeBtn.MouseButton1Click:Connect(minimizeUI)
-closeBtn.MouseButton1Click:Connect(closeUI)
+minimizeBtn.MouseButton1Click:Connect(hideMainUI)
+closeBtn.MouseButton1Click:Connect(hideMainUI)
+
+-- Status Indicator Pulse Animation
+spawn(function()
+    while true do
+        if fishingActive then
+            TweenService:Create(statusIndicator, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+                BackgroundColor3 = Color3.fromRGB(120, 255, 120)
+            }):Play()
+        else
+            statusIndicator.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+        end
+        task.wait(0.1)
+    end
+end)
 
 -- Stats Update Loop
 spawn(function()
     while true do
         local elapsed = math.max(1, tick() - fishingStats.startTime)
         local rate = fishingStats.fishCaught / elapsed
+        local successRate = fishingStats.attempts > 0 and (fishingStats.fishCaught / fishingStats.attempts * 100) or 0
         
-        fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
-        rateLabel.Text = string.format("Rate: %.2f/s", rate)
+        local hours = math.floor(elapsed / 3600)
+        local minutes = math.floor((elapsed % 3600) / 60)
+        local seconds = math.floor(elapsed % 60)
+        
+        fishCountLabel.Text = string.format("🎣 Fish Caught: %d", fishingStats.fishCaught)
+        rateLabel.Text = string.format("⚡ Rate: %.2f/s", rate)
+        attemptsLabel.Text = string.format("🎯 Attempts: %d", fishingStats.attempts)
+        successLabel.Text = string.format("✅ Success: %.1f%%", successRate)
+        timeLabel.Text = string.format("⏱️ Session: %d:%02d:%02d", hours, minutes, seconds)
         memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
         
-        wait(0.5)
+        task.wait(0.5)
+    end
+end)
+
+-- Keybind untuk toggle UI (Right Control)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        if uiOpen then
+            hideMainUI()
+        else
+            showMainUI()
+        end
+    end
+    
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        if fishingActive then
+            StopFishing()
+            fishingButton.Text = "🚀 START INSTANT FISHING"
+            fishingButton.BackgroundColor3 = ACCENT
+            statusLabel.Text = "⭕ OFFLINE"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            statusIndicator.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+        else
+            StartFishing()
+            fishingButton.Text = "⏹️ STOP FISHING"
+            fishingButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+            statusLabel.Text = "✅ FISHING ACTIVE"
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+            statusIndicator.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
+        end
     end
 end)
 
 -- Start dengan UI terbuka
 showMainUI()
 
-print("[Kaitun Fish It] UI Loaded Successfully!")
-print("🎣 Click - to minimize to tray")
-print("🎣 Click 🗙 to close to tray") 
-print("🎣 Click tray icon to reopen UI")
-
--- Test jika UI muncul
-wait(1)
-if screen and screen.Parent then
-    print("✅ UI successfully created!")
-else
-    print("❌ UI failed to create!")
-end
+print("═══════════════════════════════════════════════")
+print("[Kaitun Fish It] INSTANT FISHING LOADED!")
+print("═══════════════════════════════════════════════")
+print("⚡ Features:")
+print("  • Multi-Method Instant Fishing")
+print("  • ProximityPrompt Detection")
+print("  • ClickDetector Support")
+print("  • RemoteEvent Hooking")
+print("  • Auto Reel Minigame")
+print("  • Perfect Cast System")
+print("  • Blatant Mode (Ultra Fast)")
+print("═══════════════════════════════════════════════")
+print("🎮 Controls:")
+print("  • Right Ctrl - Toggle UI")
+print("  • Right Shift - Start/Stop Fishing")
+print("  • Click - to minimize")
+print("  • Click 🗙 to close")
+print("═══════════════════════════════════════════════")
+print("✅ UI successfully created!")
+print("🎣 Ready to fish!")
+print("═══════════════════════════════════════════════")
