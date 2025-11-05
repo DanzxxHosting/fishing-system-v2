@@ -429,8 +429,8 @@ local function CastProximityPrompt()
         for _, obj in pairs(char:GetDescendants()) do
             if obj:IsA("ProximityPrompt") and obj.Enabled then
                 local name = obj.Name:lower()
-                local objText = obj.ObjectText:lower()
-                local actionText = obj.ActionText:lower()
+                local objText = obj.ObjectText and obj.ObjectText:lower() or ""
+                local actionText = obj.ActionText and obj.ActionText:lower() or ""
                 
                 if name:match("fish") or name:match("cast") or name:match("catch") or
                    objText:match("fish") or objText:match("cast") or
@@ -556,19 +556,6 @@ end
 -- Method 5: Virtual Input (Keyboard & Mouse)
 local function CastVirtualInput()
     SafeCall(function()
-        local inputs = {
-            Enum.KeyCode.E,
-            Enum.KeyCode.F,
-            Enum.KeyCode.Q,,
-            Enum.KeyCode.Return
-        }
-        
-        for _, key in ipairs(inputs) do
-            VirtualInputManager:SendKeyEvent(true, key, false, game)
-            task.wait(0.001)
-            VirtualInputManager:SendKeyEvent(false, key, false, game)
-        end
-        
         -- Mouse clicks
         for i = 1, 3 do
             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
@@ -610,13 +597,10 @@ local function AutoClickFishingUI()
                 for _, keyword in ipairs(keywords) do
                     if text:match(keyword) then
                         -- Rapid fire clicks
-                        for i = 1, 100 do
+                        for i = 1, 10 do
                             SafeCall(function()
-                                for _, connection in pairs(getconnections(gui.MouseButton1Click)) do
-                                    connection:Fire()
-                                end
-                                for _, connection in pairs(getconnections(gui.Activated)) do
-                                    connection:Fire()
+                                if gui:IsA("TextButton") or gui:IsA("ImageButton") then
+                                    gui.Activated:Fire()
                                 end
                             end)
                             task.wait(0.001)
@@ -822,15 +806,12 @@ end
 -- FISHING UI CONTENT
 -- ═══════════════════════════════════════════════════════════
 
-local fishingContent = Instance.new("ScrollingFrame")
+local fishingContent = Instance.new("Frame")
 fishingContent.Name = "FishingContent"
 fishingContent.Size = UDim2.new(1, -24, 1, -68)
 fishingContent.Position = UDim2.new(0, 12, 0, 56)
 fishingContent.BackgroundTransparency = 1
 fishingContent.BorderSizePixel = 0
-fishingContent.ScrollBarThickness = 6
-fishingContent.ScrollBarImageColor3 = ACCENT
-fishingContent.CanvasSize = UDim2.new(0, 0, 0, 850)
 fishingContent.Visible = true
 fishingContent.Parent = content
 
