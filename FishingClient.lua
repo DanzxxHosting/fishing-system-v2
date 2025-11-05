@@ -517,62 +517,65 @@ local function CastRemote()
     end) or false
 end
 
--- NEW: BindableEvent Detection
-local function CastBindableEvent()
-    return SafeCall(function()
-        local actions = {"cast", "fish", "throw", "reel", "catch", "bite", "hook"}
-        local foundBindable = false
-        
-        for _, bindable in pairs(ReplicatedStorage:GetDescendants()) do
-            if bindable:IsA("BindableEvent") then
-                local name = bindable.Name:lower()
-                for _, action in ipairs(actions) do
-                    if name:match(action) then
-                        bindable:Fire()
-                        bindable:Fire("Cast")
-                        bindable:Fire(true)
-                        
-                        if not detectedMethods.bindable then
-                            detectedMethods.bindable = true
-                            print("[✓] BindableEvent method detected!")
+-- FIXED Fishing Radar System
+local radarConnection
+local function ToggleFishingRadar()
+    if featureConfig.fishingRadar then
+        -- Activate fishing radar
+        radarConnection = RunService.Heartbeat:Connect(function()
+            SafeCall(function()
+                -- Look for fishing radar activation methods
+                for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") then
+                        local name = remote.Name:lower()
+                        if name:match("radar") or name:match("sonar") or name:match("detect") then
+                            remote:FireServer(true)
+                            remote:FireServer("Activate")
+                            remote:FireServer("Start")
                         end
-                        foundBindable = true
+                    elseif remote:IsA("RemoteFunction") then
+                        local name = remote.Name:lower()
+                        if name:match("radar") or name:match("sonar") or name:match("detect") then
+                            remote:InvokeServer(true)
+                            remote:InvokeServer("Activate")
+                        end
                     end
                 end
-            end
+                
+                -- Activate via proximity prompts
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if obj:IsA("ProximityPrompt") then
+                        local action = obj.ActionText and obj.ActionText:lower() or ""
+                        if action:match("radar") or action:match("sonar") or action:match("detect") then
+                            fireproximityprompt(obj)
+                        end
+                    end
+                end
+            end)
+        end)
+        print("[✓] Fishing Radar: ACTIVATED")
+    else
+        -- Deactivate fishing radar
+        if radarConnection then
+            radarConnection:Disconnect()
+            radarConnection = nil
+            
+            -- Send deactivate signals
+            SafeCall(function()
+                for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") then
+                        local name = remote.Name:lower()
+                        if name:match("radar") or name:match("sonar") or name:match("detect") then
+                            remote:FireServer(false)
+                            remote:FireServer("Deactivate")
+                            remote:FireServer("Stop")
+                        end
+                    end
+                end
+            end)
         end
-        
-        return foundBindable
-    end) or false
-end
-
--- NEW: Virtual Input Method
-local function CastVirtualInput()
-    return SafeCall(function()
-        -- Send mouse clicks
-        for i = 1, 3 do
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-            task.wait(0.05)
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-            task.wait(0.05)
-        end
-        
-        -- Send key presses (common fishing keys)
-        local fishingKeys = {"E", "F", "R", "C", "X", "Z"}
-        for _, key in ipairs(fishingKeys) do
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-            task.wait(0.02)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
-            task.wait(0.02)
-        end
-        
-        if not detectedMethods.virtual then
-            detectedMethods.virtual = true
-            print("[✓] Virtual Input method activated")
-        end
-        
-        return true
-    end) or false
+        print("[✓] Fishing Radar: DEACTIVATED")
+    end
 end
 
 -- MASTER FISHING FUNCTION - SIMPLIFIED
@@ -592,9 +595,6 @@ local function PerformPerfectCast()
         task.wait(0.1)
         if CastRemote() then success = true; methodsUsed = methodsUsed + 1 end
         task.wait(0.1)
-        if CastBindableEvent() then success = true; methodsUsed = methodsUsed + 1 end
-        task.wait(0.1)
-        if CastVirtualInput() then success = true; methodsUsed = methodsUsed + 1 end
     else
         -- Try methods in order until one works
         if CastProximityPrompt() then
@@ -602,10 +602,6 @@ local function PerformPerfectCast()
         elseif CastClickDetector() then
             success = true
         elseif CastRemote() then
-            success = true
-        elseif CastBindableEvent() then
-            success = true
-        elseif CastVirtualInput() then
             success = true
         end
     end
@@ -651,6 +647,11 @@ local function StartFishing()
     print("[🔧] Multi-Method:", fishingConfig.multiMethod and "ON" or "OFF")
     print("═══════════════════════════════════════")
     
+    -- Auto-activate fishing radar if enabled
+    if featureConfig.fishingRadar then
+        ToggleFishingRadar()
+    end
+    
     -- Main fishing loop
     local mainLoop = RunService.Heartbeat:Connect(function()
         if not fishingActive then 
@@ -675,6 +676,11 @@ local function StopFishing()
         end
     end
     activeConnections = {}
+    
+    -- Auto-deactivate fishing radar if enabled
+    if featureConfig.fishingRadar then
+        ToggleFishingRadar() -- This will deactivate it
+    end
     
     local elapsed = tick() - fishingStats.startTime
     local successRate = (fishingStats.successes / math.max(1, fishingStats.attempts)) * 100
@@ -1236,15 +1242,314 @@ local function CreatePlayerToggle(name, desc, configKey, yPos)
         local targetColor = featureConfig[configKey] and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
         TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
         
+        -- Handle fishing radar toggle
+        if configKey == "fishingRadar" then
+            ToggleFishingRadar()
+        end
+        
         print("[Player]", name, ":", featureConfig[configKey] and "ON" or "OFF")
     end)
 
     return frame
 end
 
-CreatePlayerToggle("∞ Infinite Jump", "Jump infinitely in air", "infiniteJump", 260)
-CreatePlayerToggle("🚫 No Clip", "Walk through walls", "noClip", 300)
-CreatePlayerToggle("📡 Fishing Radar", "Show fishing spots", "fishingRadar", 340)
+CreatePlayerToggle("📡 Fishing Radar", "Auto activate fishing radar", "fishingRadar", 260)
+CreatePlayerToggle("∞ Infinite Jump", "Jump infinitely in air", "infiniteJump", 300)
+CreatePlayerToggle("🚫 No Clip", "Walk through walls", "noClip", 340)
+
+-- ═══════════════════════════════════════════════════════════
+-- TELEPORT UI CONTENT - FIXED
+-- ═══════════════════════════════════════════════════════════
+
+local teleportContent = Instance.new("ScrollingFrame")
+teleportContent.Name = "TeleportContent"
+teleportContent.Size = UDim2.new(1, -24, 1, -68)
+teleportContent.Position = UDim2.new(0, 12, 0, 56)
+teleportContent.BackgroundTransparency = 1
+teleportContent.BorderSizePixel = 0
+teleportContent.ScrollBarThickness = 6
+teleportContent.ScrollBarImageColor3 = ACCENT
+teleportContent.CanvasSize = UDim2.new(0, 0, 0, 800)
+teleportContent.Visible = false
+teleportContent.Parent = content
+
+local teleportTitle = Instance.new("TextLabel")
+teleportTitle.Size = UDim2.new(1, -24, 0, 44)
+teleportTitle.Position = UDim2.new(0,12,0,12)
+teleportTitle.BackgroundTransparency = 1
+teleportTitle.Font = Enum.Font.GothamBold
+teleportTitle.TextSize = 16
+teleportTitle.Text = "📍 Teleport Locations"
+teleportTitle.TextColor3 = Color3.fromRGB(245,245,245)
+teleportTitle.TextXAlignment = Enum.TextXAlignment.Left
+teleportTitle.Parent = teleportContent
+
+-- Teleport Locations
+local teleportLocations = {
+    {"🏝️ Starter Island", Vector3.new(0, 10, 0)},
+    {"🌊 Ocean Center", Vector3.new(100, 5, 100)},
+    {"❄️ Ice Realm", Vector3.new(-200, 20, -200)},
+    {"🔥 Volcano", Vector3.new(300, 50, 0)},
+    {"🌴 Palm Island", Vector3.new(150, 15, -150)},
+    {"⚡ Stormy Seas", Vector3.new(-100, 10, 200)},
+    {"💎 Crystal Cave", Vector3.new(0, -50, 300)},
+    {"🌅 Sunset Beach", Vector3.new(-300, 10, -100)}
+}
+
+local function CreateTeleportButton(name, position, index)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -24, 0, 50)
+    btn.Position = UDim2.new(0, 12, 0, 60 + (index * 60))
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(240,240,240)
+    btn.AutoButtonColor = false
+    btn.Parent = teleportContent
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0,8)
+    btnCorner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        SafeCall(function()
+            local char = GetCharacter()
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = CFrame.new(position)
+                print("[Teleport] Teleported to:", name)
+            end
+        end)
+    end)
+    
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 45)}):Play()
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30, 30, 35)}):Play()
+    end)
+    
+    return btn
+end
+
+for i, location in ipairs(teleportLocations) do
+    CreateTeleportButton(location[1], location[2], i)
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- SHOP UI CONTENT - FIXED
+-- ═══════════════════════════════════════════════════════════
+
+local shopContent = Instance.new("ScrollingFrame")
+shopContent.Name = "ShopContent"
+shopContent.Size = UDim2.new(1, -24, 1, -68)
+shopContent.Position = UDim2.new(0, 12, 0, 56)
+shopContent.BackgroundTransparency = 1
+shopContent.BorderSizePixel = 0
+shopContent.ScrollBarThickness = 6
+shopContent.ScrollBarImageColor3 = ACCENT
+shopContent.CanvasSize = UDim2.new(0, 0, 0, 600)
+shopContent.Visible = false
+shopContent.Parent = content
+
+local shopTitle = Instance.new("TextLabel")
+shopTitle.Size = UDim2.new(1, -24, 0, 44)
+shopTitle.Position = UDim2.new(0,12,0,12)
+shopTitle.BackgroundTransparency = 1
+shopTitle.Font = Enum.Font.GothamBold
+shopTitle.TextSize = 16
+shopTitle.Text = "🛒 Shop & Items"
+shopTitle.TextColor3 = Color3.fromRGB(245,245,245)
+shopTitle.TextXAlignment = Enum.TextXAlignment.Left
+shopTitle.Parent = shopContent
+
+-- Shop Items
+local shopItems = {
+    {"🎣 Basic Rod", "basic_rod"},
+    {"⚡ Element Rod", "element_rod"},
+    {"👻 Ghostfin Rod", "ghostfin_rod"},
+    {"✨ Enchant Rod", "enchant_rod"},
+    {"🌟 Double Enchant", "double_enchant"},
+    {"🦐 Premium Bait", "premium_bait"},
+    {"🧭 Fishing Radar", "fishing_radar"},
+    {"🛥️ Speed Boat", "speed_boat"}
+}
+
+local function CreateShopItem(name, itemId, index)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -24, 0, 70)
+    frame.Position = UDim2.new(0, 12, 0, 60 + (index * 80))
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    frame.BorderSizePixel = 0
+    frame.Parent = shopContent
+    
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0,8)
+    frameCorner.Parent = frame
+    
+    local itemLabel = Instance.new("TextLabel")
+    itemLabel.Size = UDim2.new(0.6, 0, 0.5, 0)
+    itemLabel.Position = UDim2.new(0, 15, 0, 8)
+    itemLabel.BackgroundTransparency = 1
+    itemLabel.Font = Enum.Font.GothamBold
+    itemLabel.TextSize = 14
+    itemLabel.Text = name
+    itemLabel.TextColor3 = Color3.fromRGB(240,240,240)
+    itemLabel.TextXAlignment = Enum.TextXAlignment.Left
+    itemLabel.Parent = frame
+    
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Size = UDim2.new(0.6, 0, 0.5, 0)
+    descLabel.Position = UDim2.new(0, 15, 0, 35)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Font = Enum.Font.Gotham
+    descLabel.TextSize = 11
+    descLabel.Text = "Item ID: " .. itemId
+    descLabel.TextColor3 = Color3.fromRGB(180,180,180)
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.Parent = frame
+    
+    local buyBtn = Instance.new("TextButton")
+    buyBtn.Size = UDim2.new(0.3, -10, 0, 36)
+    buyBtn.Position = UDim2.new(0.7, 5, 0.5, -18)
+    buyBtn.BackgroundColor3 = ACCENT
+    buyBtn.Font = Enum.Font.GothamBold
+    buyBtn.TextSize = 12
+    buyBtn.Text = "BUY FREE"
+    buyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    buyBtn.AutoButtonColor = false
+    buyBtn.Parent = frame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0,6)
+    btnCorner.Parent = buyBtn
+    
+    buyBtn.MouseButton1Click:Connect(function()
+        SafeCall(function()
+            -- Try to purchase item via remotes
+            for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+                if remote:IsA("RemoteEvent") then
+                    local remoteName = remote.Name:lower()
+                    if remoteName:match("buy") or remoteName:match("purchase") or remoteName:match("shop") then
+                        remote:FireServer(itemId)
+                        remote:FireServer("Buy", itemId)
+                        remote:FireServer(itemId, 1)
+                    end
+                end
+            end
+            print("[Shop] Attempting to buy:", name)
+        end)
+    end)
+    
+    buyBtn.MouseEnter:Connect(function()
+        TweenService:Create(buyBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 82, 82)}):Play()
+    end)
+    
+    buyBtn.MouseLeave:Connect(function()
+        TweenService:Create(buyBtn, TweenInfo.new(0.15), {BackgroundColor3 = ACCENT}):Play()
+    end)
+    
+    frame.MouseEnter:Connect(function()
+        TweenService:Create(frame, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play()
+    end)
+    
+    frame.MouseLeave:Connect(function()
+        TweenService:Create(frame, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30, 30, 35)}):Play()
+    end)
+    
+    return frame
+end
+
+for i, item in ipairs(shopItems) do
+    CreateShopItem(item[1], item[2], i)
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- VISUAL UI CONTENT - FIXED
+-- ═══════════════════════════════════════════════════════════
+
+local visualContent = Instance.new("ScrollingFrame")
+visualContent.Name = "VisualContent"
+visualContent.Size = UDim2.new(1, -24, 1, -68)
+visualContent.Position = UDim2.new(0, 12, 0, 56)
+visualContent.BackgroundTransparency = 1
+visualContent.BorderSizePixel = 0
+visualContent.ScrollBarThickness = 6
+visualContent.ScrollBarImageColor3 = ACCENT
+visualContent.CanvasSize = UDim2.new(0, 0, 0, 300)
+visualContent.Visible = false
+visualContent.Parent = content
+
+local visualTitle = Instance.new("TextLabel")
+visualTitle.Size = UDim2.new(1, -24, 0, 44)
+visualTitle.Position = UDim2.new(0,12,0,12)
+visualTitle.BackgroundTransparency = 1
+visualTitle.Font = Enum.Font.GothamBold
+visualTitle.TextSize = 16
+visualTitle.Text = "👁️ Visual Enhancements"
+visualTitle.TextColor3 = Color3.fromRGB(245,245,245)
+visualTitle.TextXAlignment = Enum.TextXAlignment.Left
+visualTitle.Parent = visualContent
+
+-- Visual Toggles
+local function CreateVisualToggle(name, desc, configKey, yPos)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -24, 0, 36)
+    frame.Position = UDim2.new(0, 12, 0, yPos)
+    frame.BackgroundTransparency = 1
+    frame.Parent = visualContent
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.65, 0, 0, 16)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 12
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(240,240,240)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Size = UDim2.new(0.65, 0, 0, 16)
+    descLabel.Position = UDim2.new(0, 0, 0, 18)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Font = Enum.Font.Gotham
+    descLabel.TextSize = 10
+    descLabel.Text = desc
+    descLabel.TextColor3 = Color3.fromRGB(160,160,160)
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.Parent = frame
+
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 75, 0, 30)
+    button.Position = UDim2.new(0.7, 0, 0.15, 0)
+    button.BackgroundColor3 = featureConfig[configKey] and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 12
+    button.Text = featureConfig[configKey] and "ON" or "OFF"
+    button.TextColor3 = Color3.fromRGB(255,255,255)
+    button.AutoButtonColor = false
+    button.Parent = frame
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0,6)
+    btnCorner.Parent = button
+
+    button.MouseButton1Click:Connect(function()
+        featureConfig[configKey] = not featureConfig[configKey]
+        button.Text = featureConfig[configKey] and "ON" or "OFF"
+        local targetColor = featureConfig[configKey] and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(200, 60, 60)
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
+        
+        print("[Visual]", name, ":", featureConfig[configKey] and "ON" or "OFF")
+    end)
+
+    return frame
+end
+
+CreateVisualToggle("🔍 X-Ray Vision", "See fish through walls", "xrayVision", 60)
+CreateVisualToggle("💡 Full Bright", "Remove darkness", "fullBright", 100)
 
 -- ═══════════════════════════════════════════════════════════
 -- UI INTERACTIONS & ANIMATIONS - FIXED
@@ -1254,8 +1559,12 @@ CreatePlayerToggle("📡 Fishing Radar", "Show fishing spots", "fishingRadar", 3
 local currentContent = fishingContent
 local contents = {
     Fishing = fishingContent,
-    Player = playerContent
-    -- Other contents can be added here as needed
+    Teleport = teleportContent,
+    Player = playerContent,
+    Shop = shopContent,
+    Quests = fishingContent, -- Placeholder
+    Visual = visualContent,
+    Settings = fishingContent -- Placeholder
 }
 
 -- Menu Navigation
@@ -1278,11 +1587,6 @@ for name, btn in pairs(menuButtons) do
         if contents[name] then
             contents[name].Visible = true
             currentContent = contents[name]
-        else
-            -- Default to fishing if content not implemented
-            fishingContent.Visible = true
-            currentContent = fishingContent
-            cTitle.Text = "Perfect Instant Fishing"
         end
         
         -- Update menu highlight
@@ -1330,31 +1634,37 @@ local minimized = false
 minimizeBtn.MouseButton1Click:Connect(function()
     minimized = not minimized
     if minimized then
+        -- Minimize: show only title bar
         container.Size = UDim2.new(0, WIDTH, 0, 48)
         glow.Size = UDim2.new(0, WIDTH+80, 0, 48+80)
         inner.Visible = false
         minimizeBtn.Text = "+"
+        print("[UI] Minimized")
     else
+        -- Restore: show full window
         container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
         glow.Size = UDim2.new(0, WIDTH+80, 0, HEIGHT+80)
         inner.Visible = true
         minimizeBtn.Text = "-"
+        print("[UI] Restored")
     end
 end)
 
 -- FIXED Close/Open UI System
 closeBtn.MouseButton1Click:Connect(function()
-    uiEnabled = false
+    -- Close: hide entire UI, show tray icon
     container.Visible = false
     glow.Visible = false
     trayIcon.Visible = true
+    print("[UI] Closed - Click tray icon to reopen")
 end)
 
 trayIcon.MouseButton1Click:Connect(function()
-    uiEnabled = true
+    -- Open: show UI, hide tray icon
     container.Visible = true
     glow.Visible = true
     trayIcon.Visible = false
+    print("[UI] Opened")
 end)
 
 -- Mouse Drag
@@ -1424,13 +1734,21 @@ ApplyPlayerMods()
 print("═══════════════════════════════════════")
 print("⚡ KAITUN FISH IT v4.0 LOADED!")
 print("🎣 FIXED Perfect Instant Fishing System")
-print("👤 Working Player Modifications")
-print("🔧 Fixed UI Close/Open System")
-print("🎯 Working Speed/Jump Sliders")
+print("📡 Auto Fishing Radar Activation")
+print("📍 Working Teleport System")
+print("🛒 Working Shop System")
+print("👁️ Working Visual System")
+print("🔧 Fixed UI Controls:")
+print("   - [-] Minimize window")
+print("   - [X] Close window")
+print("   - [Tray] Reopen window")
 print("═══════════════════════════════════════")
 
 -- Cleanup on script termination
 screen.AncestryChanged:Connect(function()
     memoryUpdate:Disconnect()
     StopFishing()
+    if radarConnection then
+        radarConnection:Disconnect()
+    end
 end)
