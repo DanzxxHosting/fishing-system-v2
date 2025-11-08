@@ -1,6 +1,5 @@
--- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing + FISHING V2
+-- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing + FISHING V2 IMPROVED
 -- paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
--- Tema: hitam matte + merah neon. Close/minimize akan menyisakan tray icon.
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -34,7 +33,7 @@ local fishingConfig = {
     bypassDetection = true
 }
 
--- FISHING V2 CONFIG
+-- FISHING V2 CONFIG - IMPROVED
 local fishingV2Config = {
     enabled = false,
     smartDetection = true,
@@ -45,7 +44,11 @@ local fishingV2Config = {
     fishingSpotRadius = 50,
     maxFishingSpots = 3,
     sellDelay = 5,
-    avoidPlayers = true
+    avoidPlayers = true,
+    radarEnabled = false,
+    instantReel = true, -- NEW: Auto reel when ! appears
+    castDelay = 1,
+    reelDelay = 0.1
 }
 
 local fishingStats = {
@@ -55,13 +58,17 @@ local fishingStats = {
     successRate = 0,
     rareFish = 0,
     totalValue = 0,
-    spotsFound = 0
+    spotsFound = 0,
+    instantCatches = 0  -- NEW: Track instant reel catches
 }
 
 local fishingActive = false
-local fishingConnection
-local reelConnection
-local v2Connection
+local fishingV2Active = false
+local fishingConnection, reelConnection, v2Connection, radarConnection
+local currentFishingSpot = nil
+local fishingSpots = {}
+local antiAfkTime = 0
+local lastCastTime = 0
 
 -- Cleanup old UI
 if playerGui:FindFirstChild("NeonDashboardUI") then
@@ -680,15 +687,70 @@ local function StopFishing()
 end
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING V2 - ADVANCED FEATURES
+-- FISHING V2 - ADVANCED FEATURES IMPROVED
 -- ═══════════════════════════════════════════════════════════
 
-local fishingV2Active = false
-local currentFishingSpot = nil
-local fishingSpots = {}
-local antiAfkTime = 0
+local radarParts = {}
 
--- AI Fishing Spot Detection
+-- Radar System
+local function StartRadar()
+    if not fishingV2Config.radarEnabled then return end
+    
+    radarConnection = RunService.Heartbeat:Connect(function()
+        if not fishingV2Config.radarEnabled then return end
+        
+        -- Cleanup old radar parts
+        for _, part in pairs(radarParts) do
+            if part then
+                part:Destroy()
+            end
+        end
+        radarParts = {}
+        
+        -- Create radar indicators for fishing spots
+        for _, spot in pairs(fishingSpots) do
+            if spot and spot:IsA("Part") then
+                local radarPart = Instance.new("Part")
+                radarPart.Name = "RadarIndicator"
+                radarPart.Size = Vector3.new(2, 2, 2)
+                radarPart.Position = spot.Position + Vector3.new(0, 5, 0)
+                radarPart.Anchored = true
+                radarPart.CanCollide = false
+                radarPart.Material = Enum.Material.Neon
+                radarPart.BrickColor = BrickColor.new("Bright green")
+                
+                local beam = Instance.new("Beam")
+                beam.Attachment0 = Instance.new("Attachment")
+                beam.Attachment0.Parent = radarPart
+                beam.Attachment1 = Instance.new("Attachment")
+                beam.Attachment1.Parent = spot
+                beam.Color = ColorSequence.new(Color3.new(0, 1, 0))
+                beam.Width0 = 0.2
+                beam.Width1 = 0.2
+                beam.Parent = radarPart
+                
+                radarPart.Parent = Workspace
+                table.insert(radarParts, radarPart)
+            end
+        end
+    end)
+end
+
+local function StopRadar()
+    if radarConnection then
+        radarConnection:Disconnect()
+        radarConnection = nil
+    end
+    
+    for _, part in pairs(radarParts) do
+        if part then
+            part:Destroy()
+        end
+    end
+    radarParts = {}
+end
+
+-- Improved Fishing Spot Detection
 local function FindFishingSpots()
     local spots = {}
     
@@ -696,7 +758,7 @@ local function FindFishingSpots()
     for _, part in pairs(Workspace:GetDescendants()) do
         if part:IsA("Part") or part:IsA("MeshPart") then
             local name = part.Name:lower()
-            if name:find("fish") or name:find("water") or name:find("pond") or name:find("lake") or name:find("river") then
+            if name:find("fish") or name:find("water") or name:find("pond") or name:find("lake") or name:find("river") or name:find("ocean") then
                 table.insert(spots, part)
             end
         end
@@ -706,7 +768,7 @@ local function FindFishingSpots()
     for _, prompt in pairs(Workspace:GetDescendants()) do
         if prompt:IsA("ProximityPrompt") then
             local text = (prompt.ObjectText or ""):lower() .. (prompt.ActionText or ""):lower()
-            if text:find("fish") or text:find("cast") or text:find("catch") then
+            if text:find("fish") or text:find("cast") or text:find("catch") or text:find("reel") then
                 table.insert(spots, prompt.Parent)
             end
         end
@@ -829,7 +891,92 @@ local function ShouldAvoidSpot(spot)
     return false
 end
 
--- Main Fishing V2 Loop
+-- INSTANT REEL DETECTION SYSTEM
+local function DetectFishingUI()
+    if not fishingV2Config.instantReel then return false end
+    
+    local success = pcall(function()
+        local playerGui = player:WaitForChild("PlayerGui")
+        
+        -- Cari tanda seru (!) atau indikator bite di UI
+        for _, gui in pairs(playerGui:GetDescendants()) do
+            if gui:IsA("TextLabel") or gui:IsA("TextButton") or gui:IsA("ImageLabel") then
+                local text = gui.Text and gui.Text:lower() or ""
+                local name = gui.Name:lower()
+                
+                -- Deteksi tanda seru atau indikator bite
+                if text:find("!") or text:find("bite") or text:find("pull") or 
+                   name:find("bite") or name:find("pull") or name:find("catch") then
+                    if gui.Visible then
+                        print("[Fishing V2] Detected bite indicator!")
+                        return true
+                    end
+                end
+            end
+        end
+        
+        -- Cari partikel atau efek visual fishing
+        for _, effect in pairs(Workspace:GetDescendants()) do
+            if effect:IsA("ParticleEmitter") or effect:IsA("Beam") then
+                local name = effect.Name:lower()
+                if name:find("fish") or name:find("bite") or name:find("splash") then
+                    return true
+                end
+            end
+        end
+        
+        return false
+    end)
+    
+    return success
+end
+
+-- Enhanced Fishing Action with Instant Reel
+local function PerformFishingAction()
+    local caughtFish = false
+    
+    -- Method 1: ProximityPrompt
+    if InstantFishProximity() then
+        caughtFish = true
+    end
+    
+    -- Method 2: Remote Events
+    if InstantFishRemote() then
+        caughtFish = true
+    end
+    
+    -- Method 3: Virtual Input (fallback)
+    if not caughtFish then
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        task.wait(0.05)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+    end
+    
+    return caughtFish
+end
+
+-- INSTANT REEL SYSTEM - Auto reel when ! appears
+local function InstantReelSystem()
+    if not fishingV2Config.instantReel then return false end
+    
+    if DetectFishingUI() then
+        print("[Fishing V2] Instant reel activated!")
+        
+        -- Lakukan reel action berulang kali untuk memastikan
+        for i = 1, 10 do
+            PerformFishingAction()
+            task.wait(0.01)
+        end
+        
+        fishingStats.instantCatches = fishingStats.instantCatches + 1
+        fishingStats.fishCaught = fishingStats.fishCaught + 1
+        return true
+    end
+    
+    return false
+end
+
+-- Improved Main Fishing V2 Loop
 local function StartFishingV2()
     if fishingV2Active then return end
     
@@ -837,6 +984,11 @@ local function StartFishingV2()
     fishingStats.startTime = tick()
     
     print("[Fishing V2] Starting advanced fishing system...")
+    
+    -- Start radar jika dienable
+    if fishingV2Config.radarEnabled then
+        StartRadar()
+    end
     
     v2Connection = RunService.Heartbeat:Connect(function()
         if not fishingV2Active then return end
@@ -855,36 +1007,41 @@ local function StartFishingV2()
             print("[Fishing V2] Found", #fishingSpots, "fishing spots")
         end
         
-        -- Pilih spot terbaik
-        local bestSpot = nil
-        for _, spot in pairs(fishingSpots) do
-            if not ShouldAvoidSpot(spot) then
-                bestSpot = spot
-                break
+        -- Coba instant reel terlebih dahulu
+        if InstantReelSystem() then
+            -- Jika berhasil instant reel, tunggu sebentar sebelum cast lagi
+            task.wait(fishingV2Config.castDelay)
+        else
+            -- Jika tidak ada instant reel, lakukan fishing normal
+            local bestSpot = nil
+            for _, spot in pairs(fishingSpots) do
+                if not ShouldAvoidSpot(spot) then
+                    bestSpot = spot
+                    break
+                end
             end
-        end
-        
-        if bestSpot then
-            -- Pindah ke spot
-            if MoveToFishingSpot(bestSpot) then
-                -- Lakukan fishing dengan semua method
-                pcall(InstantFishProximity)
-                pcall(InstantFishClickDetector)
-                pcall(InstantFishRemote)
-                pcall(InstantFishBindable)
-                pcall(InstantFishVirtualInput)
-                
-                if fishingConfig.autoReel then
-                    pcall(AutoReelFish)
+            
+            if bestSpot then
+                -- Pindah ke spot jika diperlukan
+                if MoveToFishingSpot(bestSpot) then
+                    -- Cast fishing rod
+                    if tick() - lastCastTime > fishingV2Config.castDelay then
+                        PerformFishingAction()
+                        lastCastTime = tick()
+                        
+                        -- Tunggu sebentar untuk reel
+                        task.wait(fishingV2Config.reelDelay)
+                        
+                        -- Coba reel
+                        PerformFishingAction()
+                    end
                 end
             end
         end
         
-        -- Delay berdasarkan mode
-        if fishingConfig.blantantMode then
-            task.wait(0.001)
-        else
-            task.wait(0.01)
+        -- Update radar jika aktif
+        if fishingV2Config.radarEnabled then
+            -- Radar sudah diupdate di connection terpisah
         end
     end)
 end
@@ -896,6 +1053,8 @@ local function StopFishingV2()
         v2Connection:Disconnect()
         v2Connection = nil
     end
+    
+    StopRadar()
     
     print("[Fishing V2] Stopped advanced fishing")
 end
@@ -1158,23 +1317,33 @@ fishingButton.MouseButton1Click:Connect(function()
 end)
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING V2 UI CONTENT
+-- FISHING V2 UI CONTENT - IMPROVED WITH SCROLL
 -- ═══════════════════════════════════════════════════════════
 
-local fishingV2Content = Instance.new("Frame")
+local fishingV2Content = Instance.new("ScrollingFrame") -- CHANGED TO SCROLLING FRAME
 fishingV2Content.Name = "FishingV2Content"
 fishingV2Content.Size = UDim2.new(1, -24, 1, -24)
 fishingV2Content.Position = UDim2.new(0, 12, 0, 12)
 fishingV2Content.BackgroundTransparency = 1
 fishingV2Content.Visible = false
+fishingV2Content.ScrollBarThickness = 6
+fishingV2Content.ScrollBarImageColor3 = ACCENT
+fishingV2Content.CanvasSize = UDim2.new(0, 0, 0, 600) -- Adjust based on content
 fishingV2Content.Parent = content
+
+-- Container for V2 content
+local v2ContentContainer = Instance.new("Frame")
+v2ContentContainer.Name = "V2ContentContainer"
+v2ContentContainer.Size = UDim2.new(1, 0, 0, 600) -- Height will adjust
+v2ContentContainer.BackgroundTransparency = 1
+v2ContentContainer.Parent = fishingV2Content
 
 -- V2 Stats Panel
 local v2StatsPanel = Instance.new("Frame")
 v2StatsPanel.Size = UDim2.new(1, 0, 0, 120)
 v2StatsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 v2StatsPanel.BorderSizePixel = 0
-v2StatsPanel.Parent = fishingV2Content
+v2StatsPanel.Parent = v2ContentContainer
 
 local v2StatsCorner = Instance.new("UICorner")
 v2StatsCorner.CornerRadius = UDim.new(0,8)
@@ -1241,7 +1410,7 @@ v2EfficiencyLabel.Position = UDim2.new(0,12,0,96)
 v2EfficiencyLabel.BackgroundTransparency = 1
 v2EfficiencyLabel.Font = Enum.Font.Gotham
 v2EfficiencyLabel.TextSize = 13
-v2EfficiencyLabel.Text = "Efficiency: 0% | AFK Time: 0s"
+v2EfficiencyLabel.Text = "Efficiency: 0% | Instant: 0"
 v2EfficiencyLabel.TextColor3 = Color3.fromRGB(255,200,255)
 v2EfficiencyLabel.TextXAlignment = Enum.TextXAlignment.Left
 v2EfficiencyLabel.Parent = v2StatsPanel
@@ -1252,7 +1421,7 @@ v2ControlsPanel.Size = UDim2.new(1, 0, 0, 100)
 v2ControlsPanel.Position = UDim2.new(0, 0, 0, 132)
 v2ControlsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 v2ControlsPanel.BorderSizePixel = 0
-v2ControlsPanel.Parent = fishingV2Content
+v2ControlsPanel.Parent = v2ContentContainer
 
 local v2ControlsCorner = Instance.new("UICorner")
 v2ControlsCorner.CornerRadius = UDim.new(0,8)
@@ -1297,13 +1466,13 @@ v2StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
 v2StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 v2StatusLabel.Parent = v2ControlsPanel
 
--- V2 Features Panel
+-- V2 Features Panel - EXTENDED
 local v2FeaturesPanel = Instance.new("Frame")
-v2FeaturesPanel.Size = UDim2.new(1, 0, 0, 240)
+v2FeaturesPanel.Size = UDim2.new(1, 0, 0, 320) -- Increased height
 v2FeaturesPanel.Position = UDim2.new(0, 0, 0, 244)
 v2FeaturesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 v2FeaturesPanel.BorderSizePixel = 0
-v2FeaturesPanel.Parent = fishingV2Content
+v2FeaturesPanel.Parent = v2ContentContainer
 
 local v2FeaturesCorner = Instance.new("UICorner")
 v2FeaturesCorner.CornerRadius = UDim.new(0,8)
@@ -1320,7 +1489,11 @@ v2FeaturesTitle.TextColor3 = Color3.fromRGB(235,235,235)
 v2FeaturesTitle.TextXAlignment = Enum.TextXAlignment.Left
 v2FeaturesTitle.Parent = v2FeaturesPanel
 
--- V2 Toggles
+-- Update canvas size based on content
+v2ContentContainer.Size = UDim2.new(1, 0, 0, 244 + 320 + 20) -- controls + features + margin
+fishingV2Content.CanvasSize = UDim2.new(0, 0, 0, 244 + 320 + 20)
+
+-- Create V2 Toggles with new features
 CreateToggle("🤖 AI Fishing System", "Enable advanced AI fishing", fishingV2Config.enabled, function(v)
     fishingV2Config.enabled = v
     print("[Fishing V2] AI System:", v and "ENABLED" or "DISABLED")
@@ -1345,6 +1518,23 @@ CreateToggle("🎣 Rare Priority", "Focus on rare fish spots", fishingV2Config.r
     fishingV2Config.rareFishPriority = v
     print("[Fishing V2] Rare Priority:", v and "ENABLED" or "DISABLED")
 end, v2FeaturesPanel, 196)
+
+-- NEW: Radar Fishing Toggle
+CreateToggle("📡 Radar Fishing", "Show fishing spot radar", fishingV2Config.radarEnabled, function(v)
+    fishingV2Config.radarEnabled = v
+    if v then
+        StartRadar()
+    else
+        StopRadar()
+    end
+    print("[Fishing V2] Radar:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 236)
+
+-- NEW: Instant Reel Toggle
+CreateToggle("⚡ Instant Reel", "Auto reel when ! appears", fishingV2Config.instantReel, function(v)
+    fishingV2Config.instantReel = v
+    print("[Fishing V2] Instant Reel:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 276)
 
 -- V2 Fishing Button Handler
 v2FishingButton.MouseButton1Click:Connect(function()
@@ -1535,7 +1725,9 @@ spawn(function()
         v2RareLabel.Text = string.format("Rare Fish: %d", fishingStats.rareFish)
         v2SpotsLabel.Text = string.format("Spots Found: %d", fishingStats.spotsFound)
         v2ValueLabel.Text = string.format("Total Value: $%d", fishingStats.totalValue)
-        v2EfficiencyLabel.Text = string.format("Efficiency: %.1f%% | AFK Time: %ds", (fishingStats.fishCaught / math.max(1, fishingStats.attempts)) * 100, antiAfkTime)
+        v2EfficiencyLabel.Text = string.format("Efficiency: %.1f%% | Instant: %d", 
+            (fishingStats.fishCaught / math.max(1, fishingStats.attempts)) * 100, 
+            fishingStats.instantCatches)
         
         wait(0.5)
     end
