@@ -1,4 +1,4 @@
--- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing
+-- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing + FISHING V2
 -- paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
 -- Tema: hitam matte + merah neon. Close/minimize akan menyisakan tray icon.
 
@@ -8,6 +8,8 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -32,16 +34,34 @@ local fishingConfig = {
     bypassDetection = true
 }
 
+-- FISHING V2 CONFIG
+local fishingV2Config = {
+    enabled = false,
+    smartDetection = true,
+    antiAfk = true,
+    autoSell = false,
+    rareFishPriority = true,
+    multiSpotFishing = false,
+    fishingSpotRadius = 50,
+    maxFishingSpots = 3,
+    sellDelay = 5,
+    avoidPlayers = true
+}
+
 local fishingStats = {
     fishCaught = 0,
     startTime = tick(),
     attempts = 0,
-    successRate = 0
+    successRate = 0,
+    rareFish = 0,
+    totalValue = 0,
+    spotsFound = 0
 }
 
 local fishingActive = false
 local fishingConnection
 local reelConnection
+local v2Connection
 
 -- Cleanup old UI
 if playerGui:FindFirstChild("NeonDashboardUI") then
@@ -139,7 +159,7 @@ title.Position = UDim2.new(0,8,0,0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
-title.Text = "⚡ KAITUN FISH IT"
+title.Text = "⚡ KAITUN FISH IT V2"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = titleBar
@@ -225,7 +245,7 @@ sTitle.Position = UDim2.new(0, 88, 0, 12)
 sTitle.BackgroundTransparency = 1
 sTitle.Font = Enum.Font.GothamBold
 sTitle.TextSize = 14
-sTitle.Text = "Kaitun"
+sTitle.Text = "Kaitun V2"
 sTitle.TextColor3 = Color3.fromRGB(240,240,240)
 sTitle.TextXAlignment = Enum.TextXAlignment.Left
 sTitle.Parent = sbHeader
@@ -294,7 +314,8 @@ local function makeMenuItem(name, iconText)
 end
 
 local items = {
-    {"Fishing", "🎣"},
+    {"Fishing V1", "🎣"},
+    {"Fishing V2", "🚀"},
     {"Teleport", "📍"},
     {"Settings", "⚙"},
 }
@@ -324,13 +345,13 @@ cTitle.Position = UDim2.new(0,12,0,12)
 cTitle.BackgroundTransparency = 1
 cTitle.Font = Enum.Font.GothamBold
 cTitle.TextSize = 16
-cTitle.Text = "Fishing"
+cTitle.Text = "Fishing V1"
 cTitle.TextColor3 = Color3.fromRGB(245,245,245)
 cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
 -- ═══════════════════════════════════════════════════════════
--- ENHANCED INSTANT FISHING FUNCTIONS
+-- ENHANCED INSTANT FISHING FUNCTIONS (V1)
 -- ═══════════════════════════════════════════════════════════
 
 local function SafeGetCharacter()
@@ -659,7 +680,228 @@ local function StopFishing()
 end
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING UI CONTENT
+-- FISHING V2 - ADVANCED FEATURES
+-- ═══════════════════════════════════════════════════════════
+
+local fishingV2Active = false
+local currentFishingSpot = nil
+local fishingSpots = {}
+local antiAfkTime = 0
+
+-- AI Fishing Spot Detection
+local function FindFishingSpots()
+    local spots = {}
+    
+    -- Method 1: Cari part dengan nama fishing-related
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("Part") or part:IsA("MeshPart") then
+            local name = part.Name:lower()
+            if name:find("fish") or name:find("water") or name:find("pond") or name:find("lake") or name:find("river") then
+                table.insert(spots, part)
+            end
+        end
+    end
+    
+    -- Method 2: Cari ProximityPrompt di workspace
+    for _, prompt in pairs(Workspace:GetDescendants()) do
+        if prompt:IsA("ProximityPrompt") then
+            local text = (prompt.ObjectText or ""):lower() .. (prompt.ActionText or ""):lower()
+            if text:find("fish") or text:find("cast") or text:find("catch") then
+                table.insert(spots, prompt.Parent)
+            end
+        end
+    end
+    
+    -- Method 3: Cari part dengan material water
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("Part") and part.Material == Enum.Material.Water then
+            table.insert(spots, part)
+        end
+    end
+    
+    fishingStats.spotsFound = #spots
+    return spots
+end
+
+-- Smart Pathfinding ke Fishing Spot
+local function MoveToFishingSpot(spot)
+    if not spot or not player.Character then return false end
+    
+    local humanoid = player.Character:FindFirstChild("Humanoid")
+    local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootPart then return false end
+    
+    -- Hitung posisi terdekat ke fishing spot
+    local targetPosition = spot.Position
+    if spot:IsA("Part") then
+        targetPosition = spot.Position + Vector3.new(0, 3, 0) -- Berdiri di atas spot
+    end
+    
+    -- Gerakkan karakter ke spot
+    humanoid:MoveTo(targetPosition)
+    
+    -- Tunggu sampai sampai
+    local waitTime = 0
+    while (rootPart.Position - targetPosition).Magnitude > 5 and waitTime < 5 do
+        wait(0.1)
+        waitTime = waitTime + 0.1
+    end
+    
+    return (rootPart.Position - targetPosition).Magnitude <= 5
+end
+
+-- Anti-AFK System
+local function AntiAFK()
+    if not fishingV2Config.antiAfk then return end
+    
+    antiAfkTime = antiAfkTime + 1
+    if antiAfkTime >= 30 then -- Reset setiap 30 detik
+        antiAfkTime = 0
+        
+        -- Gerakkan karakter sedikit
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") then
+            local humanoid = char.Humanoid
+            humanoid:MoveTo(char.HumanoidRootPart.Position + Vector3.new(1, 0, 1))
+            wait(0.2)
+            humanoid:MoveTo(char.HumanoidRootPart.Position + Vector3.new(-1, 0, -1))
+        end
+        
+        -- Rotasi kamera
+        local cam = Workspace.CurrentCamera
+        if cam then
+            local original = cam.CFrame
+            cam.CFrame = original * CFrame.Angles(0, math.rad(5), 0)
+            wait(0.1)
+            cam.CFrame = original
+        end
+    end
+end
+
+-- Auto Sell System
+local function AutoSellFish()
+    if not fishingV2Config.autoSell then return end
+    
+    -- Cari NPC seller
+    for _, npc in pairs(Workspace:GetDescendants()) do
+        if npc:IsA("Model") and (npc.Name:lower():find("npc") or npc.Name:lower():find("seller") or npc.Name:lower():find("merchant")) then
+            local humanoid = npc:FindFirstChild("Humanoid")
+            if humanoid then
+                -- Teleport ke NPC
+                local char = player.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    char.HumanoidRootPart.CFrame = npc:GetPivot() + Vector3.new(0, 0, -5)
+                    wait(1)
+                    
+                    -- Cari ProximityPrompt untuk jual
+                    for _, prompt in pairs(npc:GetDescendants()) do
+                        if prompt:IsA("ProximityPrompt") then
+                            local text = (prompt.ObjectText or ""):lower() .. (prompt.ActionText or ""):lower()
+                            if text:find("sell") or text:find("trade") or text:find("vendor") then
+                                for i = 1, 10 do
+                                    fireproximityprompt(prompt)
+                                    wait(0.1)
+                                end
+                                return true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- Player Avoidance System
+local function ShouldAvoidSpot(spot)
+    if not fishingV2Config.avoidPlayers then return false end
+    
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local root = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root and (root.Position - spot.Position).Magnitude < 10 then
+                return true -- Ada player lain terlalu dekat
+            end
+        end
+    end
+    return false
+end
+
+-- Main Fishing V2 Loop
+local function StartFishingV2()
+    if fishingV2Active then return end
+    
+    fishingV2Active = true
+    fishingStats.startTime = tick()
+    
+    print("[Fishing V2] Starting advanced fishing system...")
+    
+    v2Connection = RunService.Heartbeat:Connect(function()
+        if not fishingV2Active then return end
+        
+        -- Anti-AFK
+        AntiAFK()
+        
+        -- Auto Sell setiap 5 menit
+        if fishingV2Config.autoSell and tick() % 300 < 0.1 then
+            AutoSellFish()
+        end
+        
+        -- Cari fishing spots jika diperlukan
+        if #fishingSpots == 0 or tick() % 30 < 0.1 then
+            fishingSpots = FindFishingSpots()
+            print("[Fishing V2] Found", #fishingSpots, "fishing spots")
+        end
+        
+        -- Pilih spot terbaik
+        local bestSpot = nil
+        for _, spot in pairs(fishingSpots) do
+            if not ShouldAvoidSpot(spot) then
+                bestSpot = spot
+                break
+            end
+        end
+        
+        if bestSpot then
+            -- Pindah ke spot
+            if MoveToFishingSpot(bestSpot) then
+                -- Lakukan fishing dengan semua method
+                pcall(InstantFishProximity)
+                pcall(InstantFishClickDetector)
+                pcall(InstantFishRemote)
+                pcall(InstantFishBindable)
+                pcall(InstantFishVirtualInput)
+                
+                if fishingConfig.autoReel then
+                    pcall(AutoReelFish)
+                end
+            end
+        end
+        
+        -- Delay berdasarkan mode
+        if fishingConfig.blantantMode then
+            task.wait(0.001)
+        else
+            task.wait(0.01)
+        end
+    end)
+end
+
+local function StopFishingV2()
+    fishingV2Active = false
+    
+    if v2Connection then
+        v2Connection:Disconnect()
+        v2Connection = nil
+    end
+    
+    print("[Fishing V2] Stopped advanced fishing")
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- FISHING V1 UI CONTENT
 -- ═══════════════════════════════════════════════════════════
 
 local fishingContent = Instance.new("Frame")
@@ -915,6 +1157,212 @@ fishingButton.MouseButton1Click:Connect(function()
     end
 end)
 
+-- ═══════════════════════════════════════════════════════════
+-- FISHING V2 UI CONTENT
+-- ═══════════════════════════════════════════════════════════
+
+local fishingV2Content = Instance.new("Frame")
+fishingV2Content.Name = "FishingV2Content"
+fishingV2Content.Size = UDim2.new(1, -24, 1, -24)
+fishingV2Content.Position = UDim2.new(0, 12, 0, 12)
+fishingV2Content.BackgroundTransparency = 1
+fishingV2Content.Visible = false
+fishingV2Content.Parent = content
+
+-- V2 Stats Panel
+local v2StatsPanel = Instance.new("Frame")
+v2StatsPanel.Size = UDim2.new(1, 0, 0, 120)
+v2StatsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+v2StatsPanel.BorderSizePixel = 0
+v2StatsPanel.Parent = fishingV2Content
+
+local v2StatsCorner = Instance.new("UICorner")
+v2StatsCorner.CornerRadius = UDim.new(0,8)
+v2StatsCorner.Parent = v2StatsPanel
+
+local v2StatsTitle = Instance.new("TextLabel")
+v2StatsTitle.Size = UDim2.new(1, -24, 0, 28)
+v2StatsTitle.Position = UDim2.new(0,12,0,8)
+v2StatsTitle.BackgroundTransparency = 1
+v2StatsTitle.Font = Enum.Font.GothamBold
+v2StatsTitle.TextSize = 14
+v2StatsTitle.Text = "🚀 ADVANCED FISHING STATS"
+v2StatsTitle.TextColor3 = Color3.fromRGB(235,235,235)
+v2StatsTitle.TextXAlignment = Enum.TextXAlignment.Left
+v2StatsTitle.Parent = v2StatsPanel
+
+local v2FishCountLabel = Instance.new("TextLabel")
+v2FishCountLabel.Size = UDim2.new(0.5, -8, 0, 24)
+v2FishCountLabel.Position = UDim2.new(0,12,0,40)
+v2FishCountLabel.BackgroundTransparency = 1
+v2FishCountLabel.Font = Enum.Font.Gotham
+v2FishCountLabel.TextSize = 13
+v2FishCountLabel.Text = "Total Fish: 0"
+v2FishCountLabel.TextColor3 = Color3.fromRGB(200,255,200)
+v2FishCountLabel.TextXAlignment = Enum.TextXAlignment.Left
+v2FishCountLabel.Parent = v2StatsPanel
+
+local v2RareLabel = Instance.new("TextLabel")
+v2RareLabel.Size = UDim2.new(0.5, -8, 0, 24)
+v2RareLabel.Position = UDim2.new(0.5,4,0,40)
+v2RareLabel.BackgroundTransparency = 1
+v2RareLabel.Font = Enum.Font.Gotham
+v2RareLabel.TextSize = 13
+v2RareLabel.Text = "Rare Fish: 0"
+v2RareLabel.TextColor3 = Color3.fromRGB(255,215,0)
+v2RareLabel.TextXAlignment = Enum.TextXAlignment.Left
+v2RareLabel.Parent = v2StatsPanel
+
+local v2SpotsLabel = Instance.new("TextLabel")
+v2SpotsLabel.Size = UDim2.new(0.5, -8, 0, 24)
+v2SpotsLabel.Position = UDim2.new(0,12,0,68)
+v2SpotsLabel.BackgroundTransparency = 1
+v2SpotsLabel.Font = Enum.Font.Gotham
+v2SpotsLabel.TextSize = 13
+v2SpotsLabel.Text = "Spots Found: 0"
+v2SpotsLabel.TextColor3 = Color3.fromRGB(200,220,255)
+v2SpotsLabel.TextXAlignment = Enum.TextXAlignment.Left
+v2SpotsLabel.Parent = v2StatsPanel
+
+local v2ValueLabel = Instance.new("TextLabel")
+v2ValueLabel.Size = UDim2.new(0.5, -8, 0, 24)
+v2ValueLabel.Position = UDim2.new(0.5,4,0,68)
+v2ValueLabel.BackgroundTransparency = 1
+v2ValueLabel.Font = Enum.Font.Gotham
+v2ValueLabel.TextSize = 13
+v2ValueLabel.Text = "Total Value: $0"
+v2ValueLabel.TextColor3 = Color3.fromRGB(100,255,100)
+v2ValueLabel.TextXAlignment = Enum.TextXAlignment.Left
+v2ValueLabel.Parent = v2StatsPanel
+
+local v2EfficiencyLabel = Instance.new("TextLabel")
+v2EfficiencyLabel.Size = UDim2.new(1, -24, 0, 24)
+v2EfficiencyLabel.Position = UDim2.new(0,12,0,96)
+v2EfficiencyLabel.BackgroundTransparency = 1
+v2EfficiencyLabel.Font = Enum.Font.Gotham
+v2EfficiencyLabel.TextSize = 13
+v2EfficiencyLabel.Text = "Efficiency: 0% | AFK Time: 0s"
+v2EfficiencyLabel.TextColor3 = Color3.fromRGB(255,200,255)
+v2EfficiencyLabel.TextXAlignment = Enum.TextXAlignment.Left
+v2EfficiencyLabel.Parent = v2StatsPanel
+
+-- V2 Controls Panel
+local v2ControlsPanel = Instance.new("Frame")
+v2ControlsPanel.Size = UDim2.new(1, 0, 0, 100)
+v2ControlsPanel.Position = UDim2.new(0, 0, 0, 132)
+v2ControlsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+v2ControlsPanel.BorderSizePixel = 0
+v2ControlsPanel.Parent = fishingV2Content
+
+local v2ControlsCorner = Instance.new("UICorner")
+v2ControlsCorner.CornerRadius = UDim.new(0,8)
+v2ControlsCorner.Parent = v2ControlsPanel
+
+local v2ControlsTitle = Instance.new("TextLabel")
+v2ControlsTitle.Size = UDim2.new(1, -24, 0, 28)
+v2ControlsTitle.Position = UDim2.new(0,12,0,8)
+v2ControlsTitle.BackgroundTransparency = 1
+v2ControlsTitle.Font = Enum.Font.GothamBold
+v2ControlsTitle.TextSize = 14
+v2ControlsTitle.Text = "🤖 AI Fishing Controls"
+v2ControlsTitle.TextColor3 = Color3.fromRGB(235,235,235)
+v2ControlsTitle.TextXAlignment = Enum.TextXAlignment.Left
+v2ControlsTitle.Parent = v2ControlsPanel
+
+-- V2 Start/Stop Button
+local v2FishingButton = Instance.new("TextButton")
+v2FishingButton.Size = UDim2.new(0, 200, 0, 50)
+v2FishingButton.Position = UDim2.new(0, 12, 0, 40)
+v2FishingButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+v2FishingButton.Font = Enum.Font.GothamBold
+v2FishingButton.TextSize = 14
+v2FishingButton.Text = "🤖 START AI FISHING"
+v2FishingButton.TextColor3 = Color3.fromRGB(30,30,30)
+v2FishingButton.AutoButtonColor = false
+v2FishingButton.Parent = v2ControlsPanel
+
+local v2FishingBtnCorner = Instance.new("UICorner")
+v2FishingBtnCorner.CornerRadius = UDim.new(0,6)
+v2FishingBtnCorner.Parent = v2FishingButton
+
+-- V2 Status Indicator
+local v2StatusLabel = Instance.new("TextLabel")
+v2StatusLabel.Size = UDim2.new(0.5, -16, 0, 50)
+v2StatusLabel.Position = UDim2.new(0, 224, 0, 40)
+v2StatusLabel.BackgroundTransparency = 1
+v2StatusLabel.Font = Enum.Font.GothamBold
+v2StatusLabel.TextSize = 12
+v2StatusLabel.Text = "⭕ AI OFFLINE"
+v2StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+v2StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+v2StatusLabel.Parent = v2ControlsPanel
+
+-- V2 Features Panel
+local v2FeaturesPanel = Instance.new("Frame")
+v2FeaturesPanel.Size = UDim2.new(1, 0, 0, 240)
+v2FeaturesPanel.Position = UDim2.new(0, 0, 0, 244)
+v2FeaturesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+v2FeaturesPanel.BorderSizePixel = 0
+v2FeaturesPanel.Parent = fishingV2Content
+
+local v2FeaturesCorner = Instance.new("UICorner")
+v2FeaturesCorner.CornerRadius = UDim.new(0,8)
+v2FeaturesCorner.Parent = v2FeaturesPanel
+
+local v2FeaturesTitle = Instance.new("TextLabel")
+v2FeaturesTitle.Size = UDim2.new(1, -24, 0, 28)
+v2FeaturesTitle.Position = UDim2.new(0,12,0,8)
+v2FeaturesTitle.BackgroundTransparency = 1
+v2FeaturesTitle.Font = Enum.Font.GothamBold
+v2FeaturesTitle.TextSize = 14
+v2FeaturesTitle.Text = "🔧 AI Fishing Features"
+v2FeaturesTitle.TextColor3 = Color3.fromRGB(235,235,235)
+v2FeaturesTitle.TextXAlignment = Enum.TextXAlignment.Left
+v2FeaturesTitle.Parent = v2FeaturesPanel
+
+-- V2 Toggles
+CreateToggle("🤖 AI Fishing System", "Enable advanced AI fishing", fishingV2Config.enabled, function(v)
+    fishingV2Config.enabled = v
+    print("[Fishing V2] AI System:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 36)
+
+CreateToggle("🎯 Smart Detection", "Auto-detect fishing spots", fishingV2Config.smartDetection, function(v)
+    fishingV2Config.smartDetection = v
+    print("[Fishing V2] Smart Detection:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 76)
+
+CreateToggle("🛡️ Anti-AFK", "Prevent AFK detection", fishingV2Config.antiAfk, function(v)
+    fishingV2Config.antiAfk = v
+    print("[Fishing V2] Anti-AFK:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 116)
+
+CreateToggle("💰 Auto Sell", "Automatically sell fish", fishingV2Config.autoSell, function(v)
+    fishingV2Config.autoSell = v
+    print("[Fishing V2] Auto Sell:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 156)
+
+CreateToggle("🎣 Rare Priority", "Focus on rare fish spots", fishingV2Config.rareFishPriority, function(v)
+    fishingV2Config.rareFishPriority = v
+    print("[Fishing V2] Rare Priority:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 196)
+
+-- V2 Fishing Button Handler
+v2FishingButton.MouseButton1Click:Connect(function()
+    if fishingV2Active then
+        StopFishingV2()
+        v2FishingButton.Text = "🤖 START AI FISHING"
+        v2FishingButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+        v2StatusLabel.Text = "⭕ AI OFFLINE"
+        v2StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    else
+        StartFishingV2()
+        v2FishingButton.Text = "⏹️ STOP AI FISHING"
+        v2FishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        v2StatusLabel.Text = "✅ AI FISHING ACTIVE"
+        v2StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    end
+end)
+
 -- TELEPORT UI (Placeholder)
 local teleportContent = Instance.new("Frame")
 teleportContent.Name = "TeleportContent"
@@ -954,7 +1402,7 @@ settingsLabel.TextYAlignment = Enum.TextYAlignment.Center
 settingsLabel.Parent = settingsContent
 
 -- menu navigation
-local activeMenu = "Fishing"
+local activeMenu = "Fishing V1"
 for name, btn in pairs(menuButtons) do
     btn.MouseButton1Click:Connect(function()
         for n, b in pairs(menuButtons) do
@@ -964,7 +1412,8 @@ for name, btn in pairs(menuButtons) do
         
         cTitle.Text = name
         
-        fishingContent.Visible = (name == "Fishing")
+        fishingContent.Visible = (name == "Fishing V1")
+        fishingV2Content.Visible = (name == "Fishing V2")
         teleportContent.Visible = (name == "Teleport")
         settingsContent.Visible = (name == "Settings")
         
@@ -973,7 +1422,7 @@ for name, btn in pairs(menuButtons) do
 end
 
 -- Highlight fishing menu by default
-menuButtons["Fishing"].BackgroundColor3 = Color3.fromRGB(32,8,8)
+menuButtons["Fishing V1"].BackgroundColor3 = Color3.fromRGB(32,8,8)
 
 -- WINDOW CONTROLS FUNCTIONALITY
 local uiOpen = true
@@ -1076,9 +1525,17 @@ spawn(function()
         local elapsed = math.max(1, tick() - fishingStats.startTime)
         local rate = fishingStats.fishCaught / elapsed
         
+        -- Update V1 Stats
         fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
         rateLabel.Text = string.format("Rate: %.2f/s", rate)
         memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
+        
+        -- Update V2 Stats
+        v2FishCountLabel.Text = string.format("Total Fish: %d", fishingStats.fishCaught)
+        v2RareLabel.Text = string.format("Rare Fish: %d", fishingStats.rareFish)
+        v2SpotsLabel.Text = string.format("Spots Found: %d", fishingStats.spotsFound)
+        v2ValueLabel.Text = string.format("Total Value: $%d", fishingStats.totalValue)
+        v2EfficiencyLabel.Text = string.format("Efficiency: %.1f%% | AFK Time: %ds", (fishingStats.fishCaught / math.max(1, fishingStats.attempts)) * 100, antiAfkTime)
         
         wait(0.5)
     end
@@ -1087,7 +1544,9 @@ end)
 -- Start dengan UI terbuka
 showMainUI()
 
-print("[Kaitun Fish It] UI Loaded Successfully!")
+print("[Kaitun Fish It V2] UI Loaded Successfully!")
+print("🎣 Fishing V1 - Basic instant fishing")
+print("🚀 Fishing V2 - Advanced AI fishing system")
 print("🎣 Click - to minimize to tray")
 print("🎣 Click 🗙 to close to tray") 
 print("🎣 Click tray icon to reopen UI")
