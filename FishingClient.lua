@@ -87,9 +87,7 @@ screen.ResetOnSpawn = false
 screen.Parent = playerGui
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-
 print("[UI] ScreenGui created")
-
 
 -- TRAY ICON
 local trayIcon = Instance.new("ImageButton")
@@ -805,25 +803,19 @@ local function StopRadar()
     print("[Radar] Fishing radar stopped")
 end
 
--- FIXED FISHING DETECTION untuk Fish It
-local function FindFishingProximityPrompt()
-    local char = player.Character
-    if not char then return nil end
+-- Improved Fishing Spot Detection
+local function FindFishingSpots()
+    local spots = {}
     
-    -- Cari ProximityPrompt di character (untuk fishing)
-    for _, descendant in pairs(char:GetDescendants()) do
-        if descendant:IsA("ProximityPrompt") then
-            local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
-            local objectText = descendant.ObjectText and descendant.ObjectText:lower() or ""
-            
-            if actionText:find("cast") or actionText:find("fish") or 
-               objectText:find("cast") or objectText:find("fish") then
-                return descendant
+    -- Method 1: Cari part dengan nama fishing-related
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("Part") or part:IsA("MeshPart") then
+            local name = part.Name:lower()
+            if name:find("fish") or name:find("water") or name:find("pond") or name:find("lake") or name:find("river") or name:find("ocean") then
+                table.insert(spots, part)
             end
         end
     end
-    return nil
-end
     
     -- Method 2: Cari ProximityPrompt di workspace
     for _, prompt in pairs(Workspace:GetDescendants()) do
@@ -1037,7 +1029,7 @@ local function InstantReelSystem()
     return false
 end
 
---- FIXED FISHING V2 MAIN LOOP - DIPERBAIKI UNTUK FISH IT
+-- Improved Main Fishing V2 Loop
 local function StartFishingV2()
     if fishingV2Active then 
         print("[Fishing V2] Already fishing!")
@@ -1058,7 +1050,7 @@ local function StartFishingV2()
     end
     
     v2Connection = RunService.Heartbeat:Connect(function()
-        if not fishingV2Active then return end       
+        if not fishingV2Active then return end
         
         -- Cek jika karakter ada
         local character = player.Character
@@ -1594,44 +1586,48 @@ v2FeaturesTitle.Parent = v2FeaturesPanel
 v2ContentContainer.Size = UDim2.new(1, 0, 0, 244 + 320 + 20) -- controls + features + margin
 fishingV2Content.CanvasSize = UDim2.new(0, 0, 0, 244 + 320 + 20)
 
--- Create V2 Toggles dengan settings yang sesuai untuk Fish It
-CreateV2Toggle("🤖 AI Fishing System", "Enable automatic fishing", fishingV2Config.enabled, function(v)
+-- Create V2 Toggles with new features
+CreateToggle("🤖 AI Fishing System", "Enable advanced AI fishing", fishingV2Config.enabled, function(v)
     fishingV2Config.enabled = v
-    if v and fishingV2Active then
-        StopFishingV2()
-    end
     print("[Fishing V2] AI System:", v and "ENABLED" or "DISABLED")
 end, v2FeaturesPanel, 36)
 
-CreateV2Toggle("⚡ Instant Reel", "Auto reel when ! appears", fishingV2Config.instantReel, function(v)
-    fishingV2Config.instantReel = v
-    print("[Fishing V2] Instant Reel:", v and "ENABLED" or "DISABLED")
+CreateToggle("🎯 Smart Detection", "Auto-detect fishing spots", fishingV2Config.smartDetection, function(v)
+    fishingV2Config.smartDetection = v
+    print("[Fishing V2] Smart Detection:", v and "ENABLED" or "DISABLED")
 end, v2FeaturesPanel, 76)
 
-CreateV2Toggle("📡 Fishing Radar", "Show nearby fishing spots", fishingV2Config.radarEnabled, function(v)
+CreateToggle("🛡️ Anti-AFK", "Prevent AFK detection", fishingV2Config.antiAfk, function(v)
+    fishingV2Config.antiAfk = v
+    print("[Fishing V2] Anti-AFK:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 116)
+
+CreateToggle("💰 Auto Sell", "Automatically sell fish", fishingV2Config.autoSell, function(v)
+    fishingV2Config.autoSell = v
+    print("[Fishing V2] Auto Sell:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 156)
+
+CreateToggle("🎣 Rare Priority", "Focus on rare fish spots", fishingV2Config.rareFishPriority, function(v)
+    fishingV2Config.rareFishPriority = v
+    print("[Fishing V2] Rare Priority:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 196)
+
+-- NEW: Radar Fishing Toggle
+CreateToggle("📡 Radar Fishing", "Show fishing spot radar", fishingV2Config.radarEnabled, function(v)
     fishingV2Config.radarEnabled = v
-    if v and fishingV2Active then
+    if v then
         StartRadar()
     else
         StopRadar()
     end
-    print("[Fishing V2] Fishing Radar:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 116)
-
-CreateV2Toggle("🛡️ Anti-AFK", "Prevent AFK detection", fishingV2Config.antiAfk, function(v)
-    fishingV2Config.antiAfk = v
-    print("[Fishing V2] Anti-AFK:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 156)
-
-CreateV2Toggle("🎯 Smart Detection", "Auto-detect fishing prompts", fishingV2Config.smartDetection, function(v)
-    fishingV2Config.smartDetection = v
-    print("[Fishing V2] Smart Detection:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 196)
-
-CreateV2Toggle("🔧 Proximity Only", "Use only proximity prompts", fishingV2Config.useProximityOnly, function(v)
-    fishingV2Config.useProximityOnly = v
-    print("[Fishing V2] Proximity Only:", v and "ENABLED" or "DISABLED")
+    print("[Fishing V2] Radar:", v and "ENABLED" or "DISABLED")
 end, v2FeaturesPanel, 236)
+
+-- NEW: Instant Reel Toggle
+CreateToggle("⚡ Instant Reel", "Auto reel when ! appears", fishingV2Config.instantReel, function(v)
+    fishingV2Config.instantReel = v
+    print("[Fishing V2] Instant Reel:", v and "ENABLED" or "DISABLED")
+end, v2FeaturesPanel, 276)
 
 -- V2 Fishing Button Handler
 v2FishingButton.MouseButton1Click:Connect(function()
@@ -1639,14 +1635,14 @@ v2FishingButton.MouseButton1Click:Connect(function()
         StopFishingV2()
         v2FishingButton.Text = "🤖 START AI FISHING"
         v2FishingButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-        v2ActiveStatusLabel.Text = "⭕ AI OFFLINE"
-        v2ActiveStatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        v2StatusLabel.Text = "⭕ AI OFFLINE"
+        v2StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
     else
         StartFishingV2()
         v2FishingButton.Text = "⏹️ STOP AI FISHING"
         v2FishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-        v2ActiveStatusLabel.Text = "✅ AI FISHING ACTIVE"
-        v2ActiveStatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        v2StatusLabel.Text = "✅ AI FISHING ACTIVE"
+        v2StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
     end
 end)
 
