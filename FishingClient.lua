@@ -1022,19 +1022,19 @@ CreateToggle("🔄 Auto Reel", "Auto reel minigame", fishingConfig.autoReel, fun
     print("[Fishing] Auto Reel:", v and "ENABLED" or "DISABLED")
 end, togglesPanel, 156)
 
--- ═══════════════════════════════════════════════════════════
 -- FISHING V2 UI CONTENT - FIXED
 -- ═══════════════════════════════════════════════════════════
 
 local fishingV2Content = Instance.new("ScrollingFrame")
 fishingV2Content.Name = "FishingV2Content"
-fishingV2Content.Size = UDim2.new(1, -24, 1, -24)
-fishingV2Content.Position = UDim2.new(0, 12, 0, 12)
+fishingV2Content.Size = UDim2.new(1, -24, 1, -68)
+fishingV2Content.Position = UDim2.new(0, 12, 0, 56)
 fishingV2Content.BackgroundTransparency = 1
 fishingV2Content.Visible = false
 fishingV2Content.ScrollBarThickness = 6
 fishingV2Content.ScrollBarImageColor3 = ACCENT
 fishingV2Content.CanvasSize = UDim2.new(0, 0, 0, 600)
+fishingV2Content.BorderSizePixel = 0
 fishingV2Content.Parent = content
 
 -- Container for V2 content
@@ -1249,30 +1249,120 @@ end, v2FeaturesPanel, 236)
 v2ContentContainer.Size = UDim2.new(1, 0, 0, 264 + 280 + 20)
 fishingV2Content.CanvasSize = UDim2.new(0, 0, 0, 264 + 280 + 20)
 
--- TELEPORT UI (Placeholder)
-local teleportContent = Instance.new("Frame")
+-- TELEPORT UI (FULL FEATURES)
+local teleportContent = Instance.new("ScrollingFrame")
 teleportContent.Name = "TeleportContent"
-teleportContent.Size = UDim2.new(1, -24, 1, -24)
-teleportContent.Position = UDim2.new(0, 12, 0, 12)
+teleportContent.Size = UDim2.new(1, -24, 1, -68)
+teleportContent.Position = UDim2.new(0, 12, 0, 56)
 teleportContent.BackgroundTransparency = 1
 teleportContent.Visible = false
+teleportContent.ScrollBarThickness = 6
+teleportContent.ScrollBarImageColor3 = ACCENT
+teleportContent.CanvasSize = UDim2.new(0, 0, 0, 800)
+teleportContent.BorderSizePixel = 0
 teleportContent.Parent = content
 
-local teleportLabel = Instance.new("TextLabel")
-teleportLabel.Size = UDim2.new(1, 0, 1, 0)
-teleportLabel.BackgroundTransparency = 1
-teleportLabel.Font = Enum.Font.GothamBold
-teleportLabel.TextSize = 16
-teleportLabel.Text = "Teleport Feature\n(Coming Soon)"
-teleportLabel.TextColor3 = Color3.fromRGB(200,200,200)
-teleportLabel.TextYAlignment = Enum.TextYAlignment.Center
-teleportLabel.Parent = teleportContent
+-- Teleport Container
+local teleportContainer = Instance.new("Frame")
+teleportContainer.Name = "TeleportContainer"
+teleportContainer.Size = UDim2.new(1, 0, 0, 800)
+teleportContainer.BackgroundTransparency = 1
+teleportContainer.Parent = teleportContent
+
+-- Teleport Locations
+local teleportLocations = {
+    {name = "🏝️ Fisherman Island", position = Vector3.new(-184, 138, 196)},
+    {name = "🌊 Ocean", position = Vector3.new(-1500, 133, -1089)},
+    {name = "🏔️ Mountain Lake", position = Vector3.new(2653, 139, 2522)},
+    {name = "🌲 Forest Pond", position = Vector3.new(-1746, 137, 1314)},
+    {name = "❄️ Ice Lake", position = Vector3.new(-2654, 135, 2603)},
+    {name = "🏖️ Beach", position = Vector3.new(0, 130, -100)},
+    {name = "🌋 Volcano Lake", position = Vector3.new(3000, 150, -2500)},
+    {name = "🎪 Carnival Pond", position = Vector3.new(1200, 135, 800)},
+}
+
+-- Create Teleport Buttons
+local function CreateTeleportButton(data, index)
+    local yPos = (index - 1) * 60
+    
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 50)
+    btn.Position = UDim2.new(0, 0, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(14,14,16)
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    btn.Parent = teleportContainer
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(0.7, -16, 1, 0)
+    nameLabel.Position = UDim2.new(0, 16, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 14
+    nameLabel.Text = data.name
+    nameLabel.TextColor3 = Color3.fromRGB(240,240,240)
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = btn
+    
+    local tpBtn = Instance.new("TextButton")
+    tpBtn.Size = UDim2.new(0, 120, 0, 34)
+    tpBtn.Position = UDim2.new(1, -132, 0.5, -17)
+    tpBtn.BackgroundColor3 = ACCENT
+    tpBtn.Font = Enum.Font.GothamBold
+    tpBtn.TextSize = 12
+    tpBtn.Text = "TELEPORT"
+    tpBtn.TextColor3 = Color3.fromRGB(30,30,30)
+    tpBtn.AutoButtonColor = false
+    tpBtn.Parent = btn
+    
+    local tpCorner = Instance.new("UICorner")
+    tpCorner.CornerRadius = UDim.new(0, 6)
+    tpCorner.Parent = tpBtn
+    
+    -- Hover effects
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(24,24,26)}):Play()
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(14,14,16)}):Play()
+    end)
+    
+    tpBtn.MouseEnter:Connect(function()
+        TweenService:Create(tpBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 82, 82)}):Play()
+    end)
+    
+    tpBtn.MouseLeave:Connect(function()
+        TweenService:Create(tpBtn, TweenInfo.new(0.15), {BackgroundColor3 = ACCENT}):Play()
+    end)
+    
+    -- Teleport function
+    tpBtn.MouseButton1Click:Connect(function()
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = CFrame.new(data.position)
+            print("[Teleport] Teleported to:", data.name)
+        end
+    end)
+end
+
+for i, location in ipairs(teleportLocations) do
+    CreateTeleportButton(location, i)
+end
+
+-- Update canvas size
+teleportContainer.Size = UDim2.new(1, 0, 0, #teleportLocations * 60)
+teleportContent.CanvasSize = UDim2.new(0, 0, 0, #teleportLocations * 60 + 20)
 
 -- SETTINGS UI (Placeholder)
 local settingsContent = Instance.new("Frame")
 settingsContent.Name = "SettingsContent"
-settingsContent.Size = UDim2.new(1, -24, 1, -24)
-settingsContent.Position = UDim2.new(0, 12, 0, 12)
+settingsContent.Size = UDim2.new(1, -24, 1, -68)
+settingsContent.Position = UDim2.new(0, 12, 0, 56)
 settingsContent.BackgroundTransparency = 1
 settingsContent.Visible = false
 settingsContent.Parent = content
