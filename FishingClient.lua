@@ -42,6 +42,7 @@ local fishingStats = {
 local fishingActive = false
 local fishingConnection
 local reelConnection
+local notificationMonitorConnection
 
 -- Cleanup old UI
 if playerGui:FindFirstChild("NeonDashboardUI") then
@@ -552,7 +553,48 @@ local function AutoReelFish()
     return success
 end
 
--- MASTER INSTANT FISHING FUNCTION
+-- NOTIFICATION MONITORING SYSTEM
+local function StartNotificationMonitor()
+    notificationMonitorConnection = RunService.Heartbeat:Connect(function()
+        if not fishingActive then return end
+        
+        pcall(function()
+            local playerGui = player:WaitForChild("PlayerGui")
+            
+            -- Real-time notification detection
+            for _, guiObject in pairs(playerGui:GetDescendants()) do
+                if (guiObject:IsA("TextLabel") or guiObject:IsA("TextButton")) and guiObject.Visible then
+                    local text = guiObject.Text or ""
+                    
+                    -- Deteksi notifikasi bite (!)
+                    if text:find("!") and not text:find("!!!") then -- Hindari false positive
+                        print("[Fishing] ⚡ REAL-TIME NOTIFICATION DETECTED! Instant catch!")
+                        
+                        -- Emergency instant catch
+                        for i = 1, 5 do
+                            InstantFishProximity()
+                            InstantFishClickDetector() 
+                            InstantFishRemote()
+                            task.wait(0.001)
+                        end
+                        
+                        fishingStats.fishCaught = fishingStats.fishCaught + 1
+                        break
+                    end
+                end
+            end
+        end)
+    end)
+end
+
+local function StopNotificationMonitor()
+    if notificationMonitorConnection then
+        notificationMonitorConnection:Disconnect()
+        notificationMonitorConnection = nil
+    end
+end
+
+-- ENHANCED INSTANT FISHING - DETECT NOTIFICATION AND INSTANT CATCH
 local function InstantFish()
     if not fishingActive then return end
     
@@ -565,36 +607,97 @@ local function InstantFish()
     
     local success = false
     
-    -- Try all methods simultaneously for maximum speed
-    if fishingConfig.instantFishing or fishingConfig.blantantMode then
-        -- Method 1: ProximityPrompt (paling umum)
-        if InstantFishProximity() then
-            success = true
-        end
+    -- Method 0: DETECT NOTIFICATION (!) AND INSTANT CATCH
+    local notificationDetected = pcall(function()
+        local playerGui = player:WaitForChild("PlayerGui")
         
-        -- Method 2: ClickDetector
-        if InstantFishClickDetector() then
-            success = true
+        -- Cari notifikasi (!) di seluruh UI
+        for _, guiObject in pairs(playerGui:GetDescendants()) do
+            if guiObject:IsA("TextLabel") or guiObject:IsA("TextButton") then
+                local text = guiObject.Text or ""
+                local name = guiObject.Name:lower()
+                
+                -- Deteksi notifikasi (!) atau indikator bite
+                if text:find("!") or text:find("bite") or text:find("pull") or 
+                   name:find("notif") or name:find("alert") or name:find("bite") then
+                    
+                    if guiObject.Visible then
+                        print("[Fishing] 🎣 NOTIFICATION DETECTED! Instant catching...")
+                        
+                        -- INSTANT CATCH - langsung tarik tanpa delay
+                        -- Method 1: ProximityPrompt
+                        InstantFishProximity()
+                        
+                        -- Method 2: ClickDetector  
+                        InstantFishClickDetector()
+                        
+                        -- Method 3: RemoteEvent
+                        InstantFishRemote()
+                        
+                        -- Method 4: Virtual Input (emergency)
+                        InstantFishVirtualInput()
+                        
+                        -- Method 5: Auto Reel intensif
+                        if fishingConfig.autoReel then
+                            for i = 1, 10 do
+                                AutoReelFish()
+                                task.wait(0.001)
+                            end
+                        end
+                        
+                        fishingStats.fishCaught = fishingStats.fishCaught + 1
+                        return true
+                    end
+                end
+            elseif guiObject:IsA("ImageLabel") then
+                -- Cari gambar notifikasi (!) atau exclamation mark
+                local name = guiObject.Name:lower()
+                if name:find("notif") or name:find("alert") or name:find("exclam") or name:find("bite") then
+                    if guiObject.Visible then
+                        print("[Fishing] 🎣 VISUAL NOTIFICATION DETECTED! Instant catching...")
+                        
+                        -- Execute instant catch methods
+                        InstantFishProximity()
+                        InstantFishClickDetector()
+                        InstantFishRemote()
+                        InstantFishVirtualInput()
+                        
+                        fishingStats.fishCaught = fishingStats.fishCaught + 1
+                        return true
+                    end
+                end
+            end
         end
-        
-        -- Method 3: RemoteEvent
-        if InstantFishRemote() then
-            success = true
-        end
-        
-        -- Method 4: BindableEvent
-        if InstantFishBindable() then
-            success = true
-        end
-        
-        -- Method 5: Virtual Input
-        if InstantFishVirtualInput() then
-            success = true
-        end
-        
-        -- Method 6: Auto Reel (jika ada minigame)
-        if fishingConfig.autoReel then
-            AutoReelFish()
+        return false
+    end)
+    
+    -- Jika tidak ada notifikasi, lakukan fishing normal dengan instant fishing methods
+    if not notificationDetected then
+        if fishingConfig.instantFishing or fishingConfig.blantantMode then
+            -- Method 1: ProximityPrompt
+            if InstantFishProximity() then
+                success = true
+            end
+            
+            -- Method 2: ClickDetector
+            if InstantFishClickDetector() then
+                success = true
+            end
+            
+            -- Method 3: RemoteEvent
+            if InstantFishRemote() then
+                success = true
+            end
+            
+            -- Method 4: BindableEvent
+            if InstantFishBindable() then
+                success = true
+            end
+            
+            -- Method 5: Virtual Input
+            if InstantFishVirtualInput() then
+                success = true
+            end
         end
     end
     
@@ -603,7 +706,7 @@ local function InstantFish()
     end
 end
 
--- Start Fishing dengan connection yang proper
+-- UPDATED START FISHING WITH 5X SPEED
 local function StartFishing()
     if fishingActive then 
         print("[Fishing] Already fishing!")
@@ -613,11 +716,14 @@ local function StartFishing()
     fishingActive = true
     fishingStats.startTime = tick()
     
-    print("[Fishing] Starting ULTRA INSTANT fishing...")
+    print("[Fishing] Starting SMART INSTANT fishing...")
+    print("[Fishing] Notification Detection: ENABLED")
     print("[Fishing] 5X SPEED ACTIVATED!")
-    print("[Fishing] Delay:", fishingConfig.fishingDelay)
     
-    -- Main fishing loop - 5x SPEED ENHANCEMENT
+    -- Start notification monitoring
+    StartNotificationMonitor()
+    
+    -- Main fishing loop - 5x SPEED dengan notification detection
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
@@ -628,11 +734,11 @@ local function StartFishing()
         
         -- Enhanced delay based on mode (5x faster)
         if fishingConfig.blantantMode then
-            task.wait(0.0002) -- Ultra fast (was 0.001) - 5x faster
+            task.wait(0.0002) -- Ultra fast (was 0.001)
         elseif fishingConfig.instantFishing then
-            task.wait(0.002) -- Very fast (was 0.01) - 5x faster
+            task.wait(0.002) -- Very fast (was 0.01)
         else
-            task.wait(fishingConfig.fishingDelay * 0.2) -- 5x faster than normal
+            task.wait(fishingConfig.fishingDelay * 0.2)
         end
     end)
     
@@ -648,11 +754,12 @@ local function StartFishing()
         end)
     end
     
-    print("[Fishing] 🚀 ULTRA SPEED MODE ACTIVATED - 5X FASTER!")
+    print("[Fishing] 🚀 SMART FISHING ACTIVATED - 5X SPEED + NOTIFICATION DETECTION!")
 end
 
 local function StopFishing()
     fishingActive = false
+    StopNotificationMonitor()
     
     if fishingConnection then
         fishingConnection:Disconnect()
@@ -1088,6 +1195,11 @@ spawn(function()
         
         fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
         rateLabel.Text = string.format("Rate: %.2f/s", rate)
+        attemptsLabel.Text = string.format("Attempts: %d", fishingStats.attempts)
+        
+        local successRate = fishingStats.attempts > 0 and (fishingStats.fishCaught / fishingStats.attempts) * 100 or 0
+        successLabel.Text = string.format("Success: %.1f%%", successRate)
+        
         memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
         
         wait(0.5)
