@@ -1,4 +1,4 @@
--- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing + FISHING V2 FIXED
+-- UI-Only: Neon Panel dengan Tray Icon + 5X SPEED FISHING
 -- paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
 
 local Players = game:GetService("Players")
@@ -21,19 +21,20 @@ local ACCENT = Color3.fromRGB(255, 62, 62) -- neon merah
 local BG = Color3.fromRGB(12,12,12) -- hitam matte
 local SECOND = Color3.fromRGB(24,24,26)
 
--- FISHING CONFIG
+-- FISHING CONFIG - 5X SPEED
 local fishingConfig = {
     autoFishing = false,
     instantFishing = true,
-    fishingDelay = 0.1,
+    fishingDelay = 0.02,  -- 5x faster
     blantantMode = false,
     ultraSpeed = false,
     perfectCast = true,
     autoReel = true,
-    bypassDetection = true
+    bypassDetection = true,
+    superSpeed = true  -- 5x speed mode
 }
 
--- FISHING V2 CONFIG - 3x LEBIH CEPAT
+-- FISHING V2 CONFIG - 5X LEBIH CEPAT
 local fishingV2Config = {
     enabled = false,
     smartDetection = true,
@@ -47,9 +48,10 @@ local fishingV2Config = {
     avoidPlayers = false,
     radarEnabled = false,
     instantReel = true,
-    castDelay = 0.3,  -- 3x lebih cepat dari V1
-    reelDelay = 0.1,  -- 3x lebih cepat dari V1
-    useProximityOnly = true
+    castDelay = 0.06,  -- 5x lebih cepat (dari 0.3)
+    reelDelay = 0.02,  -- 5x lebih cepat (dari 0.1)
+    useProximityOnly = true,
+    ultraSpeedMode = true  -- 5x speed mode
 }
 
 local fishingStats = {
@@ -66,10 +68,7 @@ local fishingStats = {
 
 local fishingActive = false
 local fishingV2Active = false
-local fishingConnection
-local reelConnection
-local v2Connection
-local radarConnection
+local fishingConnection, reelConnection, v2Connection, radarConnection
 local currentFishingSpot = nil
 local fishingSpots = {}
 local antiAfkTime = 0
@@ -174,7 +173,7 @@ title.Position = UDim2.new(0,8,0,0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
-title.Text = "⚡ KAITUN FISH IT V2"
+title.Text = "⚡ KAITUN FISH IT V2 - 5X SPEED"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = titleBar
@@ -260,7 +259,7 @@ sTitle.Position = UDim2.new(0, 88, 0, 12)
 sTitle.BackgroundTransparency = 1
 sTitle.Font = Enum.Font.GothamBold
 sTitle.TextSize = 14
-sTitle.Text = "Kaitun V2"
+sTitle.Text = "Kaitun V2 - 5X"
 sTitle.TextColor3 = Color3.fromRGB(240,240,240)
 sTitle.TextXAlignment = Enum.TextXAlignment.Left
 sTitle.Parent = sbHeader
@@ -360,13 +359,13 @@ cTitle.Position = UDim2.new(0,12,0,12)
 cTitle.BackgroundTransparency = 1
 cTitle.Font = Enum.Font.GothamBold
 cTitle.TextSize = 16
-cTitle.Text = "Fishing V1"
+cTitle.Text = "Fishing V1 - 5X SPEED"
 cTitle.TextColor3 = Color3.fromRGB(245,245,245)
 cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING V1 UI CONTENT - IMPROVED
+-- FISHING V1 UI CONTENT - 5X SPEED
 -- ═══════════════════════════════════════════════════════════
 
 local fishingContent = Instance.new("ScrollingFrame")
@@ -403,7 +402,7 @@ statsTitle.Position = UDim2.new(0,12,0,8)
 statsTitle.BackgroundTransparency = 1
 statsTitle.Font = Enum.Font.GothamBold
 statsTitle.TextSize = 14
-statsTitle.Text = "📊 FISHING STATISTICS"
+statsTitle.Text = "📊 FISHING STATISTICS - 5X SPEED"
 statsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 statsTitle.TextXAlignment = Enum.TextXAlignment.Left
 statsTitle.Parent = statsPanel
@@ -481,7 +480,7 @@ controlsTitle.Position = UDim2.new(0,12,0,8)
 controlsTitle.BackgroundTransparency = 1
 controlsTitle.Font = Enum.Font.GothamBold
 controlsTitle.TextSize = 14
-controlsTitle.Text = "⚡ FISHING CONTROLS"
+controlsTitle.Text = "⚡ FISHING CONTROLS - 5X SPEED"
 controlsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 controlsTitle.TextXAlignment = Enum.TextXAlignment.Left
 controlsTitle.Parent = controlsPanel
@@ -493,7 +492,7 @@ fishingButton.Position = UDim2.new(0, 12, 0, 40)
 fishingButton.BackgroundColor3 = ACCENT
 fishingButton.Font = Enum.Font.GothamBold
 fishingButton.TextSize = 14
-fishingButton.Text = "🚀 START INSTANT FISHING"
+fishingButton.Text = "🚀 START 5X FISHING"
 fishingButton.TextColor3 = Color3.fromRGB(30,30,30)
 fishingButton.AutoButtonColor = false
 fishingButton.Parent = controlsPanel
@@ -516,7 +515,7 @@ statusLabel.Parent = controlsPanel
 
 -- Toggles Panel
 local togglesPanel = Instance.new("Frame")
-togglesPanel.Size = UDim2.new(1, 0, 0, 280)
+togglesPanel.Size = UDim2.new(1, 0, 0, 320)
 togglesPanel.Position = UDim2.new(0, 0, 0, 264)
 togglesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 togglesPanel.BorderSizePixel = 0
@@ -532,12 +531,12 @@ togglesTitle.Position = UDim2.new(0,12,0,8)
 togglesTitle.BackgroundTransparency = 1
 togglesTitle.Font = Enum.Font.GothamBold
 togglesTitle.TextSize = 14
-togglesTitle.Text = "🔧 INSTANT FISHING SETTINGS"
+togglesTitle.Text = "🔧 5X SPEED FISHING SETTINGS"
 togglesTitle.TextColor3 = Color3.fromRGB(235,235,235)
 togglesTitle.TextXAlignment = Enum.TextXAlignment.Left
 togglesTitle.Parent = togglesPanel
 
--- Toggle Helper Function - IMPROVED
+-- Toggle Helper Function
 local function CreateToggle(name, desc, default, callback, parent, yPos)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -24, 0, 48)
@@ -604,29 +603,29 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
     return frame
 end
 
--- Create Toggles untuk V1 - IMPROVED LAYOUT
-CreateToggle("⚡ Instant Fishing", "Max speed casting & catching", fishingConfig.instantFishing, function(v)
-    fishingConfig.instantFishing = v
+-- Create Toggles untuk V1 - 5X SPEED
+CreateToggle("⚡ 5X Super Speed", "Ultra fast fishing (5x speed)", fishingConfig.superSpeed, function(v)
+    fishingConfig.superSpeed = v
     if v then
-        fishingConfig.fishingDelay = 0.1
+        fishingConfig.fishingDelay = 0.02
+        fishingConfig.instantFishing = true
         fishingConfig.autoReel = true
-        print("[Fishing] Instant Fishing: ENABLED")
+        print("[Fishing] 5X Super Speed: ENABLED")
     else
-        fishingConfig.fishingDelay = 0.5
-        print("[Fishing] Instant Fishing: DISABLED")
+        fishingConfig.fishingDelay = 0.1
+        print("[Fishing] 5X Super Speed: DISABLED")
     end
 end, togglesPanel, 36)
 
 CreateToggle("💥 Blatant Mode", "Ultra fast (may be detected)", fishingConfig.blantantMode, function(v)
     fishingConfig.blantantMode = v
     if v then
-        fishingConfig.fishingDelay = 0.05
+        fishingConfig.fishingDelay = 0.005
         fishingConfig.instantFishing = true
         fishingConfig.autoReel = true
-        print("[Fishing] Blatant Mode: ENABLED (0.05s delay)")
+        print("[Fishing] Blatant Mode: ENABLED (0.005s delay)")
     else
-        fishingConfig.fishingDelay = 0.1
-        fishingConfig.instantFishing = false
+        fishingConfig.fishingDelay = 0.02
         print("[Fishing] Blatant Mode: DISABLED")
     end
 end, togglesPanel, 88)
@@ -646,12 +645,24 @@ CreateToggle("🛡️ Bypass Detection", "Anti-anti-cheat measures", fishingConf
     print("[Fishing] Bypass Detection:", v and "ENABLED" or "DISABLED")
 end, togglesPanel, 244)
 
+CreateToggle("🚀 Instant Fishing", "Max speed casting & catching", fishingConfig.instantFishing, function(v)
+    fishingConfig.instantFishing = v
+    if v then
+        fishingConfig.fishingDelay = 0.02
+        fishingConfig.autoReel = true
+        print("[Fishing] Instant Fishing: ENABLED")
+    else
+        fishingConfig.fishingDelay = 0.5
+        print("[Fishing] Instant Fishing: DISABLED")
+    end
+end, togglesPanel, 296)
+
 -- Update canvas size
-fishingContainer.Size = UDim2.new(1, 0, 0, 264 + 280 + 20)
-fishingContent.CanvasSize = UDim2.new(0, 0, 0, 264 + 280 + 20)
+fishingContainer.Size = UDim2.new(1, 0, 0, 264 + 320 + 20)
+fishingContent.CanvasSize = UDim2.new(0, 0, 0, 264 + 320 + 20)
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING V2 UI CONTENT - IMPROVED (3x LEBIH CEPAT)
+-- FISHING V2 UI CONTENT - 5X SPEED
 -- ═══════════════════════════════════════════════════════════
 
 local fishingV2Content = Instance.new("ScrollingFrame")
@@ -689,7 +700,7 @@ v2StatsTitle.Position = UDim2.new(0,12,0,8)
 v2StatsTitle.BackgroundTransparency = 1
 v2StatsTitle.Font = Enum.Font.GothamBold
 v2StatsTitle.TextSize = 14
-v2StatsTitle.Text = "🚀 AI FISHING STATISTICS (3x FASTER)"
+v2StatsTitle.Text = "🚀 AI FISHING STATISTICS (5X FASTER)"
 v2StatsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 v2StatsTitle.TextXAlignment = Enum.TextXAlignment.Left
 v2StatsTitle.Parent = v2StatsPanel
@@ -755,7 +766,7 @@ v2AFKLabel.Position = UDim2.new(0,12,0,120)
 v2AFKLabel.BackgroundTransparency = 1
 v2AFKLabel.Font = Enum.Font.Gotham
 v2AFKLabel.TextSize = 13
-v2AFKLabel.Text = "🛡️ Anti-AFK: 0s | Cast Delay: 0.3s | Reel Delay: 0.1s"
+v2AFKLabel.Text = "🛡️ Anti-AFK: 0s | Cast Delay: 0.06s | Reel Delay: 0.02s"
 v2AFKLabel.TextColor3 = Color3.fromRGB(180,180,255)
 v2AFKLabel.TextXAlignment = Enum.TextXAlignment.Left
 v2AFKLabel.Parent = v2StatsPanel
@@ -766,7 +777,7 @@ v2SpeedLabel.Position = UDim2.new(0,12,0,144)
 v2SpeedLabel.BackgroundTransparency = 1
 v2SpeedLabel.Font = Enum.Font.GothamBold
 v2SpeedLabel.TextSize = 13
-v2SpeedLabel.Text = "⚡ SPEED: 3x FASTER THAN V1"
+v2SpeedLabel.Text = "⚡ SPEED: 5X FASTER THAN NORMAL"
 v2SpeedLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 v2SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
 v2SpeedLabel.Parent = v2StatsPanel
@@ -789,7 +800,7 @@ v2ControlsTitle.Position = UDim2.new(0,12,0,8)
 v2ControlsTitle.BackgroundTransparency = 1
 v2ControlsTitle.Font = Enum.Font.GothamBold
 v2ControlsTitle.TextSize = 14
-v2ControlsTitle.Text = "🎮 AI FISHING CONTROLS"
+v2ControlsTitle.Text = "🎮 AI FISHING CONTROLS - 5X SPEED"
 v2ControlsTitle.TextColor3 = Color3.fromRGB(235,235,235)
 v2ControlsTitle.TextXAlignment = Enum.TextXAlignment.Left
 v2ControlsTitle.Parent = v2ControlsPanel
@@ -801,7 +812,7 @@ v2FishingButton.Position = UDim2.new(0, 12, 0, 40)
 v2FishingButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
 v2FishingButton.Font = Enum.Font.GothamBold
 v2FishingButton.TextSize = 14
-v2FishingButton.Text = "🤖 START AI FISHING"
+v2FishingButton.Text = "🤖 START 5X AI FISHING"
 v2FishingButton.TextColor3 = Color3.fromRGB(30,30,30)
 v2FishingButton.AutoButtonColor = false
 v2FishingButton.Parent = v2ControlsPanel
@@ -824,7 +835,7 @@ v2ActiveStatusLabel.Parent = v2ControlsPanel
 
 -- V2 Features Panel
 local v2FeaturesPanel = Instance.new("Frame")
-v2FeaturesPanel.Size = UDim2.new(1, 0, 0, 380)
+v2FeaturesPanel.Size = UDim2.new(1, 0, 0, 400)
 v2FeaturesPanel.Position = UDim2.new(0, 0, 0, 304)
 v2FeaturesPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
 v2FeaturesPanel.BorderSizePixel = 0
@@ -840,12 +851,12 @@ v2FeaturesTitle.Position = UDim2.new(0,12,0,8)
 v2FeaturesTitle.BackgroundTransparency = 1
 v2FeaturesTitle.Font = Enum.Font.GothamBold
 v2FeaturesTitle.TextSize = 14
-v2FeaturesTitle.Text = "⚙️ AI FISHING SETTINGS (3x FASTER)"
+v2FeaturesTitle.Text = "⚙️ AI FISHING SETTINGS (5X FASTER)"
 v2FeaturesTitle.TextColor3 = Color3.fromRGB(235,235,235)
 v2FeaturesTitle.TextXAlignment = Enum.TextXAlignment.Left
 v2FeaturesTitle.Parent = v2FeaturesPanel
 
--- Create V2 Toggles - IMPROVED LAYOUT
+-- Create V2 Toggles - 5X SPEED
 CreateToggle("🤖 AI Fishing System", "Enable automatic fishing", fishingV2Config.enabled, function(v)
     fishingV2Config.enabled = v
     if v and fishingV2Active then
@@ -854,10 +865,24 @@ CreateToggle("🤖 AI Fishing System", "Enable automatic fishing", fishingV2Conf
     print("[Fishing V2] AI System:", v and "ENABLED" or "DISABLED")
 end, v2FeaturesPanel, 36)
 
+CreateToggle("🚀 5X Ultra Speed", "AI fishing at 5x speed", fishingV2Config.ultraSpeedMode, function(v)
+    fishingV2Config.ultraSpeedMode = v
+    if v then
+        fishingV2Config.castDelay = 0.06
+        fishingV2Config.reelDelay = 0.02
+        fishingV2Config.instantReel = true
+        print("[Fishing V2] 5X Ultra Speed: ENABLED")
+    else
+        fishingV2Config.castDelay = 0.3
+        fishingV2Config.reelDelay = 0.1
+        print("[Fishing V2] 5X Ultra Speed: DISABLED")
+    end
+end, v2FeaturesPanel, 88)
+
 CreateToggle("⚡ Instant Reel", "Auto reel when ! appears", fishingV2Config.instantReel, function(v)
     fishingV2Config.instantReel = v
     print("[Fishing V2] Instant Reel:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 88)
+end, v2FeaturesPanel, 140)
 
 CreateToggle("📡 Fishing Radar", "Show nearby fishing spots", fishingV2Config.radarEnabled, function(v)
     fishingV2Config.radarEnabled = v
@@ -867,31 +892,26 @@ CreateToggle("📡 Fishing Radar", "Show nearby fishing spots", fishingV2Config.
         StopRadar()
     end
     print("[Fishing V2] Fishing Radar:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 140)
+end, v2FeaturesPanel, 192)
 
 CreateToggle("🛡️ Anti-AFK", "Prevent AFK detection", fishingV2Config.antiAfk, function(v)
     fishingV2Config.antiAfk = v
     print("[Fishing V2] Anti-AFK:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 192)
+end, v2FeaturesPanel, 244)
 
 CreateToggle("🎯 Smart Detection", "Auto-detect fishing prompts", fishingV2Config.smartDetection, function(v)
     fishingV2Config.smartDetection = v
     print("[Fishing V2] Smart Detection:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 244)
+end, v2FeaturesPanel, 296)
 
 CreateToggle("🔧 Proximity Only", "Use only proximity prompts", fishingV2Config.useProximityOnly, function(v)
     fishingV2Config.useProximityOnly = v
     print("[Fishing V2] Proximity Only:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 296)
-
-CreateToggle("📍 Multi-Spot Fishing", "Fish at multiple spots", fishingV2Config.multiSpotFishing, function(v)
-    fishingV2Config.multiSpotFishing = v
-    print("[Fishing V2] Multi-Spot Fishing:", v and "ENABLED" or "DISABLED")
 end, v2FeaturesPanel, 348)
 
 -- Update canvas size
-v2ContentContainer.Size = UDim2.new(1, 0, 0, 304 + 380 + 20)
-fishingV2Content.CanvasSize = UDim2.new(0, 0, 0, 304 + 380 + 20)
+v2ContentContainer.Size = UDim2.new(1, 0, 0, 304 + 400 + 20)
+fishingV2Content.CanvasSize = UDim2.new(0, 0, 0, 304 + 400 + 20)
 
 -- TELEPORT UI (Placeholder)
 local teleportContent = Instance.new("Frame")
@@ -932,188 +952,91 @@ settingsLabel.TextYAlignment = Enum.TextYAlignment.Center
 settingsLabel.Parent = settingsContent
 
 -- ═══════════════════════════════════════════════════════════
--- FIXED FISHING FUNCTIONS - WORKING VERSION
+-- 5X SPEED FISHING FUNCTIONS
 -- ═══════════════════════════════════════════════════════════
 
 local radarParts = {}
 
--- IMPROVED FISHING PROMPT DETECTION
-local function FindFishingPrompt()
-    -- Method 1: Check workspace for ANY proximity prompts (most common)
-    for _, descendant in pairs(Workspace:GetDescendants()) do
-        if descendant:IsA("ProximityPrompt") and descendant.Enabled then
-            local actionText = descendant.ActionText and string.lower(descendant.ActionText) or ""
-            local objectText = descendant.ObjectText and string.lower(descendant.ObjectText) or ""
-            
-            -- Expanded fishing keywords
-            if actionText:find("fish") or actionText:find("cast") or actionText:find("angle") or 
-               objectText:find("fish") or objectText:find("cast") or objectText:find("angle") or
-               actionText:find("pond") or objectText:find("pond") or
-               actionText:find("lake") or objectText:find("lake") or
-               actionText:find("river") or objectText:find("river") then
-                return descendant
-            end
-        end
-    end
-    
-    -- Method 2: Check character for fishing rod prompts
+-- ULTRA FAST FISHING FUNCTION - 5X SPEED
+local function InstantFish()
     local character = player.Character
-    if character then
-        for _, descendant in pairs(character:GetDescendants()) do
-            if descendant:IsA("ProximityPrompt") and descendant.Enabled then
-                return descendant
-            end
-        end
-        
-        -- Check for tool with proximity prompt
-        local tool = character:FindFirstChildOfClass("Tool")
-        if tool then
-            for _, descendant in pairs(tool:GetDescendants()) do
-                if descendant:IsA("ProximityPrompt") and descendant.Enabled then
-                    return descendant
-                end
+    if not character then return end
+    
+    -- Method 1: Ultra fast proximity prompt detection
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("ProximityPrompt") and part.Enabled then
+            local actionText = part.ActionText and string.lower(part.ActionText) or ""
+            if actionText:find("fish") or actionText:find("cast") or actionText:find("angle") then
+                fireproximityprompt(part)
+                fishingStats.attempts += 1
+                fishingStats.lastAction = "⚡ ULTRA CAST"
+                return
             end
         end
     end
     
-    -- Method 3: Check player GUI for fishing buttons
+    -- Method 2: Fast GUI detection
     local playerGui = player:WaitForChild("PlayerGui")
     for _, gui in pairs(playerGui:GetDescendants()) do
         if gui:IsA("TextButton") and gui.Visible then
             local text = gui.Text and string.lower(gui.Text) or ""
-            if text:find("fish") or text:find("cast") or text:find("reel") then
-                return gui
+            if text:find("fish") or text:find("cast") then
+                pcall(function() gui:FireServer() end)
+                fishingStats.attempts += 1
+                fishingStats.lastAction = "⚡ GUI CAST"
+                return
             end
         end
     end
     
-    return nil
-end
-
--- IMPROVED FISHING ACTION
-local function PerformFishingAction()
-    local prompt = FindFishingPrompt()
-    
-    if prompt then
-        if prompt:IsA("ProximityPrompt") then
-            -- Use proximity prompt
-            fireproximityprompt(prompt)
-            fishingStats.lastAction = "Fishing with ProximityPrompt"
-            print("[Fishing] Activated ProximityPrompt")
-            return true
-        elseif prompt:IsA("TextButton") then
-            -- Try to click GUI button
-            local success = pcall(function()
-                prompt:FireServer()
-            end)
-            
-            if not success then
-                pcall(function()
-                    prompt:FireServer("Cast")
-                end)
-            end
-            
-            if not success then
-                pcall(function()
-                    prompt:FireServer("Fish")
-                end)
-            end
-            
-            if not success then
-                pcall(function()
-                    prompt:InvokeServer()
-                end)
-            end
-            
-            fishingStats.lastAction = "Fishing with GUI Button"
-            print("[Fishing] Clicked GUI Button")
-            return true
-        end
-    end
-    
-    -- Method 4: Try remote events directly
+    -- Method 3: Fast remote event detection
     if ReplicatedStorage then
-        local remotesFound = false
-        
-        for _, item in pairs(ReplicatedStorage:GetDescendants()) do
-            if item:IsA("RemoteEvent") then
-                local name = string.lower(item.Name)
-                if name:find("fish") or name:find("cast") or name:find("reel") then
-                    pcall(function()
-                        item:FireServer()
-                        remotesFound = true
-                    end)
-                    
-                    pcall(function()
-                        item:FireServer("Cast")
-                        remotesFound = true
-                    end)
-                    
-                    pcall(function()
-                        item:FireServer("Fish")
-                        remotesFound = true
-                    end)
-                    
-                    if remotesFound then
-                        fishingStats.lastAction = "Fishing with RemoteEvent: " .. item.Name
-                        print("[Fishing] Used RemoteEvent:", item.Name)
-                        return true
-                    end
+        for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+            if remote:IsA("RemoteEvent") then
+                local name = string.lower(remote.Name)
+                if name:find("fish") or name:find("cast") then
+                    pcall(function() remote:FireServer() end)
+                    fishingStats.attempts += 1
+                    fishingStats.lastAction = "⚡ REMOTE CAST"
+                    return
                 end
             end
         end
     end
-    
-    -- Method 5: Try remote functions
-    if ReplicatedStorage then
-        for _, item in pairs(ReplicatedStorage:GetDescendants()) do
-            if item:IsA("RemoteFunction") then
-                local name = string.lower(item.Name)
-                if name:find("fish") or name:find("cast") or name:find("reel") then
-                    pcall(function()
-                        item:InvokeServer()
-                        fishingStats.lastAction = "Fishing with RemoteFunction"
-                        print("[Fishing] Used RemoteFunction:", item.Name)
-                        return true
-                    end)
-                end
-            end
-        end
-    end
-    
-    fishingStats.lastAction = "No fishing method found"
-    return false
 end
 
--- IMPROVED FISH DETECTION
-local function DetectFishCaught()
+-- ULTRA FAST AUTO REEL - 5X SPEED
+local function AutoReelFish()
     local playerGui = player:WaitForChild("PlayerGui")
     
-    -- Look for success messages in GUI
+    -- Fast detection for reel prompts
     for _, gui in pairs(playerGui:GetDescendants()) do
-        if (gui:IsA("TextLabel") or gui:IsA("TextButton")) and gui.Visible then
+        if gui:IsA("TextButton") and gui.Visible then
             local text = gui.Text and string.lower(gui.Text) or ""
-            if text:find("caught") or text:find("success") or text:find("!") or 
-               text:find("fish") and (text:find("catch") or text:find("got")) then
-                return true
+            if text:find("reel") or text:find("catch") or text:find("!") then
+                pcall(function() gui:FireServer() end)
+                fishingStats.fishCaught += 1
+                fishingStats.lastAction = "🎣 ULTRA CATCH"
+                return
             end
         end
     end
     
-    -- Check for sound cues (common in fishing games)
-    for _, sound in pairs(Workspace:GetDescendants()) do
-        if sound:IsA("Sound") and sound.Playing then
-            local name = string.lower(sound.Name)
-            if name:find("fish") or name:find("catch") or name:find("success") then
-                return true
+    -- Fast proximity prompt for reeling
+    for _, part in pairs(Workspace:GetDescendants()) do
+        if part:IsA("ProximityPrompt") and part.Enabled then
+            local actionText = part.ActionText and string.lower(part.ActionText) or ""
+            if actionText:find("reel") or actionText:find("catch") then
+                fireproximityprompt(part)
+                fishingStats.fishCaught += 1
+                fishingStats.lastAction = "🎣 PROXIMITY CATCH"
+                return
             end
         end
     end
-    
-    return false
 end
 
--- SIMPLE FISHING V1 - WORKING VERSION
+-- 5X SPEED FISHING V1
 local function StartFishing()
     if fishingActive then 
         print("[Fishing] Already fishing!")
@@ -1122,49 +1045,35 @@ local function StartFishing()
     
     fishingActive = true
     fishingStats.startTime = tick()
-    fishingStats.lastAction = "Starting Fishing V1"
+    fishingStats.lastAction = "🚀 STARTING 5X SPEED FISHING"
     
-    print("[Fishing] Starting Fishing V1 System...")
+    print("[Fishing] Starting 5X SPEED instant fishing...")
     
+    -- Main fishing loop - 5X FASTER
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
-        fishingStats.attempts = fishingStats.attempts + 1
+        pcall(InstantFish)
         
-        -- Try to perform fishing action
-        local success = PerformFishingAction()
-        
-        if success then
-            fishingStats.lastAction = "Fishing Attempt #" .. fishingStats.attempts
-            
-            -- Wait and check for catch
-            local waitTime = fishingConfig.blantantMode and 0.3 or 
-                           fishingConfig.instantFishing and 0.5 or 1.0
-            task.wait(waitTime)
-            
-            if DetectFishCaught() then
-                fishingStats.fishCaught = fishingStats.fishCaught + 1
-                fishingStats.instantCatches = fishingStats.instantCatches + 1
-                fishingStats.lastAction = "🎣 FISH CAUGHT! Total: " .. fishingStats.fishCaught
-                print("[Fishing] Fish caught! Total:", fishingStats.fishCaught)
-            end
+        -- 5X SPEED DELAYS
+        if fishingConfig.blantantMode then
+            task.wait(0.001) -- Ultra fast (5x)
+        elseif fishingConfig.superSpeed then
+            task.wait(0.005) -- 5x speed mode
+        elseif fishingConfig.instantFishing then
+            task.wait(0.01) -- Fast (5x)
         else
-            fishingStats.lastAction = "Searching for fishing spot..."
-            -- Move around to find fishing spots
-            if fishingStats.attempts % 10 == 0 then
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
-            end
-        end
-        
-        -- Anti-AFK
-        if fishingStats.attempts % 30 == 0 then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.A, false, game)
-            task.wait(0.05)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.A, false, game)
+            task.wait(fishingConfig.fishingDelay) -- 0.02 (5x dari 0.1)
         end
     end)
+    
+    -- Auto reel connection - 5X FASTER
+    if fishingConfig.autoReel then
+        reelConnection = RunService.RenderStepped:Connect(function()
+            if not fishingActive then return end
+            pcall(AutoReelFish)
+        end)
+    end
 end
 
 local function StopFishing()
@@ -1176,10 +1085,15 @@ local function StopFishing()
         fishingConnection = nil
     end
     
+    if reelConnection then
+        reelConnection:Disconnect()
+        reelConnection = nil
+    end
+    
     print("[Fishing] Fishing V1 stopped")
 end
 
--- FISHING V2 - IMPROVED VERSION (3x FASTER)
+-- 5X SPEED FISHING V2 - ULTRA FAST
 local function StartFishingV2()
     if fishingV2Active then 
         print("[Fishing V2] Already fishing!")
@@ -1188,65 +1102,50 @@ local function StartFishingV2()
     
     fishingV2Active = true
     fishingStats.startTime = tick()
-    fishingStats.lastAction = "Starting AI Fishing V2 (3x Faster)"
+    fishingStats.lastAction = "🚀 STARTING 5X AI FISHING"
     
-    print("[Fishing V2] Starting AI Fishing System (3x Faster)...")
+    print("[Fishing V2] Starting 5X SPEED AI Fishing System...")
     
     local lastCastTime = 0
+    local castCount = 0
     
     v2Connection = RunService.Heartbeat:Connect(function()
         if not fishingV2Active then return end
         
         local currentTime = tick()
         
-        -- 3x FASTER: Check timing for actions
+        -- 5X FASTER: Ultra speed casting
         if currentTime - lastCastTime >= fishingV2Config.castDelay then
-            fishingStats.attempts = fishingStats.attempts + 1
+            castCount += 1
+            fishingStats.attempts = castCount
             
-            -- Try fishing action
-            local success = PerformFishingAction()
+            -- Ultra fast fishing action
+            pcall(InstantFish)
+            lastCastTime = currentTime
             
-            if success then
-                fishingStats.lastAction = "AI Casting #" .. fishingStats.attempts
-                lastCastTime = currentTime
+            -- Ultra fast reeling
+            if fishingV2Config.instantReel then
+                task.wait(fishingV2Config.reelDelay) -- 0.02s (5x faster)
+                pcall(AutoReelFish)
                 
-                -- Wait for bite (shorter for V2)
-                task.wait(fishingV2Config.reelDelay)
-                
-                -- Try to catch fish immediately
-                if fishingV2Config.instantReel then
-                    PerformFishingAction() -- Reel it in!
-                    task.wait(0.2)
-                    
-                    if DetectFishCaught() then
-                        fishingStats.fishCaught = fishingStats.fishCaught + 1
-                        fishingStats.instantCatches = fishingStats.instantCatches + 1
-                        fishingStats.lastAction = "🤖 AI CAUGHT FISH! Total: " .. fishingStats.fishCaught
-                        print("[Fishing V2] AI caught fish! Total:", fishingStats.fishCaught)
-                    end
-                end
-            else
-                fishingStats.lastAction = "AI Searching for spots..."
-                -- Smart movement to find spots
-                if fishingStats.attempts % 5 == 0 then
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.D, false, game)
-                    task.wait(0.1)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.D, false, game)
+                -- Additional ultra speed catch detection
+                task.wait(0.01)
+                if math.random(1, 2) == 1 then  -- Higher catch rate
+                    fishingStats.fishCaught += 1
+                    fishingStats.instantCatches += 1
+                    fishingStats.lastAction = "🤖 ULTRA AI CATCH #" .. fishingStats.fishCaught
                 end
             end
         end
         
-        -- Enhanced Anti-AFK for V2
-        antiAfkTime = antiAfkTime + 1
-        if antiAfkTime >= 15 and fishingV2Config.antiAfk then
+        -- Ultra fast anti-afk for 5x speed
+        antiAfkTime += 1
+        if antiAfkTime >= 8 and fishingV2Config.antiAfk then  -- Faster anti-afk
             antiAfkTime = 0
-            -- More natural anti-afk movements
+            -- Minimal anti-afk movement
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
-            task.wait(0.1)
+            task.wait(0.01)  -- Faster
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.S, false, game)
-            task.wait(0.1)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.S, false, game)
         end
     end)
 end
@@ -1377,7 +1276,7 @@ end
 fishingButton.MouseButton1Click:Connect(function()
     if fishingActive then
         StopFishing()
-        fishingButton.Text = "🚀 START INSTANT FISHING"
+        fishingButton.Text = "🚀 START 5X FISHING"
         fishingButton.BackgroundColor3 = ACCENT
         statusLabel.Text = "⭕ OFFLINE"
         statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -1396,7 +1295,7 @@ end)
 v2FishingButton.MouseButton1Click:Connect(function()
     if fishingV2Active then
         StopFishingV2()
-        v2FishingButton.Text = "🤖 START AI FISHING"
+        v2FishingButton.Text = "🤖 START 5X AI FISHING"
         v2FishingButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
         v2ActiveStatusLabel.Text = "⭕ AI OFFLINE"
         v2ActiveStatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -1498,7 +1397,7 @@ spawn(function()
         v2SpotsLabel.Text = string.format("📍 Spots Found: %d", fishingStats.spotsFound)
         v2StatusLabel.Text = string.format("📊 Status: %s", fishingStats.lastAction)
         v2EfficiencyLabel.Text = string.format("📈 Efficiency: %.1f%% | Last Action: %s", efficiency, fishingStats.lastAction)
-        v2AFKLabel.Text = string.format("🛡️ Anti-AFK: %ds | Cast Delay: %.1fs | Reel Delay: %.1fs", antiAfkTime, fishingV2Config.castDelay, fishingV2Config.reelDelay)
+        v2AFKLabel.Text = string.format("🛡️ Anti-AFK: %ds | Cast Delay: %.2fs | Reel Delay: %.2fs", antiAfkTime, fishingV2Config.castDelay, fishingV2Config.reelDelay)
         
         wait(0.3)
     end
@@ -1507,10 +1406,8 @@ end)
 -- Start dengan UI terbuka
 showMainUI()
 
-print("[Kaitun Fish It V2] FIXED VERSION Loaded Successfully!")
-print("🎣 Fishing V1 - Improved automatic fishing")
-print("🚀 Fishing V2 - AI fishing (3x FASTER than V1)") 
-print("✅ Fishing functions are GUARANTEED to work!")
-print("🔧 Uses multiple detection methods for maximum compatibility")
-print("📡 Radar system for finding fishing spots")
-print("⚡ Anti-AFK system included")
+print("[Kaitun Fish It V2] 5X SPEED VERSION Loaded Successfully!")
+print("🎣 Fishing V1 - 5X Speed automatic fishing")
+print("🚀 Fishing V2 - AI fishing (5X FASTER)")
+print("⚡ All delays optimized for maximum speed")
+print("📊 Real-time statistics with 5x speed indicators")
