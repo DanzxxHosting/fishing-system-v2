@@ -66,7 +66,10 @@ local fishingStats = {
 
 local fishingActive = false
 local fishingV2Active = false
-local fishingConnection, reelConnection, v2Connection, radarConnection
+local fishingConnection
+local reelConnection
+local v2Connection
+local radarConnection
 local currentFishingSpot = nil
 local fishingSpots = {}
 local antiAfkTime = 0
