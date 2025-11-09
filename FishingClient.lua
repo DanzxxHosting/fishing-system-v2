@@ -363,6 +363,426 @@ cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
 -- ═══════════════════════════════════════════════════════════
+-- FISHING V1 FUNCTIONS (BASIC)
+-- ═══════════════════════════════════════════════════════════
+
+local function SafeGetCharacter()
+    return player.Character or player.CharacterAdded:Wait()
+end
+
+local function SafeGetHumanoid()
+    local char = SafeGetCharacter()
+    return char and char:FindFirstChild("Humanoid")
+end
+
+local function GetFishingRod()
+    local success, result = pcall(function()
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            for _, item in pairs(backpack:GetChildren()) do
+                if item:IsA("Tool") then
+                    local name = item.Name:lower()
+                    if name:find("rod") or name:find("pole") or name:find("fishing") then
+                        return item
+                    end
+                end
+            end
+        end
+        
+        local char = player.Character
+        if char then
+            for _, item in pairs(char:GetChildren()) do
+                if item:IsA("Tool") then
+                    local name = item.Name:lower()
+                    if name:find("rod") or name:find("pole") or name:find("fishing") then
+                        return item
+                    end
+                end
+            end
+        end
+        
+        return nil
+    end)
+    
+    return success and result or nil
+end
+
+local function EquipRod()
+    local success = pcall(function()
+        local rod = GetFishingRod()
+        if not rod then 
+            return false 
+        end
+        
+        if rod.Parent == player.Backpack then
+            local humanoid = SafeGetHumanoid()
+            if humanoid then
+                humanoid:EquipTool(rod)
+                task.wait(0.1)
+                return true
+            end
+        end
+        
+        return rod.Parent == player.Character
+    end)
+    
+    return success
+end
+
+-- INSTANT FISHING METHODS
+local function InstantFishProximity()
+    local success = pcall(function()
+        local char = SafeGetCharacter()
+        if not char then return false end
+        
+        for _, descendant in pairs(char:GetDescendants()) do
+            if descendant:IsA("ProximityPrompt") then
+                local objText = descendant.ObjectText and descendant.ObjectText:lower() or ""
+                local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
+                
+                if objText:find("fish") or objText:find("cast") or objText:find("catch") or
+                   actionText:find("fish") or actionText:find("cast") or actionText:find("catch") then
+                    
+                    if descendant.Enabled then
+                        fireproximityprompt(descendant)
+                        return true
+                    end
+                end
+            end
+        end
+        
+        return false
+    end)
+    
+    return success
+end
+
+local function InstantFishRemote()
+    local success = pcall(function()
+        if not ReplicatedStorage then return false end
+        
+        for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+                local name = remote.Name:lower()
+                if name:find("fish") or name:find("cast") or name:find("catch") or name:find("reel") then
+                    if remote:IsA("RemoteEvent") then
+                        remote:FireServer("Cast")
+                        remote:FireServer("Reel")
+                        remote:FireServer("Catch")
+                        return true
+                    elseif remote:IsA("RemoteFunction") then
+                        remote:InvokeServer("Cast")
+                        remote:InvokeServer("Reel")
+                        remote:InvokeServer("Catch")
+                        return true
+                    end
+                end
+            end
+        end
+        
+        return false
+    end)
+    
+    return success
+end
+
+-- MASTER INSTANT FISHING FUNCTION (V1 - IMPROVED)
+local function InstantFish()
+    if not fishingActive then return end
+    
+    fishingStats.attempts = fishingStats.attempts + 1
+    
+    -- Pastikan rod equipped
+    local rod = GetFishingRod()
+    if not rod then
+        fishingStats.lastAction = "No Rod Found"
+        return
+    end
+    
+    if not EquipRod() then
+        fishingStats.lastAction = "Rod Not Equipped"
+        return
+    end
+    
+    local success = false
+    
+    -- Method 1: ProximityPrompt (paling reliable)
+    if InstantFishProximity() then
+        success = true
+        fishingStats.lastAction = "Caught (Proximity)"
+    end
+    
+    -- Method 2: RemoteEvent/Function
+    if fishingConfig.blantantMode and InstantFishRemote() then
+        success = true  
+        fishingStats.lastAction = "Caught (Remote)"
+    end
+    
+    -- Method 3: Direct tool activation (backup)
+    if not success and rod.Parent == player.Character then
+        pcall(function()
+            rod:Activate()
+            success = true
+            fishingStats.lastAction = "Caught (Tool Activate)"
+        end)
+    end
+    
+    if success then
+        fishingStats.fishCaught = fishingStats.fishCaught + 1
+    end
+end
+
+-- Start Fishing V1 (IMPROVED)
+local function StartFishing()
+    if fishingActive then 
+        print("[Fishing] Already fishing!")
+        return 
+    end
+    
+    fishingActive = true
+    fishingStats.startTime = tick()
+    
+    print("[Fishing] Starting instant fishing...")
+    print("[Fishing] Mode:", fishingConfig.blantantMode and "BLATANT" or (fishingConfig.instantFishing and "INSTANT" or "NORMAL"))
+    
+    -- Equip rod first
+    if not EquipRod() then
+        print("[Fishing] ⚠️ Please equip fishing rod first!")
+        fishingActive = false
+        return
+    end
+    
+    -- Main fishing loop
+    fishingConnection = RunService.Heartbeat:Connect(function()
+        if not fishingActive then return end
+        
+        pcall(InstantFish)
+        
+        -- Delay based on mode
+        local delay = fishingConfig.fishingDelay
+        if fishingConfig.blantantMode then
+            delay = 0.001
+        elseif fishingConfig.instantFishing then
+            delay = 0.01
+        end
+        
+        task.wait(delay)
+    end)
+    
+    print("[Fishing] ✅ Instant fishing started!")
+end
+
+local function StopFishing()
+    fishingActive = false
+    
+    if fishingConnection then
+        fishingConnection:Disconnect()
+        fishingConnection = nil
+    end
+    
+    print("[Fishing] Stopped fishing")
+    print("[Fishing] Total fish caught:", fishingStats.fishCaught)
+end
+
+-- ═══════════════════════════════════════════════════════════
+-- EVENT HANDLERS
+-- ═══════════════════════════════════════════════════════════
+
+-- Fishing V1 Button Handler
+fishingButton.MouseButton1Click:Connect(function()
+    if fishingActive then
+        StopFishing()
+        fishingButton.Text = "🚀 START INSTANT FISHING"
+        fishingButton.BackgroundColor3 = ACCENT
+        statusLabel.Text = "⭕ OFFLINE"
+        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    else
+        StartFishing()
+        fishingButton.Text = "⏹️ STOP FISHING"
+        fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        statusLabel.Text = "✅ FISHING ACTIVE"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    end
+end)
+
+-- Fishing V2 Button Handler
+v2FishingButton.MouseButton1Click:Connect(function()
+    if fishingV2Active then
+        StopFishingV2()
+        v2FishingButton.Text = "🤖 START AI FISHING"
+        v2FishingButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+        v2ActiveStatusLabel.Text = "⭕ AI OFFLINE"
+        v2ActiveStatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    else
+        StartFishingV2()
+        v2FishingButton.Text = "⏹️ STOP AI FISHING"
+        v2FishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        v2ActiveStatusLabel.Text = "✅ AI FISHING ACTIVE"
+        v2ActiveStatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    end
+end)
+
+-- Menu navigation
+local activeMenu = "Fishing V1"
+for name, btn in pairs(menuButtons) do
+    btn.MouseButton1Click:Connect(function()
+        for n, b in pairs(menuButtons) do
+            b.BackgroundColor3 = Color3.fromRGB(20,20,20)
+        end
+        btn.BackgroundColor3 = Color3.fromRGB(32,8,8)
+        
+        cTitle.Text = name
+        
+        fishingContent.Visible = (name == "Fishing V1")
+        fishingV2Content.Visible = (name == "Fishing V2")
+        teleportContent.Visible = (name == "Teleport")
+        settingsContent.Visible = (name == "Settings")
+        
+        print("[UI] Switched to:", name)
+    end)
+end
+
+-- Highlight fishing menu by default
+menuButtons["Fishing V1"].BackgroundColor3 = Color3.fromRGB(32,8,8)
+
+-- WINDOW CONTROLS FUNCTIONALITY
+local uiOpen = true
+
+-- Show Tray Icon
+local function showTrayIcon()
+    trayIcon.Visible = true
+    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 60, 0, 60)}):Play()
+    TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 0.7}):Play()
+end
+
+-- Hide Tray Icon  
+local function hideTrayIcon()
+    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+    TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
+    wait(0.3)
+    trayIcon.Visible = false
+end
+
+-- Show Main UI
+local function showMainUI()
+    container.Visible = true
+    TweenService:Create(container, TweenInfo.new(0.4), {
+        Size = UDim2.new(0, WIDTH, 0, HEIGHT),
+        Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
+    }):Play()
+    TweenService:Create(glow, TweenInfo.new(0.4), {ImageTransparency = 0.85}):Play()
+    
+    hideTrayIcon()
+    uiOpen = true
+    print("[UI] Main UI shown")
+end
+
+-- Hide Main UI (ke tray)
+local function hideMainUI()
+    TweenService:Create(container, TweenInfo.new(0.3), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0)
+    }):Play()
+    TweenService:Create(glow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
+    
+    wait(0.3)
+    container.Visible = false
+    
+    showTrayIcon()
+    uiOpen = false
+    print("[UI] Main UI hidden to tray")
+end
+
+-- Minimize Function
+local function minimizeUI()
+    hideMainUI()
+end
+
+-- Close Function  
+local function closeUI()
+    hideMainUI()
+end
+
+-- Tray Icon Click - Show Main UI
+trayIcon.MouseButton1Click:Connect(function()
+    showMainUI()
+end)
+
+-- Tray Icon Hover Effects
+trayIcon.MouseEnter:Connect(function()
+    TweenService:Create(trayIcon, TweenInfo.new(0.2), {Size = UDim2.new(0, 70, 0, 70)}):Play()
+    TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.6}):Play()
+end)
+
+trayIcon.MouseLeave:Connect(function()
+    TweenService:Create(trayIcon, TweenInfo.new(0.2), {Size = UDim2.new(0, 60, 0, 60)}):Play()
+    TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.7}):Play()
+end)
+
+-- Window Controls Hover Effects
+minimizeBtn.MouseEnter:Connect(function()
+    TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+end)
+
+minimizeBtn.MouseLeave:Connect(function()
+    TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
+end)
+
+closeBtn.MouseEnter:Connect(function()
+    TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(220, 60, 60)}):Play()
+end)
+
+closeBtn.MouseLeave:Connect(function()
+    TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(200, 40, 40)}):Play()
+end)
+
+-- Button Clicks
+minimizeBtn.MouseButton1Click:Connect(minimizeUI)
+closeBtn.MouseButton1Click:Connect(closeUI)
+
+-- Stats Update Loop
+spawn(function()
+    while true do
+        local elapsed = math.max(1, tick() - fishingStats.startTime)
+        local rate = fishingStats.fishCaught / elapsed
+        local efficiency = fishingStats.fishCaught / math.max(1, fishingStats.attempts) * 100
+        
+        -- Update V1 Stats
+        fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
+        rateLabel.Text = string.format("Rate: %.2f/s", rate)
+        attemptsLabel.Text = string.format("Attempts: %d", fishingStats.attempts)
+        memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
+        successLabel.Text = string.format("Success: %.1f%%", efficiency)
+        
+        -- Update V2 Stats
+        v2FishCountLabel.Text = string.format("Total Fish: %d", fishingStats.fishCaught)
+        v2InstantLabel.Text = string.format("Instant Catches: %d", fishingStats.instantCatches)
+        v2SpotsLabel.Text = string.format("Spots Found: %d", fishingStats.spotsFound)
+        v2StatusLabel.Text = string.format("Status: %s", fishingStats.lastAction)
+        v2EfficiencyLabel.Text = string.format("Efficiency: %.1f%% | Last Action: %s", efficiency, fishingStats.lastAction)
+        v2AFKLabel.Text = string.format("Anti-AFK: %ds | Cast Delay: %ds | Reel Delay: %.1fs", antiAfkTime, fishingV2Config.castDelay, fishingV2Config.reelDelay)
+        
+        wait(0.3)
+    end
+end)
+
+-- Start dengan UI terbuka
+showMainUI()
+
+print("[Kaitun Fish It V2] UI Loaded Successfully!")
+print("🎣 Fishing V1 - Basic instant fishing")
+print("🚀 Fishing V2 - Advanced AI fishing system")
+print("🎣 Click - to minimize to tray")
+print("🎣 Click 🗙 to close to tray") 
+print("🎣 Click tray icon to reopen UI")
+
+-- Test jika UI muncul
+wait(1)
+if screen and screen.Parent then
+    print("✅ UI successfully created!")
+else
+    print("❌ UI failed to create!")
+end
 -- FISHING V1 UI CONTENT
 -- ═══════════════════════════════════════════════════════════
 
@@ -873,6 +1293,60 @@ settingsLabel.Parent = settingsContent
 
 local radarParts = {}
 local radarBeams = {}
+local currentRod = nil
+
+-- Helper: Cari Fishing Rod di inventory
+local function FindFishingRodTool()
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, item in pairs(backpack:GetChildren()) do
+            if item:IsA("Tool") then
+                local name = item.Name:lower()
+                if name:find("rod") or name:find("pole") or name:find("fishing") then
+                    return item
+                end
+            end
+        end
+    end
+    
+    local char = player.Character
+    if char then
+        for _, item in pairs(char:GetChildren()) do
+            if item:IsA("Tool") then
+                local name = item.Name:lower()
+                if name:find("rod") or name:find("pole") or name:find("fishing") then
+                    return item
+                end
+            end
+        end
+    end
+    
+    return nil
+end
+
+-- Helper: Equip fishing rod
+local function EquipFishingRod()
+    local rod = FindFishingRodTool()
+    if not rod then 
+        print("[Fishing V2] No fishing rod found!")
+        return false 
+    end
+    
+    if rod.Parent == player.Backpack then
+        local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid:EquipTool(rod)
+            task.wait(0.2)
+            currentRod = rod
+            return true
+        end
+    elseif rod.Parent == player.Character then
+        currentRod = rod
+        return true
+    end
+    
+    return false
+end
 
 -- FIXED RADAR SYSTEM
 local function StartRadar()
@@ -886,78 +1360,67 @@ local function StartRadar()
             return 
         end
         
-        -- Cleanup old radar parts
-        for _, part in pairs(radarParts) do
-            if part then part:Destroy() end
-        end
-        for _, beam in pairs(radarBeams) do
-            if beam then beam:Destroy() end
-        end
-        radarParts = {}
-        radarBeams = {}
-        
-        -- Cari fishing spots terdekat
-        local character = player.Character
-        if not character then return end
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        if not rootPart then return end
-        
-        -- Deteksi fishing spots dalam radius
-        local nearbySpots = {}
-        for _, part in pairs(Workspace:GetDescendants()) do
-            if part:IsA("Part") then
-                local distance = (rootPart.Position - part.Position).Magnitude
-                if distance <= fishingV2Config.fishingSpotRadius then
-                    local name = part.Name:lower()
-                    if name:find("water") or name:find("pond") or name:find("lake") or name:find("river") or name:find("ocean") then
-                        table.insert(nearbySpots, part)
+        -- Cleanup old radar parts (setiap 2 detik)
+        if tick() % 2 < 0.1 then
+            for _, part in pairs(radarParts) do
+                if part then pcall(function() part:Destroy() end) end
+            end
+            for _, beam in pairs(radarBeams) do
+                if beam then pcall(function() beam:Destroy() end) end
+            end
+            radarParts = {}
+            radarBeams = {}
+            
+            -- Cari fishing spots terdekat
+            local character = player.Character
+            if not character then return end
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if not rootPart then return end
+            
+            -- Deteksi ProximityPrompts untuk fishing
+            local nearbySpots = {}
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if obj:IsA("ProximityPrompt") then
+                    local parent = obj.Parent
+                    if parent and parent:IsA("BasePart") then
+                        local distance = (rootPart.Position - parent.Position).Magnitude
+                        if distance <= fishingV2Config.fishingSpotRadius then
+                            local actionText = obj.ActionText and obj.ActionText:lower() or ""
+                            local objectText = obj.ObjectText and obj.ObjectText:lower() or ""
+                            
+                            if actionText:find("cast") or actionText:find("fish") or 
+                               objectText:find("cast") or objectText:find("fish") then
+                                table.insert(nearbySpots, parent)
+                            end
+                        end
                     end
                 end
             end
+            
+            -- Buat radar indicator
+            for _, spot in pairs(nearbySpots) do
+                local radarPart = Instance.new("Part")
+                radarPart.Name = "FishingRadarIndicator"
+                radarPart.Size = Vector3.new(2, 2, 2)
+                radarPart.Position = spot.Position + Vector3.new(0, 5, 0)
+                radarPart.Anchored = true
+                radarPart.CanCollide = false
+                radarPart.Material = Enum.Material.Neon
+                radarPart.BrickColor = BrickColor.new("Bright green")
+                radarPart.Transparency = 0.4
+                
+                local pointLight = Instance.new("PointLight")
+                pointLight.Brightness = 2
+                pointLight.Range = 15
+                pointLight.Color = Color3.new(0, 1, 0)
+                pointLight.Parent = radarPart
+                
+                radarPart.Parent = Workspace
+                table.insert(radarParts, radarPart)
+            end
+            
+            fishingStats.spotsFound = #nearbySpots
         end
-        
-        -- Buat radar indicator untuk setiap spot
-        for _, spot in pairs(nearbySpots) do
-            local radarPart = Instance.new("Part")
-            radarPart.Name = "FishingRadarIndicator"
-            radarPart.Size = Vector3.new(3, 3, 3)
-            radarPart.Position = spot.Position + Vector3.new(0, 8, 0)
-            radarPart.Anchored = true
-            radarPart.CanCollide = false
-            radarPart.Material = Enum.Material.Neon
-            radarPart.BrickColor = BrickColor.new("Bright green")
-            radarPart.Transparency = 0.3
-            
-            -- Glow effect
-            local pointLight = Instance.new("PointLight")
-            pointLight.Brightness = 2
-            pointLight.Range = 10
-            pointLight.Color = Color3.new(0, 1, 0)
-            pointLight.Parent = radarPart
-            
-            radarPart.Parent = Workspace
-            table.insert(radarParts, radarPart)
-            
-            -- Beam ke spot
-            local beam = Instance.new("Beam")
-            local attachment0 = Instance.new("Attachment")
-            local attachment1 = Instance.new("Attachment")
-            
-            attachment0.Parent = radarPart
-            attachment1.Parent = spot
-            
-            beam.Attachment0 = attachment0
-            beam.Attachment1 = attachment1
-            beam.Color = ColorSequence.new(Color3.new(0, 1, 0))
-            beam.Width0 = 0.3
-            beam.Width1 = 0.1
-            beam.Brightness = 1
-            beam.Parent = radarPart
-            
-            table.insert(radarBeams, beam)
-        end
-        
-        fishingStats.spotsFound = #nearbySpots
     end)
 end
 
@@ -968,10 +1431,10 @@ local function StopRadar()
     end
     
     for _, part in pairs(radarParts) do
-        if part then part:Destroy() end
+        if part then pcall(function() part:Destroy() end) end
     end
     for _, beam in pairs(radarBeams) do
-        if beam then beam:Destroy() end
+        if beam then pcall(function() beam:Destroy() end) end
     end
     radarParts = {}
     radarBeams = {}
@@ -981,56 +1444,75 @@ end
 
 -- FIXED FISHING DETECTION
 local function FindFishingProximityPrompt()
-    local char = player.Character
-    if not char then return nil end
-    
-    -- Cari ProximityPrompt di character (untuk fishing)
-    for _, descendant in pairs(char:GetDescendants()) do
-        if descendant:IsA("ProximityPrompt") then
-            local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
-            local objectText = descendant.ObjectText and descendant.ObjectText:lower() or ""
+    -- Cari ProximityPrompt di Workspace untuk fishing
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") and obj.Enabled then
+            local parent = obj.Parent
+            if not parent then continue end
             
-            if actionText:find("cast") or actionText:find("fish") or 
-               objectText:find("cast") or objectText:find("fish") then
-                return descendant
+            local char = player.Character
+            if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
+            
+            -- Cek jarak ke prompt
+            local distance = (char.HumanoidRootPart.Position - parent.Position).Magnitude
+            if distance > obj.MaxActivationDistance then continue end
+            
+            local actionText = obj.ActionText and obj.ActionText:lower() or ""
+            local objectText = obj.ObjectText and obj.ObjectText:lower() or ""
+            
+            -- Deteksi fishing related prompts
+            if actionText:find("cast") or actionText:find("fish") or actionText:find("reel") or
+               objectText:find("cast") or objectText:find("fish") or objectText:find("reel") then
+                return obj
             end
         end
     end
+    
     return nil
 end
 
--- FIXED INSTANT REEL DETECTION
+-- FIXED INSTANT REEL DETECTION  
 local function DetectFishBite()
     if not fishingV2Config.instantReel then return false end
     
     local success, result = pcall(function()
         local playerGui = player:WaitForChild("PlayerGui")
         
-        -- Cari tanda seru (!) atau indikator bite di ScreenGui
-        for _, guiObject in pairs(playerGui:GetDescendants()) do
-            if guiObject:IsA("TextLabel") or guiObject:IsA("TextButton") then
-                local text = guiObject.Text or ""
-                local name = guiObject.Name:lower()
-                
-                -- Deteksi tanda seru atau teks fishing related
-                if text:find("!") or text:find("Bite") or text:find("PULL") or 
-                   name:find("bite") or name:find("pull") or name:find("catch") then
-                    if guiObject.Visible then
-                        print("[Fishing V2] Fish bite detected! -", text)
-                        return true
+        -- Method 1: Cari GUI dengan tanda bite
+        for _, gui in pairs(playerGui:GetChildren()) do
+            if gui:IsA("ScreenGui") then
+                for _, obj in pairs(gui:GetDescendants()) do
+                    -- Cek TextLabel/TextButton untuk indikator bite
+                    if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+                        local text = obj.Text or ""
+                        local name = obj.Name:lower()
+                        
+                        if obj.Visible and (text:find("!") or text:find("REEL") or text:find("PULL") or 
+                           name:find("bite") or name:find("reel") or name:find("exclamation")) then
+                            print("[Fishing V2] Bite detected via GUI:", text)
+                            return true
+                        end
+                    end
+                    
+                    -- Cek ImageLabel untuk icon bite
+                    if obj:IsA("ImageLabel") and obj.Visible then
+                        local name = obj.Name:lower()
+                        if name:find("bite") or name:find("exclamation") or name:find("alert") then
+                            print("[Fishing V2] Bite detected via Image!")
+                            return true
+                        end
                     end
                 end
             end
-            
-            -- Cari ImageLabel dengan gambar fishing related
-            if guiObject:IsA("ImageLabel") then
-                local name = guiObject.Name:lower()
-                if name:find("bite") or name:find("fish") or name:find("catch") then
-                    if guiObject.Visible then
-                        print("[Fishing V2] Fishing UI detected!")
-                        return true
-                    end
-                end
+        end
+        
+        -- Method 2: Cek ProximityPrompt yang berubah text
+        local prompt = FindFishingProximityPrompt()
+        if prompt then
+            local actionText = prompt.ActionText and prompt.ActionText:lower() or ""
+            if actionText:find("reel") or actionText:find("pull") or actionText:find("catch") then
+                print("[Fishing V2] Bite detected via Prompt change!")
+                return true
             end
         end
         
@@ -1040,14 +1522,21 @@ local function DetectFishBite()
     return success and result or false
 end
 
--- FIXED FISHING ACTION
+-- FIXED FISHING ACTIONS
 local function PerformFishingCast()
     local prompt = FindFishingProximityPrompt()
     if prompt and prompt.Enabled then
-        fireproximityprompt(prompt)
-        fishingStats.lastAction = "Casting"
-        print("[Fishing V2] Casting fishing rod...")
-        return true
+        local actionText = prompt.ActionText and prompt.ActionText:lower() or ""
+        
+        -- Pastikan ini prompt untuk CAST bukan REEL
+        if actionText:find("cast") or actionText:find("throw") then
+            pcall(function()
+                fireproximityprompt(prompt)
+            end)
+            fishingStats.lastAction = "Casting"
+            print("[Fishing V2] Casting fishing rod...")
+            return true
+        end
     end
     return false
 end
@@ -1055,10 +1544,17 @@ end
 local function PerformFishingReel()
     local prompt = FindFishingProximityPrompt()
     if prompt and prompt.Enabled then
-        fireproximityprompt(prompt)
-        fishingStats.lastAction = "Reeling"
-        print("[Fishing V2] Reeling fish...")
-        return true
+        local actionText = prompt.ActionText and prompt.ActionText:lower() or ""
+        
+        -- Pastikan ini prompt untuk REEL
+        if actionText:find("reel") or actionText:find("pull") or actionText:find("catch") then
+            pcall(function()
+                fireproximityprompt(prompt)
+            end)
+            fishingStats.lastAction = "Reeling"
+            print("[Fishing V2] Reeling fish...")
+            return true
+        end
     end
     return false
 end
@@ -1094,10 +1590,21 @@ local function StartFishingV2()
     fishingV2Active = true
     fishingStats.startTime = tick()
     fishingStats.lastAction = "Starting"
+    isCasting = false
+    isReeling = false
+    lastCastTime = 0
+    lastReelTime = 0
     
     print("[Fishing V2] Starting AI Fishing for Fish It...")
     print("[Fishing V2] Instant Reel:", fishingV2Config.instantReel and "ENABLED" or "DISABLED")
     print("[Fishing V2] Radar:", fishingV2Config.radarEnabled and "ENABLED" or "DISABLED")
+    
+    -- Equip rod terlebih dahulu
+    if not EquipFishingRod() then
+        print("[Fishing V2] Failed to equip fishing rod!")
+        fishingV2Active = false
+        return
+    end
     
     -- Start radar jika dienable
     if fishingV2Config.radarEnabled then
@@ -1110,84 +1617,97 @@ local function StartFishingV2()
         -- Anti-AFK
         AntiAFK()
         
-        -- Cek jika karakter ada
+        -- Pastikan karakter dan rod ada
         local character = player.Character
         if not character then 
             fishingStats.lastAction = "No Character"
             return 
         end
         
-        -- Cek instant reel terlebih dahulu
-        if fishingV2Config.instantReel then
+        -- Pastikan rod masih equipped
+        if not currentRod or currentRod.Parent ~= character then
+            if not EquipFishingRod() then
+                fishingStats.lastAction = "No Rod Equipped"
+                task.wait(1)
+                return
+            end
+        end
+        
+        local currentTime = tick()
+        
+        -- PRIORITY: Instant Reel Detection
+        if fishingV2Config.instantReel and isCasting then
             if DetectFishBite() then
-                fishingStats.lastAction = "Instant Reel Detected"
-                print("[Fishing V2] Instant reel triggered!")
+                fishingStats.lastAction = "Bite Detected - Instant Reeling"
+                print("[Fishing V2] 🐟 BITE DETECTED! Instant reeling...")
                 
-                -- Lakukan reel berulang untuk memastikan
-                for i = 1, 5 do
+                -- Spam reel untuk memastikan catch
+                for i = 1, 3 do
                     if PerformFishingReel() then
-                        fishingStats.instantCatches = fishingStats.instantCatches + 1
-                        fishingStats.fishCaught = fishingStats.fishCaught + 1
-                        fishingStats.lastAction = "Fish Caught (Instant)"
-                        print("[Fishing V2] Fish caught with instant reel!")
+                        task.wait(0.05)
                     end
-                    task.wait(0.1)
                 end
                 
-                -- Tunggu sebelum cast lagi
+                fishingStats.instantCatches = fishingStats.instantCatches + 1
+                fishingStats.fishCaught = fishingStats.fishCaught + 1
+                fishingStats.lastAction = "Fish Caught (Instant)"
+                
+                -- Reset cycle
+                isCasting = false
+                isReeling = false
+                lastCastTime = currentTime
+                
                 task.wait(fishingV2Config.castDelay)
                 return
             end
         end
         
-        -- Fishing cycle normal
-        local currentTime = tick()
-        
-        -- CASTING PHASE
-        if not isCasting and (currentTime - lastCastTime > fishingV2Config.castDelay) then
+        -- PHASE 1: CASTING
+        if not isCasting and not isReeling and (currentTime - lastCastTime >= fishingV2Config.castDelay) then
             fishingStats.lastAction = "Attempting Cast"
+            
             if PerformFishingCast() then
                 isCasting = true
+                isReeling = false
                 lastCastTime = currentTime
                 fishingStats.attempts = fishingStats.attempts + 1
-                fishingStats.lastAction = "Casting Success"
-                print("[Fishing V2] Cast successful, waiting for fish...")
+                fishingStats.lastAction = "Cast Success - Waiting"
+                print("[Fishing V2] ✅ Cast successful!")
             else
-                fishingStats.lastAction = "Cast Failed - No Prompt"
+                fishingStats.lastAction = "Cast Failed - Retrying"
+                task.wait(0.5)
             end
+            
+            return
         end
         
-        -- REELING PHASE (setelah delay tertentu)
-        if isCasting and (currentTime - lastCastTime > fishingV2Config.reelDelay) and not isReeling then
-            fishingStats.lastAction = "Attempting Reel"
-            if PerformFishingReel() then
-                isReeling = true
-                lastReelTime = currentTime
-                fishingStats.lastAction = "Reeling Success"
+        -- PHASE 2: WAITING FOR BITE (dengan timeout)
+        if isCasting and not isReeling then
+            local waitTime = currentTime - lastCastTime
+            
+            -- Jika sudah menunggu terlalu lama, coba reel manual
+            if waitTime >= 8 then
+                fishingStats.lastAction = "Timeout - Manual Reel"
+                print("[Fishing V2] ⏰ Timeout, attempting manual reel...")
                 
-                -- Reset fishing cycle
-                spawn(function()
-                    task.wait(1)
-                    isCasting = false
-                    isReeling = false
-                    fishingStats.lastAction = "Cycle Complete"
-                end)
-            else
-                fishingStats.lastAction = "Reel Failed"
+                if PerformFishingReel() then
+                    fishingStats.fishCaught = fishingStats.fishCaught + 1
+                    fishingStats.lastAction = "Fish Caught (Timeout)"
+                end
+                
                 isCasting = false
                 isReeling = false
+                lastCastTime = currentTime
+                task.wait(fishingV2Config.castDelay)
+            else
+                fishingStats.lastAction = string.format("Waiting for Bite (%.1fs)", waitTime)
             end
-        end
-        
-        -- Update status
-        if isCasting and not isReeling then
-            fishingStats.lastAction = "Waiting for Bite"
-        elseif isCasting and isReeling then
-            fishingStats.lastAction = "Reeling in Progress"
+            
+            return
         end
     end)
     
-    print("[Fishing V2] AI Fishing started successfully!")
+    print("[Fishing V2] ✅ AI Fishing started successfully!")
 end
 
 local function StopFishingV2()
@@ -1209,393 +1729,3 @@ local function StopFishingV2()
 end
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING V1 FUNCTIONS (BASIC)
--- ═══════════════════════════════════════════════════════════
-
-local function SafeGetCharacter()
-    return player.Character or player.CharacterAdded:Wait()
-end
-
-local function SafeGetHumanoid()
-    local char = SafeGetCharacter()
-    return char and char:FindFirstChild("Humanoid")
-end
-
-local function GetFishingRod()
-    local success, result = pcall(function()
-        local backpack = player:FindFirstChild("Backpack")
-        if backpack then
-            for _, item in pairs(backpack:GetChildren()) do
-                if item:IsA("Tool") then
-                    local name = item.Name:lower()
-                    if name:find("rod") or name:find("pole") or name:find("fishing") then
-                        return item
-                    end
-                end
-            end
-        end
-        
-        local char = player.Character
-        if char then
-            for _, item in pairs(char:GetChildren()) do
-                if item:IsA("Tool") then
-                    local name = item.Name:lower()
-                    if name:find("rod") or name:find("pole") or name:find("fishing") then
-                        return item
-                    end
-                end
-            end
-        end
-        
-        return nil
-    end)
-    
-    return success and result or nil
-end
-
-local function EquipRod()
-    local success = pcall(function()
-        local rod = GetFishingRod()
-        if not rod then 
-            return false 
-        end
-        
-        if rod.Parent == player.Backpack then
-            local humanoid = SafeGetHumanoid()
-            if humanoid then
-                humanoid:EquipTool(rod)
-                task.wait(0.1)
-                return true
-            end
-        end
-        
-        return rod.Parent == player.Character
-    end)
-    
-    return success
-end
-
--- INSTANT FISHING METHODS
-local function InstantFishProximity()
-    local success = pcall(function()
-        local char = SafeGetCharacter()
-        if not char then return false end
-        
-        for _, descendant in pairs(char:GetDescendants()) do
-            if descendant:IsA("ProximityPrompt") then
-                local objText = descendant.ObjectText and descendant.ObjectText:lower() or ""
-                local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
-                
-                if objText:find("fish") or objText:find("cast") or objText:find("catch") or
-                   actionText:find("fish") or actionText:find("cast") or actionText:find("catch") then
-                    
-                    if descendant.Enabled then
-                        fireproximityprompt(descendant)
-                        return true
-                    end
-                end
-            end
-        end
-        
-        return false
-    end)
-    
-    return success
-end
-
-local function InstantFishRemote()
-    local success = pcall(function()
-        if not ReplicatedStorage then return false end
-        
-        for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-            if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                local name = remote.Name:lower()
-                if name:find("fish") or name:find("cast") or name:find("catch") or name:find("reel") then
-                    if remote:IsA("RemoteEvent") then
-                        remote:FireServer("Cast")
-                        remote:FireServer("Reel")
-                        remote:FireServer("Catch")
-                        return true
-                    elseif remote:IsA("RemoteFunction") then
-                        remote:InvokeServer("Cast")
-                        remote:InvokeServer("Reel")
-                        remote:InvokeServer("Catch")
-                        return true
-                    end
-                end
-            end
-        end
-        
-        return false
-    end)
-    
-    return success
-end
-
--- MASTER INSTANT FISHING FUNCTION
-local function InstantFish()
-    if not fishingActive then return end
-    
-    fishingStats.attempts = fishingStats.attempts + 1
-    
-    -- Pastikan rod equipped
-    if not EquipRod() then
-        return
-    end
-    
-    local success = false
-    
-    if fishingConfig.instantFishing or fishingConfig.blantantMode then
-        if InstantFishProximity() then
-            success = true
-        end
-        
-        if InstantFishRemote() then
-            success = true
-        end
-    end
-    
-    if success then
-        fishingStats.fishCaught = fishingStats.fishCaught + 1
-    end
-end
-
--- Start Fishing V1
-local function StartFishing()
-    if fishingActive then 
-        print("[Fishing] Already fishing!")
-        return 
-    end
-    
-    fishingActive = true
-    fishingStats.startTime = tick()
-    
-    print("[Fishing] Starting instant fishing...")
-    
-    -- Main fishing loop
-    fishingConnection = RunService.Heartbeat:Connect(function()
-        if not fishingActive then return end
-        
-        pcall(InstantFish)
-        
-        -- Delay based on mode
-        if fishingConfig.blantantMode then
-            task.wait(0.001)
-        elseif fishingConfig.instantFishing then
-            task.wait(0.01)
-        else
-            task.wait(fishingConfig.fishingDelay)
-        end
-    end)
-end
-
-local function StopFishing()
-    fishingActive = false
-    
-    if fishingConnection then
-        fishingConnection:Disconnect()
-        fishingConnection = nil
-    end
-    
-    print("[Fishing] Stopped fishing")
-    print("[Fishing] Total fish caught:", fishingStats.fishCaught)
-end
-
--- ═══════════════════════════════════════════════════════════
--- EVENT HANDLERS
--- ═══════════════════════════════════════════════════════════
-
--- Fishing V1 Button Handler
-fishingButton.MouseButton1Click:Connect(function()
-    if fishingActive then
-        StopFishing()
-        fishingButton.Text = "🚀 START INSTANT FISHING"
-        fishingButton.BackgroundColor3 = ACCENT
-        statusLabel.Text = "⭕ OFFLINE"
-        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    else
-        StartFishing()
-        fishingButton.Text = "⏹️ STOP FISHING"
-        fishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-        statusLabel.Text = "✅ FISHING ACTIVE"
-        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-    end
-end)
-
--- Fishing V2 Button Handler
-v2FishingButton.MouseButton1Click:Connect(function()
-    if fishingV2Active then
-        StopFishingV2()
-        v2FishingButton.Text = "🤖 START AI FISHING"
-        v2FishingButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-        v2ActiveStatusLabel.Text = "⭕ AI OFFLINE"
-        v2ActiveStatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    else
-        StartFishingV2()
-        v2FishingButton.Text = "⏹️ STOP AI FISHING"
-        v2FishingButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-        v2ActiveStatusLabel.Text = "✅ AI FISHING ACTIVE"
-        v2ActiveStatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-    end
-end)
-
--- Menu navigation
-local activeMenu = "Fishing V1"
-for name, btn in pairs(menuButtons) do
-    btn.MouseButton1Click:Connect(function()
-        for n, b in pairs(menuButtons) do
-            b.BackgroundColor3 = Color3.fromRGB(20,20,20)
-        end
-        btn.BackgroundColor3 = Color3.fromRGB(32,8,8)
-        
-        cTitle.Text = name
-        
-        fishingContent.Visible = (name == "Fishing V1")
-        fishingV2Content.Visible = (name == "Fishing V2")
-        teleportContent.Visible = (name == "Teleport")
-        settingsContent.Visible = (name == "Settings")
-        
-        print("[UI] Switched to:", name)
-    end)
-end
-
--- Highlight fishing menu by default
-menuButtons["Fishing V1"].BackgroundColor3 = Color3.fromRGB(32,8,8)
-
--- WINDOW CONTROLS FUNCTIONALITY
-local uiOpen = true
-
--- Show Tray Icon
-local function showTrayIcon()
-    trayIcon.Visible = true
-    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 60, 0, 60)}):Play()
-    TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 0.7}):Play()
-end
-
--- Hide Tray Icon  
-local function hideTrayIcon()
-    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-    TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
-    wait(0.3)
-    trayIcon.Visible = false
-end
-
--- Show Main UI
-local function showMainUI()
-    container.Visible = true
-    TweenService:Create(container, TweenInfo.new(0.4), {
-        Size = UDim2.new(0, WIDTH, 0, HEIGHT),
-        Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
-    }):Play()
-    TweenService:Create(glow, TweenInfo.new(0.4), {ImageTransparency = 0.85}):Play()
-    
-    hideTrayIcon()
-    uiOpen = true
-    print("[UI] Main UI shown")
-end
-
--- Hide Main UI (ke tray)
-local function hideMainUI()
-    TweenService:Create(container, TweenInfo.new(0.3), {
-        Size = UDim2.new(0, 0, 0, 0),
-        Position = UDim2.new(0.5, 0, 0.5, 0)
-    }):Play()
-    TweenService:Create(glow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
-    
-    wait(0.3)
-    container.Visible = false
-    
-    showTrayIcon()
-    uiOpen = false
-    print("[UI] Main UI hidden to tray")
-end
-
--- Minimize Function
-local function minimizeUI()
-    hideMainUI()
-end
-
--- Close Function  
-local function closeUI()
-    hideMainUI()
-end
-
--- Tray Icon Click - Show Main UI
-trayIcon.MouseButton1Click:Connect(function()
-    showMainUI()
-end)
-
--- Tray Icon Hover Effects
-trayIcon.MouseEnter:Connect(function()
-    TweenService:Create(trayIcon, TweenInfo.new(0.2), {Size = UDim2.new(0, 70, 0, 70)}):Play()
-    TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.6}):Play()
-end)
-
-trayIcon.MouseLeave:Connect(function()
-    TweenService:Create(trayIcon, TweenInfo.new(0.2), {Size = UDim2.new(0, 60, 0, 60)}):Play()
-    TweenService:Create(trayGlow, TweenInfo.new(0.2), {ImageTransparency = 0.7}):Play()
-end)
-
--- Window Controls Hover Effects
-minimizeBtn.MouseEnter:Connect(function()
-    TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
-end)
-
-minimizeBtn.MouseLeave:Connect(function()
-    TweenService:Create(minimizeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40, 40, 40)}):Play()
-end)
-
-closeBtn.MouseEnter:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(220, 60, 60)}):Play()
-end)
-
-closeBtn.MouseLeave:Connect(function()
-    TweenService:Create(closeBtn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(200, 40, 40)}):Play()
-end)
-
--- Button Clicks
-minimizeBtn.MouseButton1Click:Connect(minimizeUI)
-closeBtn.MouseButton1Click:Connect(closeUI)
-
--- Stats Update Loop
-spawn(function()
-    while true do
-        local elapsed = math.max(1, tick() - fishingStats.startTime)
-        local rate = fishingStats.fishCaught / elapsed
-        local efficiency = fishingStats.fishCaught / math.max(1, fishingStats.attempts) * 100
-        
-        -- Update V1 Stats
-        fishCountLabel.Text = string.format("Fish Caught: %d", fishingStats.fishCaught)
-        rateLabel.Text = string.format("Rate: %.2f/s", rate)
-        memLabel.Text = string.format("Memory: %d KB | Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
-        successLabel.Text = string.format("Success: %.1f%%", efficiency)
-        
-        -- Update V2 Stats
-        v2FishCountLabel.Text = string.format("Total Fish: %d", fishingStats.fishCaught)
-        v2InstantLabel.Text = string.format("Instant Catches: %d", fishingStats.instantCatches)
-        v2SpotsLabel.Text = string.format("Spots Found: %d", fishingStats.spotsFound)
-        v2StatusLabel.Text = string.format("Status: %s", fishingStats.lastAction)
-        v2EfficiencyLabel.Text = string.format("Efficiency: %.1f%% | Last Action: %s", efficiency, fishingStats.lastAction)
-        v2AFKLabel.Text = string.format("Anti-AFK: %ds | Cast Delay: %ds | Reel Delay: %.1fs", antiAfkTime, fishingV2Config.castDelay, fishingV2Config.reelDelay)
-        
-        wait(0.3)
-    end
-end)
-
--- Start dengan UI terbuka
-showMainUI()
-
-print("[Kaitun Fish It V2] UI Loaded Successfully!")
-print("🎣 Fishing V1 - Basic instant fishing")
-print("🚀 Fishing V2 - Advanced AI fishing system")
-print("🎣 Click - to minimize to tray")
-print("🎣 Click 🗙 to close to tray") 
-print("🎣 Click tray icon to reopen UI")
-
--- Test jika UI muncul
-wait(1)
-if screen and screen.Parent then
-    print("✅ UI successfully created!")
-else
-    print("❌ UI failed to create!")
-end
