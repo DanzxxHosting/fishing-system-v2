@@ -1358,24 +1358,184 @@ end
 teleportContainer.Size = UDim2.new(1, 0, 0, #teleportLocations * 60)
 teleportContent.CanvasSize = UDim2.new(0, 0, 0, #teleportLocations * 60 + 20)
 
--- SETTINGS UI (Placeholder)
-local settingsContent = Instance.new("Frame")
+-- SETTINGS UI (FULL FEATURES)
+local settingsContent = Instance.new("ScrollingFrame")
 settingsContent.Name = "SettingsContent"
 settingsContent.Size = UDim2.new(1, -24, 1, -68)
 settingsContent.Position = UDim2.new(0, 12, 0, 56)
 settingsContent.BackgroundTransparency = 1
 settingsContent.Visible = false
+settingsContent.ScrollBarThickness = 6
+settingsContent.ScrollBarImageColor3 = ACCENT
+settingsContent.CanvasSize = UDim2.new(0, 0, 0, 600)
+settingsContent.BorderSizePixel = 0
 settingsContent.Parent = content
 
-local settingsLabel = Instance.new("TextLabel")
-settingsLabel.Size = UDim2.new(1, 0, 1, 0)
-settingsLabel.BackgroundTransparency = 1
-settingsLabel.Font = Enum.Font.GothamBold
-settingsLabel.TextSize = 16
-settingsLabel.Text = "Settings\n(Coming Soon)"
-settingsLabel.TextColor3 = Color3.fromRGB(200,200,200)
-settingsLabel.TextYAlignment = Enum.TextYAlignment.Center
-settingsLabel.Parent = settingsContent
+-- Settings Container
+local settingsContainer = Instance.new("Frame")
+settingsContainer.Name = "SettingsContainer"
+settingsContainer.Size = UDim2.new(1, 0, 0, 600)
+settingsContainer.BackgroundTransparency = 1
+settingsContainer.Parent = settingsContent
+
+-- Performance Settings Panel
+local perfPanel = Instance.new("Frame")
+perfPanel.Size = UDim2.new(1, 0, 0, 180)
+perfPanel.Position = UDim2.new(0, 0, 0, 0)
+perfPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+perfPanel.BorderSizePixel = 0
+perfPanel.Parent = settingsContainer
+
+local perfCorner = Instance.new("UICorner")
+perfCorner.CornerRadius = UDim.new(0,8)
+perfCorner.Parent = perfPanel
+
+local perfTitle = Instance.new("TextLabel")
+perfTitle.Size = UDim2.new(1, -24, 0, 28)
+perfTitle.Position = UDim2.new(0,12,0,8)
+perfTitle.BackgroundTransparency = 1
+perfTitle.Font = Enum.Font.GothamBold
+perfTitle.TextSize = 14
+perfTitle.Text = "⚡ Performance Settings"
+perfTitle.TextColor3 = Color3.fromRGB(235,235,235)
+perfTitle.TextXAlignment = Enum.TextXAlignment.Left
+perfTitle.Parent = perfPanel
+
+CreateToggle("🎨 Low Graphics", "Reduce graphics for better performance", false, function(v)
+    if v then
+        local lighting = game:GetService("Lighting")
+        lighting.GlobalShadows = false
+        lighting.FogEnd = 100
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        print("[Settings] Low Graphics: ENABLED")
+    else
+        local lighting = game:GetService("Lighting")
+        lighting.GlobalShadows = true
+        lighting.FogEnd = 100000
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        print("[Settings] Low Graphics: DISABLED")
+    end
+end, perfPanel, 36)
+
+CreateToggle("⚡ Boost FPS", "Maximize frame rate", false, function(v)
+    if v then
+        setfpscap(240)
+        print("[Settings] FPS Boost: ENABLED (240 FPS)")
+    else
+        setfpscap(60)
+        print("[Settings] FPS Boost: DISABLED (60 FPS)")
+    end
+end, perfPanel, 76)
+
+CreateToggle("👥 Hide Players", "Hide other players for performance", false, function(v)
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            for _, part in pairs(p.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = v and 1 or 0
+                end
+            end
+        end
+    end
+    print("[Settings] Hide Players:", v and "ENABLED" or "DISABLED")
+end, perfPanel, 116)
+
+-- UI Settings Panel
+local uiPanel = Instance.new("Frame")
+uiPanel.Size = UDim2.new(1, 0, 0, 140)
+uiPanel.Position = UDim2.new(0, 0, 0, 192)
+uiPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+uiPanel.BorderSizePixel = 0
+uiPanel.Parent = settingsContainer
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0,8)
+uiCorner.Parent = uiPanel
+
+local uiTitle = Instance.new("TextLabel")
+uiTitle.Size = UDim2.new(1, -24, 0, 28)
+uiTitle.Position = UDim2.new(0,12,0,8)
+uiTitle.BackgroundTransparency = 1
+uiTitle.Font = Enum.Font.GothamBold
+uiTitle.TextSize = 14
+uiTitle.Text = "🎨 UI Settings"
+uiTitle.TextColor3 = Color3.fromRGB(235,235,235)
+uiTitle.TextXAlignment = Enum.TextXAlignment.Left
+uiTitle.Parent = uiPanel
+
+CreateToggle("📱 Compact Mode", "Smaller UI size", false, function(v)
+    if v then
+        container.Size = UDim2.new(0, 720, 0, 420)
+        container.Position = UDim2.new(0.5, -360, 0.5, -210)
+        print("[Settings] Compact Mode: ENABLED")
+    else
+        container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
+        container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
+        print("[Settings] Compact Mode: DISABLED")
+    end
+end, uiPanel, 36)
+
+CreateToggle("🔔 Notifications", "Show fishing notifications", true, function(v)
+    print("[Settings] Notifications:", v and "ENABLED" or "DISABLED")
+end, uiPanel, 76)
+
+-- Game Settings Panel
+local gamePanel = Instance.new("Frame")
+gamePanel.Size = UDim2.new(1, 0, 0, 180)
+gamePanel.Position = UDim2.new(0, 0, 0, 344)
+gamePanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+gamePanel.BorderSizePixel = 0
+gamePanel.Parent = settingsContainer
+
+local gameCorner = Instance.new("UICorner")
+gameCorner.CornerRadius = UDim.new(0,8)
+gameCorner.Parent = gamePanel
+
+local gameTitle = Instance.new("TextLabel")
+gameTitle.Size = UDim2.new(1, -24, 0, 28)
+gameTitle.Position = UDim2.new(0,12,0,8)
+gameTitle.BackgroundTransparency = 1
+gameTitle.Font = Enum.Font.GothamBold
+gameTitle.TextSize = 14
+gameTitle.Text = "🎮 Game Settings"
+gameTitle.TextColor3 = Color3.fromRGB(235,235,235)
+gameTitle.TextXAlignment = Enum.TextXAlignment.Left
+gameTitle.Parent = gamePanel
+
+CreateToggle("🏃 Speed Boost", "Increase walk speed", false, function(v)
+    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        humanoid.WalkSpeed = v and 32 or 16
+        print("[Settings] Speed Boost:", v and "ENABLED (32)" or "DISABLED (16)")
+    end
+end, gamePanel, 36)
+
+CreateToggle("🦘 Jump Boost", "Increase jump power", false, function(v)
+    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        humanoid.JumpPower = v and 100 or 50
+        print("[Settings] Jump Boost:", v and "ENABLED (100)" or "DISABLED (50)")
+    end
+end, gamePanel, 76)
+
+CreateToggle("🌙 Night Vision", "See in the dark", false, function(v)
+    local lighting = game:GetService("Lighting")
+    if v then
+        lighting.Ambient = Color3.fromRGB(255,255,255)
+        lighting.Brightness = 2
+        lighting.OutdoorAmbient = Color3.fromRGB(255,255,255)
+        print("[Settings] Night Vision: ENABLED")
+    else
+        lighting.Ambient = Color3.fromRGB(0,0,0)
+        lighting.Brightness = 1
+        lighting.OutdoorAmbient = Color3.fromRGB(128,128,128)
+        print("[Settings] Night Vision: DISABLED")
+    end
+end, gamePanel, 116)
+
+-- Update canvas size
+settingsContainer.Size = UDim2.new(1, 0, 0, 536)
+settingsContent.CanvasSize = UDim2.new(0, 0, 0, 536)
 
 -- ═══════════════════════════════════════════════════════════
 -- FISHING V2 FIXED FUNCTIONS
