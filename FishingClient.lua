@@ -45,7 +45,6 @@ local fishingV2Config = {
     maxFishingSpots = 3,
     sellDelay = 5,
     avoidPlayers = false,
-    radarEnabled = false,
     instantReel = true,
     castDelay = 0.3,
     reelDelay = 0.1,
@@ -84,7 +83,6 @@ local fishingStats = {
     successRate = 0,
     rareFish = 0,
     totalValue = 0,
-    spotsFound = 0,
     instantCatches = 0,
     lastAction = "Idle",
     v3Speed = 0
@@ -93,7 +91,7 @@ local fishingStats = {
 local fishingActive = false
 local fishingV2Active = false
 local fishingV3Active = false
-local fishingConnection, reelConnection, v2Connection, v3Connection, radarConnection
+local fishingConnection, reelConnection, v2Connection, v3Connection
 local currentFishingSpot = nil
 local fishingSpots = {}
 local antiAfkTime = 0
@@ -739,17 +737,6 @@ v2InstantLabel.TextColor3 = Color3.fromRGB(255,215,0)
 v2InstantLabel.TextXAlignment = Enum.TextXAlignment.Left
 v2InstantLabel.Parent = v2StatsPanel
 
-local v2SpotsLabel = Instance.new("TextLabel")
-v2SpotsLabel.Size = UDim2.new(0.5, -8, 0, 24)
-v2SpotsLabel.Position = UDim2.new(0,12,0,68)
-v2SpotsLabel.BackgroundTransparency = 1
-v2SpotsLabel.Font = Enum.Font.Gotham
-v2SpotsLabel.TextSize = 13
-v2SpotsLabel.Text = "📍 Spots Found: 0"
-v2SpotsLabel.TextColor3 = Color3.fromRGB(200,220,255)
-v2SpotsLabel.TextXAlignment = Enum.TextXAlignment.Left
-v2SpotsLabel.Parent = v2StatsPanel
-
 local v2StatusLabel = Instance.new("TextLabel")
 v2StatusLabel.Size = UDim2.new(0.5, -8, 0, 24)
 v2StatusLabel.Position = UDim2.new(0.5,4,0,68)
@@ -882,35 +869,25 @@ CreateToggle("⚡ Instant Reel", "Auto reel when ! appears", fishingV2Config.ins
     print("[Fishing V2] Instant Reel:", v and "ENABLED" or "DISABLED")
 end, v2FeaturesPanel, 88)
 
-CreateToggle("📡 Fishing Radar", "Show nearby fishing spots", fishingV2Config.radarEnabled, function(v)
-    fishingV2Config.radarEnabled = v
-    if v and fishingV2Active then
-        StartRadar()
-    else
-        StopRadar()
-    end
-    print("[Fishing V2] Fishing Radar:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 140)
-
 CreateToggle("🛡️ Anti-AFK", "Prevent AFK detection", fishingV2Config.antiAfk, function(v)
     fishingV2Config.antiAfk = v
     print("[Fishing V2] Anti-AFK:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 192)
+end, v2FeaturesPanel, 140)
 
 CreateToggle("🎯 Smart Detection", "Auto-detect fishing prompts", fishingV2Config.smartDetection, function(v)
     fishingV2Config.smartDetection = v
     print("[Fishing V2] Smart Detection:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 244)
+end, v2FeaturesPanel, 192)
 
 CreateToggle("🔧 Proximity Only", "Use only proximity prompts", fishingV2Config.useProximityOnly, function(v)
     fishingV2Config.useProximityOnly = v
     print("[Fishing V2] Proximity Only:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 296)
+end, v2FeaturesPanel, 244)
 
 CreateToggle("📍 Multi-Spot Fishing", "Fish at multiple spots", fishingV2Config.multiSpotFishing, function(v)
     fishingV2Config.multiSpotFishing = v
     print("[Fishing V2] Multi-Spot Fishing:", v and "ENABLED" or "DISABLED")
-end, v2FeaturesPanel, 348)
+end, v2FeaturesPanel, 296)
 
 -- Update canvas size
 v2ContentContainer.Size = UDim2.new(1, 0, 0, 304 + 380 + 20)
@@ -1351,9 +1328,6 @@ settingsContent.CanvasSize = UDim2.new(0, 0, 0, 212 + 200 + 20)
 -- FIXED FISHING FUNCTIONS - WORKING VERSION
 -- ═══════════════════════════════════════════════════════════
 
-local radarParts = {}
-local radarBeams = {}
-
 -- FIXED: Enhanced fishing detection system - WORKING VERSION
 local function FindFishingProximityPrompt()
     local success, result = pcall(function()
@@ -1716,34 +1690,6 @@ local function RemoveAntiLag()
     settings().Rendering.QualityLevel = 10
 end
 
--- FIXED: Radar System
-local function StartRadar()
-    if not fishingV2Config.radarEnabled then return end
-    
-    radarConnection = RunService.Heartbeat:Connect(function()
-        if not fishingV2Config.radarEnabled then return end
-        
-        for _, part in pairs(radarParts) do
-            if part then part:Destroy() end
-        end
-        radarParts = {}
-        
-        fishingStats.spotsFound = 0
-    end)
-end
-
-local function StopRadar()
-    if radarConnection then
-        radarConnection:Disconnect()
-        radarConnection = nil
-    end
-    
-    for _, part in pairs(radarParts) do
-        if part then part:Destroy() end
-    end
-    radarParts = {}
-end
-
 -- FIXED: Anti-AFK System
 local function AntiAFK()
     if not fishingV2Config.antiAfk then return end
@@ -1895,7 +1841,6 @@ spawn(function()
         -- V2 Stats
         v2FishCountLabel.Text = string.format("🎣 Total Fish: %d", fishingStats.fishCaught)
         v2InstantLabel.Text = string.format("⚡ Instant Catches: %d", fishingStats.instantCatches)
-        v2SpotsLabel.Text = string.format("📍 Spots Found: %d", fishingStats.spotsFound)
         v2StatusLabel.Text = string.format("📊 Status: %s", fishingStats.lastAction)
         v2EfficiencyLabel.Text = string.format("📈 Efficiency: %.1f%%", efficiency)
         
@@ -1919,10 +1864,9 @@ end)
 -- Start dengan UI terbuka
 showMainUI()
 
-print("[Kaitun Fish It V3] ULTIMATE FIXED VERSION Loaded Successfully!")
+print("[Kaitun Fish It V3] CLEAN VERSION Loaded Successfully!")
 print("🎣 Fishing V1 - Basic instant fishing")
 print("🚀 Fishing V2 - AI fishing (3x Faster)")
 print("⚡ Fishing V3 - Super Blatant (5x Speed)")
 print("⚙️ Settings - Performance & Movement options")
-print("✅ ALL FISHING SYSTEMS NOW WORKING PROPERLY!")
-print("🔧 Fixed nil value errors in fishing detection")
+print("✅ ALL FISHING SYSTEMS WORKING - RADAR REMOVED")
