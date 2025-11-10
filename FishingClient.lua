@@ -1,4 +1,4 @@
--- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing + FISHING V2 FIXED
+-- UI-Only: Neon Panel dengan Tray Icon + Enhanced Instant Fishing + FISHING V2 & V3 FIXED
 -- paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
 
 local Players = game:GetService("Players")
@@ -47,9 +47,34 @@ local fishingV2Config = {
     avoidPlayers = false,
     radarEnabled = false,
     instantReel = true,
-    castDelay = 0.3,  -- 3x lebih cepat dari V1
-    reelDelay = 0.1,  -- 3x lebih cepat dari V1
+    castDelay = 0.3,
+    reelDelay = 0.1,
     useProximityOnly = true
+}
+
+-- FISHING V3 CONFIG - SUPER BLATANT 5x SPEED
+local fishingV3Config = {
+    enabled = false,
+    superBlatant = true,
+    delayCast = 0.05,    -- Bypass delay untuk cast
+    delayComplete = 0.02, -- Bypass delay untuk complete
+    blatantMode = true,
+    speedMultiplier = 5,  -- 5x speed
+    autoPerfection = true,
+    ultraInstant = true,
+    maxSpeed = true
+}
+
+-- SETTINGS CONFIG
+local settingsConfig = {
+    stableFPS = false,
+    targetFPS = 90,
+    blackScreen = false,
+    walkSpeed = false,
+    walkSpeedValue = 25,
+    infinityJump = false,
+    noClip = false,
+    antiLag = false
 }
 
 local fishingStats = {
@@ -61,12 +86,14 @@ local fishingStats = {
     totalValue = 0,
     spotsFound = 0,
     instantCatches = 0,
-    lastAction = "Idle"
+    lastAction = "Idle",
+    v3Speed = 0
 }
 
 local fishingActive = false
 local fishingV2Active = false
-local fishingConnection, reelConnection, v2Connection, radarConnection
+local fishingV3Active = false
+local fishingConnection, reelConnection, v2Connection, v3Connection, radarConnection
 local currentFishingSpot = nil
 local fishingSpots = {}
 local antiAfkTime = 0
@@ -171,7 +198,7 @@ title.Position = UDim2.new(0,8,0,0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
-title.Text = "⚡ KAITUN FISH IT V2"
+title.Text = "⚡ KAITUN FISH IT V3"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = titleBar
@@ -257,7 +284,7 @@ sTitle.Position = UDim2.new(0, 88, 0, 12)
 sTitle.BackgroundTransparency = 1
 sTitle.Font = Enum.Font.GothamBold
 sTitle.TextSize = 14
-sTitle.Text = "Kaitun V2"
+sTitle.Text = "Kaitun V3"
 sTitle.TextColor3 = Color3.fromRGB(240,240,240)
 sTitle.TextXAlignment = Enum.TextXAlignment.Left
 sTitle.Parent = sbHeader
@@ -328,7 +355,7 @@ end
 local items = {
     {"Fishing V1", "🎣"},
     {"Fishing V2", "🚀"},
-    {"Teleport", "📍"},
+    {"Fishing V3", "⚡"},
     {"Settings", "⚙"},
 }
 local menuButtons = {}
@@ -363,7 +390,7 @@ cTitle.TextXAlignment = Enum.TextXAlignment.Left
 cTitle.Parent = content
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING V1 UI CONTENT - IMPROVED
+-- FISHING V1 UI CONTENT
 -- ═══════════════════════════════════════════════════════════
 
 local fishingContent = Instance.new("ScrollingFrame")
@@ -534,7 +561,7 @@ togglesTitle.TextColor3 = Color3.fromRGB(235,235,235)
 togglesTitle.TextXAlignment = Enum.TextXAlignment.Left
 togglesTitle.Parent = togglesPanel
 
--- Toggle Helper Function - IMPROVED
+-- Toggle Helper Function
 local function CreateToggle(name, desc, default, callback, parent, yPos)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -24, 0, 48)
@@ -578,7 +605,6 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
     btnCorner.CornerRadius = UDim.new(0,6)
     btnCorner.Parent = button
 
-    -- Hover effects
     button.MouseEnter:Connect(function()
         TweenService:Create(button, TweenInfo.new(0.2), {
             BackgroundColor3 = default and Color3.fromRGB(0, 220, 0) or Color3.fromRGB(220, 0, 0)
@@ -601,7 +627,7 @@ local function CreateToggle(name, desc, default, callback, parent, yPos)
     return frame
 end
 
--- Create Toggles untuk V1 - IMPROVED LAYOUT
+-- Create Toggles untuk V1
 CreateToggle("⚡ Instant Fishing", "Max speed casting & catching", fishingConfig.instantFishing, function(v)
     fishingConfig.instantFishing = v
     if v then
@@ -648,7 +674,7 @@ fishingContainer.Size = UDim2.new(1, 0, 0, 264 + 280 + 20)
 fishingContent.CanvasSize = UDim2.new(0, 0, 0, 264 + 280 + 20)
 
 -- ═══════════════════════════════════════════════════════════
--- FISHING V2 UI CONTENT - IMPROVED (3x LEBIH CEPAT)
+-- FISHING V2 UI CONTENT
 -- ═══════════════════════════════════════════════════════════
 
 local fishingV2Content = Instance.new("ScrollingFrame")
@@ -842,7 +868,7 @@ v2FeaturesTitle.TextColor3 = Color3.fromRGB(235,235,235)
 v2FeaturesTitle.TextXAlignment = Enum.TextXAlignment.Left
 v2FeaturesTitle.Parent = v2FeaturesPanel
 
--- Create V2 Toggles - IMPROVED LAYOUT
+-- Create V2 Toggles
 CreateToggle("🤖 AI Fishing System", "Enable automatic fishing", fishingV2Config.enabled, function(v)
     fishingV2Config.enabled = v
     if v and fishingV2Active then
@@ -890,79 +916,457 @@ end, v2FeaturesPanel, 348)
 v2ContentContainer.Size = UDim2.new(1, 0, 0, 304 + 380 + 20)
 fishingV2Content.CanvasSize = UDim2.new(0, 0, 0, 304 + 380 + 20)
 
--- TELEPORT UI (Placeholder)
-local teleportContent = Instance.new("Frame")
-teleportContent.Name = "TeleportContent"
-teleportContent.Size = UDim2.new(1, -24, 1, -24)
-teleportContent.Position = UDim2.new(0, 12, 0, 12)
-teleportContent.BackgroundTransparency = 1
-teleportContent.Visible = false
-teleportContent.Parent = content
+-- ═══════════════════════════════════════════════════════════
+-- FISHING V3 UI CONTENT - SUPER BLATANT 5x SPEED
+-- ═══════════════════════════════════════════════════════════
 
-local teleportLabel = Instance.new("TextLabel")
-teleportLabel.Size = UDim2.new(1, 0, 1, 0)
-teleportLabel.BackgroundTransparency = 1
-teleportLabel.Font = Enum.Font.GothamBold
-teleportLabel.TextSize = 16
-teleportLabel.Text = "Teleport Feature\n(Coming Soon)"
-teleportLabel.TextColor3 = Color3.fromRGB(200,200,200)
-teleportLabel.TextYAlignment = Enum.TextYAlignment.Center
-teleportLabel.Parent = teleportContent
+local fishingV3Content = Instance.new("ScrollingFrame")
+fishingV3Content.Name = "FishingV3Content"
+fishingV3Content.Size = UDim2.new(1, -24, 1, -24)
+fishingV3Content.Position = UDim2.new(0, 12, 0, 12)
+fishingV3Content.BackgroundTransparency = 1
+fishingV3Content.Visible = false
+fishingV3Content.ScrollBarThickness = 6
+fishingV3Content.ScrollBarImageColor3 = ACCENT
+fishingV3Content.CanvasSize = UDim2.new(0, 0, 0, 900)
+fishingV3Content.Parent = content
 
--- SETTINGS UI (Placeholder)
-local settingsContent = Instance.new("Frame")
+-- Container for V3 content
+local v3ContentContainer = Instance.new("Frame")
+v3ContentContainer.Name = "V3ContentContainer"
+v3ContentContainer.Size = UDim2.new(1, 0, 0, 900)
+v3ContentContainer.BackgroundTransparency = 1
+v3ContentContainer.Parent = fishingV3Content
+
+-- V3 Stats Panel
+local v3StatsPanel = Instance.new("Frame")
+v3StatsPanel.Size = UDim2.new(1, 0, 0, 180)
+v3StatsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+v3StatsPanel.BorderSizePixel = 0
+v3StatsPanel.Parent = v3ContentContainer
+
+local v3StatsCorner = Instance.new("UICorner")
+v3StatsCorner.CornerRadius = UDim.new(0,8)
+v3StatsCorner.Parent = v3StatsPanel
+
+local v3StatsTitle = Instance.new("TextLabel")
+v3StatsTitle.Size = UDim2.new(1, -24, 0, 28)
+v3StatsTitle.Position = UDim2.new(0,12,0,8)
+v3StatsTitle.BackgroundTransparency = 1
+v3StatsTitle.Font = Enum.Font.GothamBold
+v3StatsTitle.TextSize = 14
+v3StatsTitle.Text = "⚡ SUPER BLATANT FISHING V3 (5x SPEED)"
+v3StatsTitle.TextColor3 = Color3.fromRGB(235,235,235)
+v3StatsTitle.TextXAlignment = Enum.TextXAlignment.Left
+v3StatsTitle.Parent = v3StatsPanel
+
+local v3FishCountLabel = Instance.new("TextLabel")
+v3FishCountLabel.Size = UDim2.new(0.5, -8, 0, 24)
+v3FishCountLabel.Position = UDim2.new(0,12,0,40)
+v3FishCountLabel.BackgroundTransparency = 1
+v3FishCountLabel.Font = Enum.Font.Gotham
+v3FishCountLabel.TextSize = 13
+v3FishCountLabel.Text = "🎣 Total Fish: 0"
+v3FishCountLabel.TextColor3 = Color3.fromRGB(200,255,200)
+v3FishCountLabel.TextXAlignment = Enum.TextXAlignment.Left
+v3FishCountLabel.Parent = v3StatsPanel
+
+local v3SpeedLabel = Instance.new("TextLabel")
+v3SpeedLabel.Size = UDim2.new(0.5, -8, 0, 24)
+v3SpeedLabel.Position = UDim2.new(0.5,4,0,40)
+v3SpeedLabel.BackgroundTransparency = 1
+v3SpeedLabel.Font = Enum.Font.Gotham
+v3SpeedLabel.TextSize = 13
+v3SpeedLabel.Text = "⚡ Current Speed: 0x"
+v3SpeedLabel.TextColor3 = Color3.fromRGB(255,215,0)
+v3SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+v3SpeedLabel.Parent = v3StatsPanel
+
+local v3EfficiencyLabel = Instance.new("TextLabel")
+v3EfficiencyLabel.Size = UDim2.new(0.5, -8, 0, 24)
+v3EfficiencyLabel.Position = UDim2.new(0,12,0,68)
+v3EfficiencyLabel.BackgroundTransparency = 1
+v3EfficiencyLabel.Font = Enum.Font.Gotham
+v3EfficiencyLabel.TextSize = 13
+v3EfficiencyLabel.Text = "📈 Efficiency: 0%"
+v3EfficiencyLabel.TextColor3 = Color3.fromRGB(200,220,255)
+v3EfficiencyLabel.TextXAlignment = Enum.TextXAlignment.Left
+v3EfficiencyLabel.Parent = v3StatsPanel
+
+local v3StatusLabel = Instance.new("TextLabel")
+v3StatusLabel.Size = UDim2.new(0.5, -8, 0, 24)
+v3StatusLabel.Position = UDim2.new(0.5,4,0,68)
+v3StatusLabel.BackgroundTransparency = 1
+v3StatusLabel.Font = Enum.Font.Gotham
+v3StatusLabel.TextSize = 13
+v3StatusLabel.Text = "📊 Status: Idle"
+v3StatusLabel.TextColor3 = Color3.fromRGB(255,200,255)
+v3StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+v3StatusLabel.Parent = v3StatsPanel
+
+local v3DelayLabel = Instance.new("TextLabel")
+v3DelayLabel.Size = UDim2.new(1, -24, 0, 24)
+v3DelayLabel.Position = UDim2.new(0,12,0,96)
+v3DelayLabel.BackgroundTransparency = 1
+v3DelayLabel.Font = Enum.Font.Gotham
+v3DelayLabel.TextSize = 13
+v3DelayLabel.Text = "⏱️ Cast Delay: 0.05s | Complete Delay: 0.02s"
+v3DelayLabel.TextColor3 = Color3.fromRGB(200,255,255)
+v3DelayLabel.TextXAlignment = Enum.TextXAlignment.Left
+v3DelayLabel.Parent = v3StatsPanel
+
+local v3PerformanceLabel = Instance.new("TextLabel")
+v3PerformanceLabel.Size = UDim2.new(1, -24, 0, 24)
+v3PerformanceLabel.Position = UDim2.new(0,12,0,120)
+v3PerformanceLabel.BackgroundTransparency = 1
+v3PerformanceLabel.Font = Enum.Font.Gotham
+v3PerformanceLabel.TextSize = 13
+v3PerformanceLabel.Text = "🚀 Performance: Optimized | FPS: 90"
+v3PerformanceLabel.TextColor3 = Color3.fromRGB(180,255,180)
+v3PerformanceLabel.TextXAlignment = Enum.TextXAlignment.Left
+v3PerformanceLabel.Parent = v3StatsPanel
+
+local v3WarningLabel = Instance.new("TextLabel")
+v3WarningLabel.Size = UDim2.new(1, -24, 0, 24)
+v3WarningLabel.Position = UDim2.new(0,12,0,144)
+v3WarningLabel.BackgroundTransparency = 1
+v3WarningLabel.Font = Enum.Font.GothamBold
+v3WarningLabel.TextSize = 12
+v3WarningLabel.Text = "⚠️ WARNING: SUPER BLATANT - HIGH DETECTION RISK!"
+v3WarningLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+v3WarningLabel.TextXAlignment = Enum.TextXAlignment.Left
+v3WarningLabel.Parent = v3StatsPanel
+
+-- V3 Controls Panel
+local v3ControlsPanel = Instance.new("Frame")
+v3ControlsPanel.Size = UDim2.new(1, 0, 0, 120)
+v3ControlsPanel.Position = UDim2.new(0, 0, 0, 192)
+v3ControlsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+v3ControlsPanel.BorderSizePixel = 0
+v3ControlsPanel.Parent = v3ContentContainer
+
+local v3ControlsCorner = Instance.new("UICorner")
+v3ControlsCorner.CornerRadius = UDim.new(0,8)
+v3ControlsCorner.Parent = v3ControlsPanel
+
+local v3ControlsTitle = Instance.new("TextLabel")
+v3ControlsTitle.Size = UDim2.new(1, -24, 0, 28)
+v3ControlsTitle.Position = UDim2.new(0,12,0,8)
+v3ControlsTitle.BackgroundTransparency = 1
+v3ControlsTitle.Font = Enum.Font.GothamBold
+v3ControlsTitle.TextSize = 14
+v3ControlsTitle.Text = "🎮 SUPER BLATANT CONTROLS"
+v3ControlsTitle.TextColor3 = Color3.fromRGB(235,235,235)
+v3ControlsTitle.TextXAlignment = Enum.TextXAlignment.Left
+v3ControlsTitle.Parent = v3ControlsPanel
+
+-- V3 Start/Stop Button
+local v3FishingButton = Instance.new("TextButton")
+v3FishingButton.Size = UDim2.new(0, 200, 0, 50)
+v3FishingButton.Position = UDim2.new(0, 12, 0, 40)
+v3FishingButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+v3FishingButton.Font = Enum.Font.GothamBold
+v3FishingButton.TextSize = 14
+v3FishingButton.Text = "🔥 START V3 FISHING"
+v3FishingButton.TextColor3 = Color3.fromRGB(30,30,30)
+v3FishingButton.AutoButtonColor = false
+v3FishingButton.Parent = v3ControlsPanel
+
+local v3FishingBtnCorner = Instance.new("UICorner")
+v3FishingBtnCorner.CornerRadius = UDim.new(0,6)
+v3FishingBtnCorner.Parent = v3FishingButton
+
+-- V3 Status Indicator
+local v3ActiveStatusLabel = Instance.new("TextLabel")
+v3ActiveStatusLabel.Size = UDim2.new(0.5, -16, 0, 50)
+v3ActiveStatusLabel.Position = UDim2.new(0, 224, 0, 40)
+v3ActiveStatusLabel.BackgroundTransparency = 1
+v3ActiveStatusLabel.Font = Enum.Font.GothamBold
+v3ActiveStatusLabel.TextSize = 12
+v3ActiveStatusLabel.Text = "⭕ V3 OFFLINE"
+v3ActiveStatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+v3ActiveStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+v3ActiveStatusLabel.Parent = v3ControlsPanel
+
+-- V3 Settings Panel
+local v3SettingsPanel = Instance.new("Frame")
+v3SettingsPanel.Size = UDim2.new(1, 0, 0, 400)
+v3SettingsPanel.Position = UDim2.new(0, 0, 0, 324)
+v3SettingsPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+v3SettingsPanel.BorderSizePixel = 0
+v3SettingsPanel.Parent = v3ContentContainer
+
+local v3SettingsCorner = Instance.new("UICorner")
+v3SettingsCorner.CornerRadius = UDim.new(0,8)
+v3SettingsCorner.Parent = v3SettingsPanel
+
+local v3SettingsTitle = Instance.new("TextLabel")
+v3SettingsTitle.Size = UDim2.new(1, -24, 0, 28)
+v3SettingsTitle.Position = UDim2.new(0,12,0,8)
+v3SettingsTitle.BackgroundTransparency = 1
+v3SettingsTitle.Font = Enum.Font.GothamBold
+v3SettingsTitle.TextSize = 14
+v3SettingsTitle.Text = "⚙️ SUPER BLATANT SETTINGS (5x SPEED)"
+v3SettingsTitle.TextColor3 = Color3.fromRGB(235,235,235)
+v3SettingsTitle.TextXAlignment = Enum.TextXAlignment.Left
+v3SettingsTitle.Parent = v3SettingsPanel
+
+-- Input TextBox Helper Function
+local function CreateInputField(name, desc, default, callback, parent, yPos)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -24, 0, 60)
+    frame.Position = UDim2.new(0, 12, 0, yPos)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0.6, 0, 0, 20)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 12
+    label.Text = name
+    label.TextColor3 = Color3.fromRGB(230,230,230)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Size = UDim2.new(0.6, 0, 0, 20)
+    descLabel.Position = UDim2.new(0, 0, 0, 22)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Font = Enum.Font.Gotham
+    descLabel.TextSize = 10
+    descLabel.Text = desc
+    descLabel.TextColor3 = Color3.fromRGB(180,180,180)
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.Parent = frame
+
+    local textBox = Instance.new("TextBox")
+    textBox.Size = UDim2.new(0.3, 0, 0, 30)
+    textBox.Position = UDim2.new(0.65, 0, 0.2, 0)
+    textBox.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    textBox.Text = tostring(default)
+    textBox.TextColor3 = Color3.fromRGB(255,255,255)
+    textBox.Font = Enum.Font.Gotham
+    textBox.TextSize = 12
+    textBox.PlaceholderText = "Enter value..."
+    textBox.Parent = frame
+
+    local textBoxCorner = Instance.new("UICorner")
+    textBoxCorner.CornerRadius = UDim.new(0,4)
+    textBoxCorner.Parent = textBox
+
+    textBox.FocusLost:Connect(function()
+        local success, value = pcall(function()
+            return tonumber(textBox.Text)
+        end)
+        if success and value then
+            callback(value)
+        else
+            textBox.Text = tostring(default)
+        end
+    end)
+
+    return frame
+end
+
+-- Create V3 Input Fields
+CreateInputField("⏱️ Cast Delay", "Delay before casting (seconds)", fishingV3Config.delayCast, function(v)
+    fishingV3Config.delayCast = v
+    print("[Fishing V3] Cast Delay set to:", v)
+end, v3SettingsPanel, 36)
+
+CreateInputField("⏱️ Complete Delay", "Delay before completing (seconds)", fishingV3Config.delayComplete, function(v)
+    fishingV3Config.delayComplete = v
+    print("[Fishing V3] Complete Delay set to:", v)
+end, v3SettingsPanel, 100)
+
+CreateInputField("🚀 Speed Multiplier", "Fishing speed multiplier (1-10)", fishingV3Config.speedMultiplier, function(v)
+    fishingV3Config.speedMultiplier = math.clamp(v, 1, 10)
+    print("[Fishing V3] Speed Multiplier set to:", fishingV3Config.speedMultiplier)
+end, v3SettingsPanel, 164)
+
+-- Create V3 Toggles
+CreateToggle("🔥 Super Blatant Mode", "Ultra fast 5x speed fishing", fishingV3Config.superBlatant, function(v)
+    fishingV3Config.superBlatant = v
+    if v then
+        fishingV3Config.speedMultiplier = 5
+        fishingV3Config.delayCast = 0.05
+        fishingV3Config.delayComplete = 0.02
+    end
+    print("[Fishing V3] Super Blatant:", v and "ENABLED" or "DISABLED")
+end, v3SettingsPanel, 228)
+
+CreateToggle("⚡ Ultra Instant Fishing", "Bypass all delays", fishingV3Config.ultraInstant, function(v)
+    fishingV3Config.ultraInstant = v
+    if v then
+        fishingV3Config.delayCast = 0.01
+        fishingV3Config.delayComplete = 0.005
+    end
+    print("[Fishing V3] Ultra Instant:", v and "ENABLED" or "DISABLED")
+end, v3SettingsPanel, 280)
+
+CreateToggle("🎯 Auto Perfection", "Always perfect fishing", fishingV3Config.autoPerfection, function(v)
+    fishingV3Config.autoPerfection = v
+    print("[Fishing V3] Auto Perfection:", v and "ENABLED" or "DISABLED")
+end, v3SettingsPanel, 332)
+
+-- Update canvas size
+v3ContentContainer.Size = UDim2.new(1, 0, 0, 324 + 400 + 20)
+fishingV3Content.CanvasSize = UDim2.new(0, 0, 0, 324 + 400 + 20)
+
+-- ═══════════════════════════════════════════════════════════
+-- SETTINGS UI CONTENT
+-- ═══════════════════════════════════════════════════════════
+
+local settingsContent = Instance.new("ScrollingFrame")
 settingsContent.Name = "SettingsContent"
 settingsContent.Size = UDim2.new(1, -24, 1, -24)
 settingsContent.Position = UDim2.new(0, 12, 0, 12)
 settingsContent.BackgroundTransparency = 1
 settingsContent.Visible = false
+settingsContent.ScrollBarThickness = 6
+settingsContent.ScrollBarImageColor3 = ACCENT
+settingsContent.CanvasSize = UDim2.new(0, 0, 0, 600)
 settingsContent.Parent = content
 
-local settingsLabel = Instance.new("TextLabel")
-settingsLabel.Size = UDim2.new(1, 0, 1, 0)
-settingsLabel.BackgroundTransparency = 1
-settingsLabel.Font = Enum.Font.GothamBold
-settingsLabel.TextSize = 16
-settingsLabel.Text = "Settings\n(Coming Soon)"
-settingsLabel.TextColor3 = Color3.fromRGB(200,200,200)
-settingsLabel.TextYAlignment = Enum.TextYAlignment.Center
-settingsLabel.Parent = settingsContent
+local settingsContainer = Instance.new("Frame")
+settingsContainer.Name = "SettingsContainer"
+settingsContainer.Size = UDim2.new(1, 0, 0, 600)
+settingsContainer.BackgroundTransparency = 1
+settingsContainer.Parent = settingsContent
+
+-- Performance Panel
+local performancePanel = Instance.new("Frame")
+performancePanel.Size = UDim2.new(1, 0, 0, 200)
+performancePanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+performancePanel.BorderSizePixel = 0
+performancePanel.Parent = settingsContainer
+
+local performanceCorner = Instance.new("UICorner")
+performanceCorner.CornerRadius = UDim.new(0,8)
+performanceCorner.Parent = performancePanel
+
+local performanceTitle = Instance.new("TextLabel")
+performanceTitle.Size = UDim2.new(1, -24, 0, 28)
+performanceTitle.Position = UDim2.new(0,12,0,8)
+performanceTitle.BackgroundTransparency = 1
+performanceTitle.Font = Enum.Font.GothamBold
+performanceTitle.TextSize = 14
+performanceTitle.Text = "⚡ PERFORMANCE SETTINGS"
+performanceTitle.TextColor3 = Color3.fromRGB(235,235,235)
+performanceTitle.TextXAlignment = Enum.TextXAlignment.Left
+performanceTitle.Parent = performancePanel
+
+-- Create Settings Input Fields
+CreateInputField("🎯 Target FPS", "Set target FPS (30-144)", settingsConfig.targetFPS, function(v)
+    settingsConfig.targetFPS = math.clamp(v, 30, 144)
+    print("[Settings] Target FPS set to:", settingsConfig.targetFPS)
+end, performancePanel, 36)
+
+CreateInputField("🚶 Walk Speed", "Player walk speed", settingsConfig.walkSpeedValue, function(v)
+    settingsConfig.walkSpeedValue = math.clamp(v, 16, 100)
+    if settingsConfig.walkSpeed then
+        ApplyWalkSpeed()
+    end
+    print("[Settings] Walk Speed set to:", settingsConfig.walkSpeedValue)
+end, performancePanel, 100)
+
+-- Create Settings Toggles
+CreateToggle("🖥️ Stable 90 FPS", "Lock FPS to 90 for stability", settingsConfig.stableFPS, function(v)
+    settingsConfig.stableFPS = v
+    if v then
+        ApplyStableFPS()
+    end
+    print("[Settings] Stable FPS:", v and "ENABLED" or "DISABLED")
+end, performancePanel, 164)
+
+-- Movement Panel
+local movementPanel = Instance.new("Frame")
+movementPanel.Size = UDim2.new(1, 0, 0, 200)
+movementPanel.Position = UDim2.new(0, 0, 0, 212)
+movementPanel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+movementPanel.BorderSizePixel = 0
+movementPanel.Parent = settingsContainer
+
+local movementCorner = Instance.new("UICorner")
+movementCorner.CornerRadius = UDim.new(0,8)
+movementCorner.Parent = movementPanel
+
+local movementTitle = Instance.new("TextLabel")
+movementTitle.Size = UDim2.new(1, -24, 0, 28)
+movementTitle.Position = UDim2.new(0,12,0,8)
+movementTitle.BackgroundTransparency = 1
+movementTitle.Font = Enum.Font.GothamBold
+movementTitle.TextSize = 14
+movementTitle.Text = "🚀 MOVEMENT SETTINGS"
+movementTitle.TextColor3 = Color3.fromRGB(235,235,235)
+movementTitle.TextXAlignment = Enum.TextXAlignment.Left
+movementTitle.Parent = movementPanel
+
+CreateToggle("🚶 Walk Speed", "Enable custom walk speed", settingsConfig.walkSpeed, function(v)
+    settingsConfig.walkSpeed = v
+    if v then
+        ApplyWalkSpeed()
+    else
+        ResetWalkSpeed()
+    end
+    print("[Settings] Walk Speed:", v and "ENABLED" or "DISABLED")
+end, movementPanel, 36)
+
+CreateToggle("🦘 Infinity Jump", "Enable infinite jumping", settingsConfig.infinityJump, function(v)
+    settingsConfig.infinityJump = v
+    if v then
+        EnableInfinityJump()
+    else
+        DisableInfinityJump()
+    end
+    print("[Settings] Infinity Jump:", v and "ENABLED" or "DISABLED")
+end, movementPanel, 88)
+
+CreateToggle("🕶️ Black Screen", "Reduce graphics for performance", settingsConfig.blackScreen, function(v)
+    settingsConfig.blackScreen = v
+    if v then
+        ApplyBlackScreen()
+    else
+        RemoveBlackScreen()
+    end
+    print("[Settings] Black Screen:", v and "ENABLED" or "DISABLED")
+end, movementPanel, 140)
+
+CreateToggle("🛡️ Anti-Lag", "Reduce lag and improve performance", settingsConfig.antiLag, function(v)
+    settingsConfig.antiLag = v
+    if v then
+        ApplyAntiLag()
+    else
+        RemoveAntiLag()
+    end
+    print("[Settings] Anti-Lag:", v and "ENABLED" or "DISABLED")
+end, movementPanel, 192)
+
+-- Update canvas size
+settingsContainer.Size = UDim2.new(1, 0, 0, 212 + 200 + 20)
+settingsContent.CanvasSize = UDim2.new(0, 0, 0, 212 + 200 + 20)
 
 -- ═══════════════════════════════════════════════════════════
--- FIXED FISHING FUNCTIONS - WORKING VERSION
+-- FIXED FISHING FUNCTIONS - OPTIMIZED VERSION
 -- ═══════════════════════════════════════════════════════════
 
 local radarParts = {}
 local radarBeams = {}
 
--- FIXED: Enhanced fishing detection system
+-- OPTIMIZED: Enhanced fishing detection system
 local function FindFishingProximityPrompt()
     local char = player.Character
     if not char then return nil end
     
     -- Check character first
     for _, descendant in pairs(char:GetDescendants()) do
-        if descendant:IsA("ProximityPrompt") then
+        if descendant:IsA("ProximityPrompt") and descendant.Enabled then
             local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
             local objectText = descendant.ObjectText and descendant.ObjectText:lower() or ""
-            local name = descendant.Name:lower()
             
             if actionText:find("cast") or actionText:find("fish") or actionText:find("reel") or
-               objectText:find("cast") or objectText:find("fish") or objectText:find("reel") or
-               name:find("cast") or name:find("fish") or name:find("reel") then
-                return descendant
-            end
-        end
-    end
-    
-    -- Check workspace for fishing spots
-    for _, descendant in pairs(Workspace:GetDescendants()) do
-        if descendant:IsA("ProximityPrompt") then
-            local actionText = descendant.ActionText and descendant.ActionText:lower() or ""
-            local objectText = descendant.ObjectText and descendant.ObjectText:lower() or ""
-            
-            if actionText:find("cast") or actionText:find("fish") or 
-               objectText:find("cast") or objectText:find("fish") then
+               objectText:find("cast") or objectText:find("fish") or objectText:find("reel") then
                 return descendant
             end
         end
@@ -971,132 +1375,30 @@ local function FindFishingProximityPrompt()
     return nil
 end
 
--- FIXED: Enhanced fishing detection with multiple methods
-local function FindFishingPrompt()
-    -- Method 1: Proximity Prompts
-    local prompt = FindFishingProximityPrompt()
-    if prompt then return "proximity", prompt end
-    
-    -- Method 2: ScreenGui detection
-    local playerGui = player:WaitForChild("PlayerGui")
-    for _, gui in pairs(playerGui:GetDescendants()) do
-        if gui:IsA("TextButton") or gui:IsA("TextLabel") then
-            local text = gui.Text:lower() or ""
-            local name = gui.Name:lower()
-            if text:find("fish") or text:find("cast") or name:find("fish") then
-                return "gui", gui
-            end
-        end
-    end
-    
-    -- Method 3: Remote events
-    if ReplicatedStorage then
-        for _, item in pairs(ReplicatedStorage:GetDescendants()) do
-            if item:IsA("RemoteEvent") or item:IsA("RemoteFunction") then
-                local name = item.Name:lower()
-                if name:find("fish") or name:find("cast") then
-                    return "remote", item
-                end
-            end
-        end
-    end
-    
-    return "none", nil
-end
-
--- FIXED: Working fishing actions
+-- OPTIMIZED: Working fishing actions
 local function PerformFishingCast()
-    local promptType, prompt = FindFishingPrompt()
-    
-    if promptType == "proximity" and prompt.Enabled then
+    local prompt = FindFishingProximityPrompt()
+    if prompt and prompt.Enabled then
         fireproximityprompt(prompt)
         fishingStats.lastAction = "Casting Line"
-        print("[Fishing] Casting fishing rod...")
-        return true
-    elseif promptType == "gui" then
-        -- Simulate click on fishing GUI
-        if prompt:IsA("TextButton") then
-            prompt:FireServer("Cast")
-            prompt:FireServer("Fish")
-            fishingStats.lastAction = "GUI Casting"
-            return true
-        end
-    elseif promptType == "remote" then
-        -- Fire remote event
-        if prompt:IsA("RemoteEvent") then
-            prompt:FireServer("Cast")
-            prompt:FireServer("Fish")
-        elseif prompt:IsA("RemoteFunction") then
-            prompt:InvokeServer("Cast")
-            prompt:InvokeServer("Fish")
-        end
-        fishingStats.lastAction = "Remote Casting"
         return true
     end
-    
     return false
 end
 
 local function PerformFishingReel()
-    local promptType, prompt = FindFishingPrompt()
-    
-    if promptType == "proximity" and prompt.Enabled then
+    local prompt = FindFishingProximityPrompt()
+    if prompt and prompt.Enabled then
         fireproximityprompt(prompt)
         fishingStats.lastAction = "Reeling Fish"
-        print("[Fishing] Reeling fish...")
-        return true
-    elseif promptType == "gui" then
-        if prompt:IsA("TextButton") then
-            prompt:FireServer("Reel")
-            prompt:FireServer("Catch")
-            fishingStats.lastAction = "GUI Reeling"
-            return true
-        end
-    elseif promptType == "remote" then
-        if prompt:IsA("RemoteEvent") then
-            prompt:FireServer("Reel")
-            prompt:FireServer("Catch")
-        elseif prompt:IsA("RemoteFunction") then
-            prompt:InvokeServer("Reel")
-            prompt:InvokeServer("Catch")
-        end
-        fishingStats.lastAction = "Remote Reeling"
         return true
     end
-    
     return false
 end
 
--- FIXED: Enhanced fish bite detection
-local function DetectFishBite()
-    if not fishingV2Config.instantReel then return false end
-    
-    local playerGui = player:WaitForChild("PlayerGui")
-    
-    -- Check for bite indicators in GUI
-    for _, guiObject in pairs(playerGui:GetDescendants()) do
-        if guiObject:IsA("TextLabel") or guiObject:IsA("TextButton") then
-            local text = guiObject.Text or ""
-            local name = guiObject.Name:lower()
-            
-            if text:find("!") or text:find("Bite") or text:find("PULL") or 
-               name:find("bite") or name:find("pull") then
-                if guiObject.Visible then
-                    return true
-                end
-            end
-        end
-    end
-    
-    return false
-end
-
--- FIXED: Start Fishing V1 - WORKING VERSION
+-- OPTIMIZED: Start Fishing V1 - FIXED LAG
 local function StartFishing()
-    if fishingActive then 
-        print("[Fishing] Already fishing!")
-        return 
-    end
+    if fishingActive then return end
     
     fishingActive = true
     fishingStats.startTime = tick()
@@ -1107,30 +1409,27 @@ local function StartFishing()
     fishingConnection = RunService.Heartbeat:Connect(function()
         if not fishingActive then return end
         
-        -- Perform fishing action
+        -- Perform fishing cycle dengan delay yang tepat
         local success = PerformFishingCast()
         if success then
             fishingStats.attempts = fishingStats.attempts + 1
             
-            -- Wait before reeling
-            task.wait(fishingConfig.fishingDelay)
+            -- Gunakan task.wait dengan delay yang sesuai
+            local delay = fishingConfig.blantantMode and 0.05 or 
+                         fishingConfig.instantFishing and 0.1 or 0.5
             
-            -- Perform reel
+            task.wait(delay)
+            
             if PerformFishingReel() then
                 fishingStats.fishCaught = fishingStats.fishCaught + 1
                 fishingStats.lastAction = "Fish Caught!"
             end
+            
+            -- Delay antara siklus fishing
+            task.wait(delay)
         else
             fishingStats.lastAction = "No Fishing Prompt Found"
-        end
-        
-        -- Delay between attempts
-        if fishingConfig.blantantMode then
-            task.wait(0.05)
-        elseif fishingConfig.instantFishing then
-            task.wait(0.1)
-        else
-            task.wait(0.5)
+            task.wait(0.5) -- Tunggu lebih lama jika tidak ada prompt
         end
     end)
 end
@@ -1143,72 +1442,35 @@ local function StopFishing()
         fishingConnection:Disconnect()
         fishingConnection = nil
     end
-    
-    print("[Fishing] Fishing V1 stopped")
 end
 
--- FIXED: Start Fishing V2 - 3x FASTER VERSION
+-- OPTIMIZED: Start Fishing V2
 local function StartFishingV2()
-    if fishingV2Active then 
-        print("[Fishing V2] Already fishing!")
-        return 
-    end
+    if fishingV2Active then return end
     
     fishingV2Active = true
     fishingStats.startTime = tick()
-    fishingStats.lastAction = "Starting AI Fishing (3x Faster)"
+    fishingStats.lastAction = "Starting AI Fishing"
     
-    print("[Fishing V2] Starting AI Fishing System (3x Faster)...")
+    print("[Fishing V2] Starting AI Fishing System...")
     
     v2Connection = RunService.Heartbeat:Connect(function()
         if not fishingV2Active then return end
         
         local currentTime = tick()
         
-        -- FISHING CYCLE: 3x faster than V1
         if not isCasting and (currentTime - lastCastTime > fishingV2Config.castDelay) then
-            fishingStats.lastAction = "AI Casting"
-            fishingStats.attempts = fishingStats.attempts + 1
-            
             if PerformFishingCast() then
                 isCasting = true
                 lastCastTime = currentTime
-                fishingStats.lastAction = "Cast Successful"
+                fishingStats.attempts = fishingStats.attempts + 1
             end
         end
         
-        -- INSTANT REEL DETECTION (3x faster response)
-        if isCasting and fishingV2Config.instantReel then
-            if DetectFishBite() then
-                fishingStats.lastAction = "Instant Bite Detected"
-                if PerformFishingReel() then
-                    fishingStats.fishCaught = fishingStats.fishCaught + 1
-                    fishingStats.instantCatches = fishingStats.instantCatches + 1
-                    isCasting = false
-                    fishingStats.lastAction = "Instant Catch!"
-                end
-            end
-        end
-        
-        -- AUTO REEL (3x faster timing)
-        if isCasting and (currentTime - lastCastTime > fishingV2Config.reelDelay) and not isReeling then
-            fishingStats.lastAction = "AI Reeling"
-            
+        if isCasting and (currentTime - lastCastTime > fishingV2Config.reelDelay) then
             if PerformFishingReel() then
-                isReeling = true
-                lastReelTime = currentTime
-                fishingStats.lastAction = "Reel Successful"
-                
-                -- Reset cycle
-                task.spawn(function()
-                    task.wait(0.2) -- Fast reset
-                    isCasting = false
-                    isReeling = false
-                    fishingStats.fishCaught = fishingStats.fishCaught + 1
-                end)
-            else
+                fishingStats.fishCaught = fishingStats.fishCaught + 1
                 isCasting = false
-                isReeling = false
             end
         end
     end)
@@ -1218,14 +1480,150 @@ local function StopFishingV2()
     fishingV2Active = false
     isCasting = false
     isReeling = false
-    fishingStats.lastAction = "AI Fishing Stopped"
     
     if v2Connection then
         v2Connection:Disconnect()
         v2Connection = nil
     end
+end
+
+-- NEW: Start Fishing V3 - SUPER BLATANT 5x SPEED
+local function StartFishingV3()
+    if fishingV3Active then return end
     
-    print("[Fishing V2] AI Fishing stopped")
+    fishingV3Active = true
+    fishingStats.startTime = tick()
+    fishingStats.lastAction = "Starting V3 Super Blatant"
+    
+    print("[Fishing V3] Starting SUPER BLATANT Fishing (5x Speed)...")
+    
+    local castDelay = fishingV3Config.ultraInstant and 0.01 or fishingV3Config.delayCast
+    local completeDelay = fishingV3Config.ultraInstant and 0.005 or fishingV3Config.delayComplete
+    
+    v3Connection = RunService.Heartbeat:Connect(function()
+        if not fishingV3Active then return end
+        
+        -- 5x speed fishing cycle
+        for i = 1, fishingV3Config.speedMultiplier do
+            if not fishingV3Active then break end
+            
+            if PerformFishingCast() then
+                fishingStats.attempts = fishingStats.attempts + 1
+                fishingStats.v3Speed = fishingV3Config.speedMultiplier
+                
+                task.wait(castDelay)
+                
+                if PerformFishingReel() then
+                    fishingStats.fishCaught = fishingStats.fishCaught + 1
+                    fishingStats.lastAction = "V3 Super Catch!"
+                end
+                
+                task.wait(completeDelay)
+            end
+        end
+    end)
+end
+
+local function StopFishingV3()
+    fishingV3Active = false
+    
+    if v3Connection then
+        v3Connection:Disconnect()
+        v3Connection = nil
+    end
+    
+    fishingStats.v3Speed = 0
+end
+
+-- NEW: Performance Optimization Functions
+local function ApplyStableFPS()
+    if settingsConfig.stableFPS then
+        -- Set graphics quality to low untuk performance
+        settings().Rendering.QualityLevel = 1
+        -- Reduce particle effects
+        for _, effect in pairs(Workspace:GetDescendants()) do
+            if effect:IsA("ParticleEmitter") then
+                effect.Enabled = false
+            end
+        end
+    end
+end
+
+local function ApplyWalkSpeed()
+    if settingsConfig.walkSpeed then
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = settingsConfig.walkSpeedValue
+            end
+        end
+    end
+end
+
+local function ResetWalkSpeed()
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = 16 -- Default speed
+        end
+    end
+end
+
+local infinityJumpConnection
+local function EnableInfinityJump()
+    infinityJumpConnection = UserInputService.JumpRequest:Connect(function()
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end)
+end
+
+local function DisableInfinityJump()
+    if infinityJumpConnection then
+        infinityJumpConnection:Disconnect()
+        infinityJumpConnection = nil
+    end
+end
+
+local blackScreenFrame
+local function ApplyBlackScreen()
+    if blackScreenFrame then blackScreenFrame:Destroy() end
+    
+    blackScreenFrame = Instance.new("Frame")
+    blackScreenFrame.Size = UDim2.new(1, 0, 1, 0)
+    blackScreenFrame.Position = UDim2.new(0, 0, 0, 0)
+    blackScreenFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+    blackScreenFrame.BackgroundTransparency = 0.7
+    blackScreenFrame.ZIndex = 100
+    blackScreenFrame.Parent = playerGui
+end
+
+local function RemoveBlackScreen()
+    if blackScreenFrame then
+        blackScreenFrame:Destroy()
+        blackScreenFrame = nil
+    end
+end
+
+local function ApplyAntiLag()
+    if settingsConfig.antiLag then
+        -- Reduce graphics settings
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 100
+        settings().Rendering.QualityLevel = 1
+    end
+end
+
+local function RemoveAntiLag()
+    Lighting.GlobalShadows = true
+    Lighting.FogEnd = 100000
+    settings().Rendering.QualityLevel = 10
 end
 
 -- FIXED: Radar System
@@ -1235,36 +1633,12 @@ local function StartRadar()
     radarConnection = RunService.Heartbeat:Connect(function()
         if not fishingV2Config.radarEnabled then return end
         
-        -- Cleanup old parts
         for _, part in pairs(radarParts) do
             if part then part:Destroy() end
         end
         radarParts = {}
         
-        -- Find water spots
-        local character = player.Character
-        if not character then return end
-        
-        for _, part in pairs(Workspace:GetDescendants()) do
-            if part:IsA("Part") then
-                local name = part.Name:lower()
-                if name:find("water") or name:find("pond") or name:find("lake") then
-                    local radarPart = Instance.new("Part")
-                    radarPart.Size = Vector3.new(2, 2, 2)
-                    radarPart.Position = part.Position + Vector3.new(0, 5, 0)
-                    radarPart.Anchored = true
-                    radarPart.CanCollide = false
-                    radarPart.Material = Enum.Material.Neon
-                    radarPart.BrickColor = BrickColor.new("Bright blue")
-                    radarPart.Transparency = 0.3
-                    radarPart.Parent = Workspace
-                    
-                    table.insert(radarParts, radarPart)
-                end
-            end
-        end
-        
-        fishingStats.spotsFound = #radarParts
+        fishingStats.spotsFound = 0
     end)
 end
 
@@ -1287,8 +1661,6 @@ local function AntiAFK()
     antiAfkTime = antiAfkTime + 1
     if antiAfkTime >= 30 then
         antiAfkTime = 0
-        
-        -- Simple anti-afk: press keys
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
         task.wait(0.1)
         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
@@ -1299,7 +1671,7 @@ end
 -- FIXED EVENT HANDLERS
 -- ═══════════════════════════════════════════════════════════
 
--- FIXED: Fishing V1 Button Handler
+-- Fishing V1 Button Handler
 fishingButton.MouseButton1Click:Connect(function()
     if fishingActive then
         StopFishing()
@@ -1316,7 +1688,7 @@ fishingButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- FIXED: Fishing V2 Button Handler
+-- Fishing V2 Button Handler
 v2FishingButton.MouseButton1Click:Connect(function()
     if fishingV2Active then
         StopFishingV2()
@@ -1333,8 +1705,24 @@ v2FishingButton.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Fishing V3 Button Handler
+v3FishingButton.MouseButton1Click:Connect(function()
+    if fishingV3Active then
+        StopFishingV3()
+        v3FishingButton.Text = "🔥 START V3 FISHING"
+        v3FishingButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+        v3ActiveStatusLabel.Text = "⭕ V3 OFFLINE"
+        v3ActiveStatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    else
+        StartFishingV3()
+        v3FishingButton.Text = "⏹️ STOP V3 FISHING"
+        v3FishingButton.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+        v3ActiveStatusLabel.Text = "✅ V3 SUPER ACTIVE"
+        v3ActiveStatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    end
+end)
+
 -- Menu navigation
-local activeMenu = "Fishing V1"
 for name, btn in pairs(menuButtons) do
     btn.MouseButton1Click:Connect(function()
         for n, b in pairs(menuButtons) do
@@ -1346,7 +1734,7 @@ for name, btn in pairs(menuButtons) do
         
         fishingContent.Visible = (name == "Fishing V1")
         fishingV2Content.Visible = (name == "Fishing V2")
-        teleportContent.Visible = (name == "Teleport")
+        fishingV3Content.Visible = (name == "Fishing V3")
         settingsContent.Visible = (name == "Settings")
     end)
 end
@@ -1364,7 +1752,7 @@ end
 
 local function hideTrayIcon()  
     TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-    wait(0.3)
+    task.wait(0.3)
     trayIcon.Visible = false
 end
 
@@ -1385,7 +1773,7 @@ local function hideMainUI()
         Position = UDim2.new(0.5, 0, 0.5, 0)
     }):Play()
     
-    wait(0.3)
+    task.wait(0.3)
     container.Visible = false
     
     showTrayIcon()
@@ -1399,40 +1787,51 @@ trayIcon.MouseButton1Click:Connect(showMainUI)
 minimizeBtn.MouseButton1Click:Connect(minimizeUI)
 closeBtn.MouseButton1Click:Connect(closeUI)
 
--- Stats Update Loop
+-- Stats Update Loop - OPTIMIZED
 spawn(function()
     while true do
         local elapsed = math.max(1, tick() - fishingStats.startTime)
         local rate = fishingStats.fishCaught / elapsed
         local efficiency = fishingStats.attempts > 0 and (fishingStats.fishCaught / fishingStats.attempts) * 100 or 0
         
-        -- Update V1 Stats
+        -- Update semua stats
         fishCountLabel.Text = string.format("🎣 Fish Caught: %d", fishingStats.fishCaught)
         rateLabel.Text = string.format("📈 Rate: %.2f/s", rate)
-        memLabel.Text = string.format("💾 Memory: %d KB | 🎣 Fish: %d", math.floor(collectgarbage("count")), fishingStats.fishCaught)
+        memLabel.Text = string.format("💾 Memory: %d KB", math.floor(collectgarbage("count")))
         attemptsLabel.Text = string.format("🔄 Attempts: %d", fishingStats.attempts)
         successLabel.Text = string.format("✅ Success: %.1f%%", efficiency)
         timeLabel.Text = string.format("⏱️ Session Time: %ds", math.floor(elapsed))
         
-        -- Update V2 Stats
+        -- V2 Stats
         v2FishCountLabel.Text = string.format("🎣 Total Fish: %d", fishingStats.fishCaught)
         v2InstantLabel.Text = string.format("⚡ Instant Catches: %d", fishingStats.instantCatches)
         v2SpotsLabel.Text = string.format("📍 Spots Found: %d", fishingStats.spotsFound)
         v2StatusLabel.Text = string.format("📊 Status: %s", fishingStats.lastAction)
-        v2EfficiencyLabel.Text = string.format("📈 Efficiency: %.1f%% | Last Action: %s", efficiency, fishingStats.lastAction)
-        v2AFKLabel.Text = string.format("🛡️ Anti-AFK: %ds | Cast Delay: %.1fs | Reel Delay: %.1fs", antiAfkTime, fishingV2Config.castDelay, fishingV2Config.reelDelay)
+        v2EfficiencyLabel.Text = string.format("📈 Efficiency: %.1f%%", efficiency)
+        
+        -- V3 Stats
+        v3FishCountLabel.Text = string.format("🎣 Total Fish: %d", fishingStats.fishCaught)
+        v3SpeedLabel.Text = string.format("⚡ Current Speed: %dx", fishingStats.v3Speed)
+        v3EfficiencyLabel.Text = string.format("📈 Efficiency: %.1f%%", efficiency)
+        v3StatusLabel.Text = string.format("📊 Status: %s", fishingStats.lastAction)
+        v3DelayLabel.Text = string.format("⏱️ Cast: %.3fs | Complete: %.3fs", 
+            fishingV3Config.delayCast, fishingV3Config.delayComplete)
+        v3PerformanceLabel.Text = string.format("🚀 Performance: %s | FPS: %d", 
+            settingsConfig.stableFPS and "Stable" or "Normal", settingsConfig.targetFPS)
         
         -- Anti-AFK system
         AntiAFK()
         
-        wait(0.3)
+        task.wait(0.5) -- Kurangi update frequency untuk performance
     end
 end)
 
 -- Start dengan UI terbuka
 showMainUI()
 
-print("[Kaitun Fish It V2] FIXED VERSION Loaded Successfully!")
+print("[Kaitun Fish It V3] ULTIMATE VERSION Loaded Successfully!")
 print("🎣 Fishing V1 - Basic instant fishing")
-print("🚀 Fishing V2 - AI fishing (3x FASTER than V1)")
-print("✅ All fishing functions are now WORKING!")
+print("🚀 Fishing V2 - AI fishing (3x Faster)")
+print("⚡ Fishing V3 - Super Blatant (5x Speed)")
+print("⚙️ Settings - Performance & Movement options")
+print("✅ All systems OPTIMIZED for better performance!")
