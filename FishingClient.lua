@@ -1,7 +1,5 @@
-
-
 -- UI-Only: Neon Panel (sidebar + content) — paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
--- Tema: hitam transparan + neon merah & biru. Toggle dengan tombol G. Safe (UI only).
+-- Tema: hitam transparan + neon merah & biru. Mobile-friendly dengan toggle button. Safe (UI only).
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -91,7 +89,7 @@ title.Position = UDim2.new(0,8,0,0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
-title.Text = "⚡ KAITUN FISH IT — UI Preview"
+title.Text = "⚡ KAITUN FISH IT — Mobile UI"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -104,6 +102,28 @@ memLabel.TextSize = 13
 memLabel.Text = "Client Memory Usage: 0 MB"
 memLabel.TextColor3 = Color3.fromRGB(200,200,200)
 memLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+-- Toggle Button untuk Mobile (di pojok kanan atas)
+local toggleButton = Instance.new("TextButton", titleBar)
+toggleButton.Size = UDim2.new(0, 100, 0, 32)
+toggleButton.Position = UDim2.new(1, -108, 0.5, -16)
+toggleButton.BackgroundColor3 = ACCENT_RED
+toggleButton.BackgroundTransparency = 0.2
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextSize = 14
+toggleButton.Text = "Toggle UI"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.AutoButtonColor = false
+local toggleCorner = Instance.new("UICorner", toggleButton)
+toggleCorner.CornerRadius = UDim.new(0, 6)
+
+-- Hover effect untuk toggle button
+toggleButton.MouseEnter:Connect(function()
+    TweenService:Create(toggleButton, TweenInfo.new(0.12), {BackgroundTransparency = 0.1}):Play()
+end)
+toggleButton.MouseLeave:Connect(function()
+    TweenService:Create(toggleButton, TweenInfo.new(0.12), {BackgroundTransparency = 0.2}):Play()
+end)
 
 -- left sidebar - TRANSPARAN
 local sidebar = Instance.new("Frame", inner)
@@ -476,7 +496,7 @@ for name, btn in pairs(menuButtons) do
     end)
 end
 
--- close/open toggle with G (with pop animation)
+-- close/open toggle function
 local uiOpen = false
 local function toggleUI(show)
     uiOpen = show
@@ -491,29 +511,29 @@ local function toggleUI(show)
         card:TweenSize(UDim2.new(0, WIDTH,0,HEIGHT), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.28, true)
         TweenService:Create(glow, TweenInfo.new(0.28), {ImageTransparency = 0.8}):Play()
         startParticles()
+        toggleButton.Text = "Close UI"
     else
         TweenService:Create(glow, TweenInfo.new(0.18), {ImageTransparency = 0.96}):Play()
         card:TweenSize(UDim2.new(0, WIDTH*0.9,0,HEIGHT*0.9), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.16, true)
         delay(0.16, function()
-            card.Visible = true -- keep visible but scaled down (demo)
+            card.Visible = false
             glow.Visible = false
             particleContainer.Visible = false
             if particleConnection then
                 particleConnection:Disconnect()
             end
         end)
+        toggleButton.Text = "Open UI"
     end
 end
 
+-- Toggle button functionality
+toggleButton.MouseButton1Click:Connect(function()
+    toggleUI(not uiOpen)
+end)
+
 -- initial hide
 toggleUI(false)
-
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.KeyCode == Enum.KeyCode.G then
-        toggleUI(not uiOpen)
-    end
-end)
 
 -- small update loop for mem label (demo)
 spawn(function()
@@ -524,4 +544,4 @@ spawn(function()
     end
 end)
 
-print("[NeonDashboardUI] Loaded (UI-only). Press G to toggle.")
+print("[NeonDashboardUI] Loaded (Mobile UI). Use the toggle button to open/close.")
