@@ -1,5 +1,7 @@
--- UI-Only: Premium Neon Dashboard - Kaitun Fish It
--- paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
+
+
+-- UI-Only: Neon Panel (sidebar + content) — paste ke StarterPlayer -> StarterPlayerScripts (LocalScript)
+-- Tema: hitam transparan + neon merah & biru. Toggle dengan tombol G. Safe (UI only).
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -10,16 +12,15 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- CONFIG
-local WIDTH = 1000
-local HEIGHT = 600
-local SIDEBAR_W = 260
-local ACCENT = Color3.fromRGB(255, 65, 65) -- Neon Red
-local ACCENT2 = Color3.fromRGB(0, 150, 255) -- Neon Blue
-local BG = Color3.fromRGB(8, 8, 8) -- Pure Black
-local SECOND = Color3.fromRGB(18, 18, 20) -- Dark Gray
-local CARD_BG = Color3.fromRGB(15, 15, 18)
+local WIDTH = 920
+local HEIGHT = 520
+local SIDEBAR_W = 220
+local ACCENT_RED = Color3.fromRGB(255, 62, 62) -- neon merah
+local ACCENT_BLUE = Color3.fromRGB(62, 62, 255) -- neon biru
+local BG = Color3.fromRGB(12,12,12) -- hitam matte
+local SECOND = Color3.fromRGB(24,24,26)
 
--- Cleanup old UI
+-- cleanup old if exist
 if playerGui:FindFirstChild("NeonDashboardUI") then
     playerGui.NeonDashboardUI:Destroy()
 end
@@ -29,709 +30,498 @@ local screen = Instance.new("ScreenGui")
 screen.Name = "NeonDashboardUI"
 screen.ResetOnSpawn = false
 screen.Parent = playerGui
+screen.IgnoreGuiInset = true
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-print("[UI] Premium Dashboard Initialized")
-
--- Main container dengan efek glass morphism
+-- Main container (centered)
 local container = Instance.new("Frame")
 container.Name = "Container"
 container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
 container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
-container.BackgroundColor3 = BG
-container.BackgroundTransparency = 0.1
-container.BorderSizePixel = 0
+container.BackgroundTransparency = 1
 container.Parent = screen
 
--- Background Blur Effect
-local blur = Instance.new("BlurEffect")
-blur.Size = 24
-blur.Parent = game:GetService("Lighting")
+-- Outer glow (image behind)
+local glow = Instance.new("ImageLabel", screen)
+glow.Name = "Glow"
+glow.AnchorPoint = Vector2.new(0.5,0.5)
+glow.Size = UDim2.new(0, WIDTH+80, 0, HEIGHT+80)
+glow.Position = container.Position
+glow.BackgroundTransparency = 1
+glow.Image = "rbxassetid://5050741616" -- radial
+glow.ImageColor3 = ACCENT_RED
+glow.ImageTransparency = 0.92
+glow.ZIndex = 1
 
--- Outer glow dengan multiple layers
-local glow1 = Instance.new("ImageLabel")
-glow1.Name = "Glow1"
-glow1.AnchorPoint = Vector2.new(0.5,0.5)
-glow1.Size = UDim2.new(0, WIDTH+120, 0, HEIGHT+120)
-glow1.Position = UDim2.new(0.5, 0, 0.5, 0)
-glow1.BackgroundTransparency = 1
-glow1.Image = "rbxassetid://5050741616"
-glow1.ImageColor3 = ACCENT
-glow1.ImageTransparency = 0.94
-glow1.ZIndex = 0
-glow1.Parent = container
-
-local glow2 = Instance.new("ImageLabel")
-glow2.Name = "Glow2"
-glow2.AnchorPoint = Vector2.new(0.5,0.5)
-glow2.Size = UDim2.new(0, WIDTH+80, 0, HEIGHT+80)
-glow2.Position = UDim2.new(0.5, 0, 0.5, 0)
-glow2.BackgroundTransparency = 1
-glow2.Image = "rbxassetid://5050741616"
-glow2.ImageColor3 = ACCENT2
-glow2.ImageTransparency = 0.92
-glow2.ZIndex = 1
-glow2.Parent = container
-
--- Main card dengan rounded corners
+-- Card (panel) - TRANSPARAN
 local card = Instance.new("Frame")
 card.Name = "Card"
 card.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
 card.Position = UDim2.new(0,0,0,0)
 card.BackgroundColor3 = BG
+card.BackgroundTransparency = 0.3 -- TRANSPARAN
 card.BorderSizePixel = 0
 card.Parent = container
 card.ZIndex = 2
 
-local cardCorner = Instance.new("UICorner")
-cardCorner.CornerRadius = UDim.new(0, 16)
-cardCorner.Parent = card
+local cardCorner = Instance.new("UICorner", card)
+cardCorner.CornerRadius = UDim.new(0, 12)
 
--- Inner container dengan padding
-local inner = Instance.new("Frame")
+-- inner container
+local inner = Instance.new("Frame", card)
 inner.Name = "Inner"
 inner.Size = UDim2.new(1, -24, 1, -24)
 inner.Position = UDim2.new(0, 12, 0, 12)
 inner.BackgroundTransparency = 1
-inner.Parent = card
 
--- Title bar dengan gradient effect
-local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 60)
+-- Title bar - TRANSPARAN
+local titleBar = Instance.new("Frame", inner)
+titleBar.Size = UDim2.new(1,0,0,48)
 titleBar.Position = UDim2.new(0,0,0,0)
-titleBar.BackgroundColor3 = SECOND
+titleBar.BackgroundColor3 = BG
+titleBar.BackgroundTransparency = 0.4 -- TRANSPARAN
 titleBar.BorderSizePixel = 0
-titleBar.Parent = inner
 
-local titleBarCorner = Instance.new("UICorner")
-titleBarCorner.CornerRadius = UDim.new(0, 12)
-titleBarCorner.Parent = titleBar
+local titleBarCorner = Instance.new("UICorner", titleBar)
+titleBarCorner.CornerRadius = UDim.new(0, 8)
 
--- Gradient overlay untuk title bar
-local gradient = Instance.new("UIGradient")
-gradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 65, 65)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 100))
-})
-gradient.Rotation = 90
-gradient.Parent = titleBar
-
--- Title text dengan efek glow
-local title = Instance.new("TextLabel")
+local title = Instance.new("TextLabel", titleBar)
 title.Size = UDim2.new(0.6,0,1,0)
-title.Position = UDim2.new(0,20,0,0)
+title.Position = UDim2.new(0,8,0,0)
 title.BackgroundTransparency = 1
-title.Font = Enum.Font.GothamBlack
-title.TextSize = 20
-title.Text = "⚡ KAITUN FISH IT"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.Text = "⚡ KAITUN FISH IT — UI Preview"
+title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.TextStrokeTransparency = 0.8
-title.TextStrokeColor3 = Color3.fromRGB(255, 65, 65)
-title.Parent = titleBar
 
--- Subtitle
-local subtitle = Instance.new("TextLabel")
-subtitle.Size = UDim2.new(0.4,0,0,20)
-subtitle.Position = UDim2.new(0,20,0,35)
-subtitle.BackgroundTransparency = 1
-subtitle.Font = Enum.Font.Gotham
-subtitle.TextSize = 12
-subtitle.Text = "PREMIUM FISHING AUTOMATION"
-subtitle.TextColor3 = Color3.fromRGB(200, 200, 255)
-subtitle.TextXAlignment = Enum.TextXAlignment.Left
-subtitle.Parent = titleBar
+local memLabel = Instance.new("TextLabel", titleBar)
+memLabel.Size = UDim2.new(0.4,-16,1,0)
+memLabel.Position = UDim2.new(0.6,8,0,0)
+memLabel.BackgroundTransparency = 1
+memLabel.Font = Enum.Font.Gotham
+memLabel.TextSize = 13
+memLabel.Text = "Client Memory Usage: 0 MB"
+memLabel.TextColor3 = Color3.fromRGB(200,200,200)
+memLabel.TextXAlignment = Enum.TextXAlignment.Right
 
--- Window Controls dengan modern design
-local windowControls = Instance.new("Frame")
-windowControls.Size = UDim2.new(0, 100, 1, 0)
-windowControls.Position = UDim2.new(1, -110, 0, 0)
-windowControls.BackgroundTransparency = 1
-windowControls.Parent = titleBar
-
-local minimizeBtn = Instance.new("TextButton")
-minimizeBtn.Size = UDim2.new(0, 36, 0, 36)
-minimizeBtn.Position = UDim2.new(0, 8, 0.5, -18)
-minimizeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-minimizeBtn.Font = Enum.Font.GothamBlack
-minimizeBtn.TextSize = 16
-minimizeBtn.Text = "-"
-minimizeBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
-minimizeBtn.AutoButtonColor = false
-minimizeBtn.Parent = windowControls
-
-local minCorner = Instance.new("UICorner")
-minCorner.CornerRadius = UDim.new(0, 8)
-minCorner.Parent = minimizeBtn
-
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 36, 0, 36)
-closeBtn.Position = UDim2.new(0, 52, 0.5, -18)
-closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-closeBtn.Font = Enum.Font.GothamBlack
-closeBtn.TextSize = 14
-closeBtn.Text = "✕"
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeBtn.AutoButtonColor = false
-closeBtn.Parent = windowControls
-
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 8)
-closeCorner.Parent = closeBtn
-
--- System status label
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(0.3,-120,1,0)
-statusLabel.Position = UDim2.new(0.7,20,0,0)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Font = Enum.Font.GothamBold
-statusLabel.TextSize = 11
-statusLabel.Text = "🟢 SYSTEM ONLINE"
-statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-statusLabel.TextXAlignment = Enum.TextXAlignment.Right
-statusLabel.Parent = titleBar
-
--- Sidebar dengan modern design
-local sidebar = Instance.new("Frame")
+-- left sidebar - TRANSPARAN
+local sidebar = Instance.new("Frame", inner)
 sidebar.Name = "Sidebar"
-sidebar.Size = UDim2.new(0, SIDEBAR_W, 1, -80)
-sidebar.Position = UDim2.new(0, 0, 0, 70)
+sidebar.Size = UDim2.new(0, SIDEBAR_W, 1, -64)
+sidebar.Position = UDim2.new(0, 0, 0, 56)
 sidebar.BackgroundColor3 = SECOND
+sidebar.BackgroundTransparency = 0.4 -- TRANSPARAN
 sidebar.BorderSizePixel = 0
 sidebar.ZIndex = 3
-sidebar.Parent = inner
 
-local sbCorner = Instance.new("UICorner")
-sbCorner.CornerRadius = UDim.new(0, 12)
-sbCorner.Parent = sidebar
+local sbCorner = Instance.new("UICorner", sidebar)
+sbCorner.CornerRadius = UDim.new(0, 8)
 
--- Sidebar header dengan logo
-local sbHeader = Instance.new("Frame")
-sbHeader.Size = UDim2.new(1,0,0,100)
+-- sidebar header icon
+local sbHeader = Instance.new("Frame", sidebar)
+sbHeader.Size = UDim2.new(1,0,0,84)
 sbHeader.BackgroundTransparency = 1
-sbHeader.Parent = sidebar
 
-local logoContainer = Instance.new("Frame")
-logoContainer.Size = UDim2.new(1, -20, 0, 80)
-logoContainer.Position = UDim2.new(0, 10, 0, 10)
-logoContainer.BackgroundColor3 = CARD_BG
-logoContainer.BorderSizePixel = 0
-logoContainer.Parent = sbHeader
-
-local logoCorner = Instance.new("UICorner")
-logoCorner.CornerRadius = UDim.new(0, 12)
-logoCorner.Parent = logoContainer
-
-local logo = Instance.new("ImageLabel")
-logo.Size = UDim2.new(0,50,0,50)
-logo.Position = UDim2.new(0, 15, 0.5, -25)
+local logo = Instance.new("ImageLabel", sbHeader)
+logo.Size = UDim2.new(0,64,0,64)
+logo.Position = UDim2.new(0, 12, 0, 10)
 logo.BackgroundTransparency = 1
-logo.Image = "rbxassetid://3926305904"
-logo.ImageColor3 = ACCENT
-logo.Parent = logoContainer
+logo.Image = "rbxassetid://3926305904" -- simple icon (roblox)
+logo.ImageColor3 = ACCENT_RED
 
-local sTitle = Instance.new("TextLabel")
-sTitle.Size = UDim2.new(1,-80,0,30)
-sTitle.Position = UDim2.new(0, 75, 0, 15)
+local sTitle = Instance.new("TextLabel", sbHeader)
+sTitle.Size = UDim2.new(1,-96,0,32)
+sTitle.Position = UDim2.new(0, 88, 0, 12)
 sTitle.BackgroundTransparency = 1
-sTitle.Font = Enum.Font.GothamBlack
-sTitle.TextSize = 16
-sTitle.Text = "KAITUN V4"
-sTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+sTitle.Font = Enum.Font.GothamBold
+sTitle.TextSize = 14
+sTitle.Text = "Kaitun"
+sTitle.TextColor3 = Color3.fromRGB(240,240,240)
 sTitle.TextXAlignment = Enum.TextXAlignment.Left
-sTitle.Parent = logoContainer
 
-local sSubtitle = Instance.new("TextLabel")
-sSubtitle.Size = UDim2.new(1,-80,0,20)
-sSubtitle.Position = UDim2.new(0, 75, 0, 45)
-sSubtitle.BackgroundTransparency = 1
-sSubtitle.Font = Enum.Font.Gotham
-sSubtitle.TextSize = 11
-sSubtitle.Text = "PREMIUM EDITION"
-sSubtitle.TextColor3 = Color3.fromRGB(200, 200, 255)
-sSubtitle.TextXAlignment = Enum.TextXAlignment.Left
-sSubtitle.Parent = logoContainer
-
--- Menu container
-local menuFrame = Instance.new("ScrollingFrame")
-menuFrame.Name = "MenuFrame"
-menuFrame.Size = UDim2.new(1,-12,1, -130)
-menuFrame.Position = UDim2.new(0, 6, 0, 110)
+-- menu list area
+local menuFrame = Instance.new("Frame", sidebar)
+menuFrame.Size = UDim2.new(1,-12,1, -108)
+menuFrame.Position = UDim2.new(0, 6, 0, 92)
 menuFrame.BackgroundTransparency = 1
-menuFrame.ScrollBarThickness = 4
-menuFrame.ScrollBarImageColor3 = ACCENT
-menuFrame.CanvasSize = UDim2.new(0, 0, 0, 500)
-menuFrame.Parent = sidebar
 
-local menuLayout = Instance.new("UIListLayout")
+local menuLayout = Instance.new("UIListLayout", menuFrame)
 menuLayout.SortOrder = Enum.SortOrder.LayoutOrder
 menuLayout.Padding = UDim.new(0,8)
-menuLayout.Parent = menuFrame
 
--- Modern menu item function
-local function makeMenuItem(name, icon, desc, isNew)
+-- menu helper
+local function makeMenuItem(name, iconText)
     local row = Instance.new("TextButton")
-    row.Size = UDim2.new(1, 0, 0, 70)
-    row.BackgroundColor3 = CARD_BG
+    row.Size = UDim2.new(1, 0, 0, 44)
+    row.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    row.BackgroundTransparency = 0.3 -- TRANSPARAN
     row.AutoButtonColor = false
     row.BorderSizePixel = 0
     row.Text = ""
     row.Parent = menuFrame
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = row
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(40, 40, 40)
-    stroke.Thickness = 1
-    stroke.Parent = row
-    
-    -- Left icon area
-    local left = Instance.new("Frame")
-    left.Size = UDim2.new(0,50,1,0)
-    left.Position = UDim2.new(0,10,0,0)
+
+    local corner = Instance.new("UICorner", row)
+    corner.CornerRadius = UDim.new(0,8)
+
+    local left = Instance.new("Frame", row)
+    left.Size = UDim2.new(0,40,1,0)
+    left.Position = UDim2.new(0,8,0,0)
     left.BackgroundTransparency = 1
-    left.Parent = row
-    
-    local iconBg = Instance.new("Frame")
-    iconBg.Size = UDim2.new(0,40,0,40)
-    iconBg.Position = UDim2.new(0,0,0.5,-20)
-    iconBg.BackgroundColor3 = ACCENT
-    iconBg.BorderSizePixel = 0
-    iconBg.Parent = left
-    
-    local iconCorner = Instance.new("UICorner")
-    iconCorner.CornerRadius = UDim.new(0, 8)
-    iconCorner.Parent = iconBg
-    
-    local iconLabel = Instance.new("TextLabel")
-    iconLabel.Size = UDim2.new(1,0,1,0)
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.Font = Enum.Font.GothamBlack
-    iconLabel.TextSize = 16
-    iconLabel.Text = icon
-    iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    iconLabel.TextXAlignment = Enum.TextXAlignment.Center
-    iconLabel.TextYAlignment = Enum.TextYAlignment.Center
-    iconLabel.Parent = iconBg
-    
-    -- Text content area
-    local textArea = Instance.new("Frame")
-    textArea.Size = UDim2.new(1,-70,1,0)
-    textArea.Position = UDim2.new(0,60,0,0)
-    textArea.BackgroundTransparency = 1
-    textArea.Parent = row
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1,0,0,24)
-    label.Position = UDim2.new(0,0,0,12)
+
+    local icon = Instance.new("TextLabel", left)
+    icon.Size = UDim2.new(1,0,1,0)
+    icon.BackgroundTransparency = 1
+    icon.Font = Enum.Font.GothamBold
+    icon.TextSize = 18
+    icon.Text = iconText
+    icon.TextColor3 = ACCENT_RED
+    icon.TextXAlignment = Enum.TextXAlignment.Center
+    icon.TextYAlignment = Enum.TextYAlignment.Center
+
+    local label = Instance.new("TextLabel", row)
+    label.Size = UDim2.new(0.8,0,1,0)
+    label.Position = UDim2.new(0,56,0,0)
     label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
+    label.Font = Enum.Font.Gotham
     label.TextSize = 14
     label.Text = name
-    label.TextColor3 = Color3.fromRGB(240,240,240)
+    label.TextColor3 = Color3.fromRGB(230,230,230)
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = textArea
-    
-    local descLabel = Instance.new("TextLabel")
-    descLabel.Size = UDim2.new(1,0,0,16)
-    descLabel.Position = UDim2.new(0,0,0,38)
-    descLabel.BackgroundTransparency = 1
-    descLabel.Font = Enum.Font.Gotham
-    descLabel.TextSize = 11
-    descLabel.Text = desc
-    descLabel.TextColor3 = Color3.fromRGB(180,180,200)
-    descLabel.TextXAlignment = Enum.TextXAlignment.Left
-    descLabel.Parent = textArea
-    
-    -- New badge
-    if isNew then
-        local newBadge = Instance.new("Frame")
-        newBadge.Size = UDim2.new(0, 30, 0, 16)
-        newBadge.Position = UDim2.new(1, -35, 0, 12)
-        newBadge.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-        newBadge.BorderSizePixel = 0
-        newBadge.Parent = row
-        
-        local badgeCorner = Instance.new("UICorner")
-        badgeCorner.CornerRadius = UDim.new(0, 4)
-        badgeCorner.Parent = newBadge
-        
-        local badgeText = Instance.new("TextLabel")
-        badgeText.Size = UDim2.new(1,0,1,0)
-        badgeText.BackgroundTransparency = 1
-        badgeText.Font = Enum.Font.GothamBold
-        badgeText.TextSize = 9
-        badgeText.Text = "NEW"
-        badgeText.TextColor3 = Color3.fromRGB(255, 255, 255)
-        badgeText.TextXAlignment = Enum.TextXAlignment.Center
-        badgeText.TextYAlignment = Enum.TextYAlignment.Center
-        badgeText.Parent = newBadge
-    end
-    
-    -- Hover effects
+
+    -- hover effect
     row.MouseEnter:Connect(function()
-        TweenService:Create(row, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(25, 25, 30)}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = ACCENT}):Play()
-        TweenService:Create(iconBg, TweenInfo.new(0.2), {BackgroundColor3 = ACCENT2}):Play()
+        TweenService:Create(row, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(30,10,10), BackgroundTransparency = 0.2}):Play()
     end)
-    
     row.MouseLeave:Connect(function()
-        TweenService:Create(row, TweenInfo.new(0.2), {BackgroundColor3 = CARD_BG}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(40, 40, 40)}):Play()
-        TweenService:Create(iconBg, TweenInfo.new(0.2), {BackgroundColor3 = ACCENT}):Play()
+        TweenService:Create(row, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(20,20,20), BackgroundTransparency = 0.3}):Play()
     end)
 
-    return row
+    return row, label
 end
 
--- Create premium menu items
-local menuItems = {
-    {"Fishing Hub", "🎣", "Smart Fishing Automation", true},
-    {"Performance", "⚡", "Optimization & Settings", false},
-    {"Teleport", "📍", "Location Management", false},
-    {"Player", "👤", "Character Modifications", false},
-    {"Visuals", "👁️", "UI & Graphics Settings", false},
-    {"Security", "🛡️", "Anti-Detection & Safety", false}
+-- menu items (order like photo)
+local items = {
+    {"Main", "★"},
+    {"Spawn Boat", "⛵"},
+    {"Buy Rod", "🪝"},
+    {"Buy Weather", "☁"},
+    {"Buy Bait", "🍤"},
+    {"Teleport", "📍"},
+    {"Settings", "⚙"},
 }
-
 local menuButtons = {}
-for i, v in ipairs(menuItems) do
-    local btn = makeMenuItem(v[1], v[2], v[3], v[4])
+for i, v in ipairs(items) do
+    local btn, lbl = makeMenuItem(v[1], v[2])
     btn.LayoutOrder = i
     menuButtons[v[1]] = btn
 end
 
--- Update menu canvas size
-menuFrame.CanvasSize = UDim2.new(0, 0, 0, #menuItems * 78)
-
--- Content panel dengan glass effect
-local content = Instance.new("Frame")
+-- content panel (right) - TRANSPARAN
+local content = Instance.new("Frame", inner)
 content.Name = "Content"
-content.Size = UDim2.new(1, -SIDEBAR_W - 24, 1, -80)
-content.Position = UDim2.new(0, SIDEBAR_W + 12, 0, 70)
-content.BackgroundColor3 = CARD_BG
-content.BackgroundTransparency = 0.1
+content.Size = UDim2.new(1, -SIDEBAR_W - 36, 1, -64)
+content.Position = UDim2.new(0, SIDEBAR_W + 24, 0, 56)
+content.BackgroundColor3 = Color3.fromRGB(18,18,20)
+content.BackgroundTransparency = 0.4 -- TRANSPARAN
 content.BorderSizePixel = 0
-content.Parent = inner
 
-local contentCorner = Instance.new("UICorner")
-contentCorner.CornerRadius = UDim.new(0, 12)
-contentCorner.Parent = content
+local contentCorner = Instance.new("UICorner", content)
+contentCorner.CornerRadius = UDim.new(0, 8)
 
--- Content stroke
-local contentStroke = Instance.new("UIStroke")
-contentStroke.Color = Color3.fromRGB(40, 40, 40)
-contentStroke.Thickness = 1
-contentStroke.Parent = content
-
--- Content header
-local cHeader = Instance.new("Frame")
-cHeader.Size = UDim2.new(1, 0, 0, 70)
-cHeader.BackgroundTransparency = 1
-cHeader.Parent = content
-
-local cTitle = Instance.new("TextLabel")
-cTitle.Size = UDim2.new(0.6,0,0,36)
-cTitle.Position = UDim2.new(0,20,0,12)
+-- content title area
+local cTitle = Instance.new("TextLabel", content)
+cTitle.Size = UDim2.new(1, -24, 0, 44)
+cTitle.Position = UDim2.new(0,12,0,12)
 cTitle.BackgroundTransparency = 1
-cTitle.Font = Enum.Font.GothamBlack
-cTitle.TextSize = 24
-cTitle.Text = "FISHING HUB"
-cTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+cTitle.Font = Enum.Font.GothamBold
+cTitle.TextSize = 16
+cTitle.Text = "Teleport"
+cTitle.TextColor3 = Color3.fromRGB(245,245,245)
 cTitle.TextXAlignment = Enum.TextXAlignment.Left
-cTitle.Parent = cHeader
 
-local cSubtitle = Instance.new("TextLabel")
-cSubtitle.Size = UDim2.new(0.6,0,0,20)
-cSubtitle.Position = UDim2.new(0,20,0,45)
-cSubtitle.BackgroundTransparency = 1
-cSubtitle.Font = Enum.Font.Gotham
-cSubtitle.TextSize = 12
-cSubtitle.Text = "Advanced fishing automation system"
-cSubtitle.TextColor3 = Color3.fromRGB(200, 200, 255)
-cSubtitle.TextXAlignment = Enum.TextXAlignment.Left
-cSubtitle.Parent = cHeader
+-- inside content: example teleport UI (dropdown + buttons)
+local panel = Instance.new("Frame", content)
+panel.Size = UDim2.new(1, -24, 0, 220)
+panel.Position = UDim2.new(0, 12, 0, 64)
+panel.BackgroundColor3 = Color3.fromRGB(14,14,16)
+panel.BackgroundTransparency = 0.3 -- TRANSPARAN
+panel.BorderSizePixel = 0
 
--- Content area dengan scrolling
-local contentArea = Instance.new("ScrollingFrame")
-contentArea.Name = "ContentArea"
-contentArea.Size = UDim2.new(1, -24, 1, -90)
-contentArea.Position = UDim2.new(0, 12, 0, 80)
-contentArea.BackgroundTransparency = 1
-contentArea.ScrollBarThickness = 6
-contentArea.ScrollBarImageColor3 = ACCENT
-contentArea.CanvasSize = UDim2.new(0, 0, 0, 800)
-contentArea.Parent = content
+local pCorner = Instance.new("UICorner", panel)
+pCorner.CornerRadius = UDim.new(0,8)
 
--- Welcome card dengan gradient
-local welcomeCard = Instance.new("Frame")
-welcomeCard.Size = UDim2.new(1, 0, 0, 120)
-welcomeCard.BackgroundColor3 = SECOND
-welcomeCard.BorderSizePixel = 0
-welcomeCard.Parent = contentArea
+local pTitle = Instance.new("TextLabel", panel)
+pTitle.Size = UDim2.new(1, -24, 0, 28)
+pTitle.Position = UDim2.new(0,12,0,8)
+pTitle.BackgroundTransparency = 1
+pTitle.Font = Enum.Font.GothamBold
+pTitle.TextSize = 14
+pTitle.Text = "Teleport"
+pTitle.TextColor3 = Color3.fromRGB(235,235,235)
+pTitle.TextXAlignment = Enum.TextXAlignment.Left
 
-local welcomeCorner = Instance.new("UICorner")
-welcomeCorner.CornerRadius = UDim.new(0, 12)
-welcomeCorner.Parent = welcomeCard
+-- dropdown label
+local ddLabel = Instance.new("TextLabel", panel)
+ddLabel.Size = UDim2.new(0.4,0,0,24)
+ddLabel.Position = UDim2.new(0,12,0,44)
+ddLabel.BackgroundTransparency = 1
+ddLabel.Font = Enum.Font.Gotham
+ddLabel.TextSize = 13
+ddLabel.Text = "Island"
+ddLabel.TextColor3 = Color3.fromRGB(200,200,200)
+ddLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local welcomeGradient = Instance.new("UIGradient")
-welcomeGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 65, 65)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255))
-})
-welcomeGradient.Rotation = 45
-welcomeGradient.Parent = welcomeCard
+-- dropdown button - TRANSPARAN
+local ddBtn = Instance.new("TextButton", panel)
+ddBtn.Size = UDim2.new(0, 200, 0, 32)
+ddBtn.Position = UDim2.new(0, 12, 0, 72)
+ddBtn.BackgroundColor3 = Color3.fromRGB(20,20,22)
+ddBtn.BackgroundTransparency = 0.3 -- TRANSPARAN
+ddBtn.Font = Enum.Font.GothamBold
+ddBtn.TextSize = 14
+ddBtn.Text = "Select island"
+ddBtn.TextColor3 = Color3.fromRGB(230,230,230)
+ddBtn.AutoButtonColor = false
+local ddCorner = Instance.new("UICorner", ddBtn); ddCorner.CornerRadius = UDim.new(0,6)
 
-local welcomeTitle = Instance.new("TextLabel")
-welcomeTitle.Size = UDim2.new(0.7,0,0,40)
-welcomeTitle.Position = UDim2.new(0,20,0,20)
-welcomeTitle.BackgroundTransparency = 1
-welcomeTitle.Font = Enum.Font.GothamBlack
-welcomeTitle.TextSize = 24
-welcomeTitle.Text = "WELCOME TO KAITUN V4"
-welcomeTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-welcomeTitle.TextXAlignment = Enum.TextXAlignment.Left
-welcomeTitle.Parent = welcomeCard
+-- dropdown list (frame) - TRANSPARAN
+local ddList = Instance.new("Frame", panel)
+ddList.Size = UDim2.new(0, 200, 0, 0)
+ddList.Position = UDim2.new(0, 12, 0, 108)
+ddList.BackgroundColor3 = Color3.fromRGB(18,18,20)
+ddList.BackgroundTransparency = 0.2 -- TRANSPARAN
+ddList.BorderSizePixel = 0
+ddList.ClipsDescendants = true
+local ddListCorner = Instance.new("UICorner", ddList); ddListCorner.CornerRadius = UDim.new(0,6)
 
-local welcomeDesc = Instance.new("TextLabel")
-welcomeDesc.Size = UDim2.new(0.7,0,0,40)
-welcomeDesc.Position = UDim2.new(0,20,0,60)
-welcomeDesc.BackgroundTransparency = 1
-welcomeDesc.Font = Enum.Font.Gotham
-welcomeDesc.TextSize = 14
-welcomeDesc.Text = "Premium fishing automation with advanced features and superior performance."
-welcomeDesc.TextColor3 = Color3.fromRGB(230, 230, 255)
-welcomeDesc.TextXAlignment = Enum.TextXAlignment.Left
-welcomeDesc.TextWrapped = true
-welcomeDesc.Parent = welcomeCard
+local ddLayout = Instance.new("UIListLayout", ddList)
+ddLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ddLayout.Padding = UDim.new(0,4)
 
-local startButton = Instance.new("TextButton")
-startButton.Size = UDim2.new(0, 160, 0, 45)
-startButton.Position = UDim2.new(1, -180, 0.5, -22)
-startButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-startButton.Font = Enum.Font.GothamBlack
-startButton.TextSize = 14
-startButton.Text = "🚀 GET STARTED"
-startButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-startButton.AutoButtonColor = false
-startButton.Parent = welcomeCard
+-- sample islands
+local islandNames = {"None","Main Island","Tropical Island","Frozen Island","Volcano Island","Pirate Cove"}
+for i, name in ipairs(islandNames) do
+    local it = Instance.new("TextButton", ddList)
+    it.Size = UDim2.new(1, -8, 0, 28)
+    it.Position = UDim2.new(0,4,0, (i-1)*32)
+    it.BackgroundColor3 = Color3.fromRGB(24,24,26)
+    it.BackgroundTransparency = 0.2 -- TRANSPARAN
+    it.Text = "  "..name
+    it.Font = Enum.Font.Gotham
+    it.TextSize = 13
+    it.TextColor3 = Color3.fromRGB(230,230,230)
+    it.AutoButtonColor = false
+    it.LayoutOrder = i
 
-local startCorner = Instance.new("UICorner")
-startCorner.CornerRadius = UDim.new(0, 8)
-startCorner.Parent = startButton
-
--- Features grid
-local featuresTitle = Instance.new("TextLabel")
-featuresTitle.Size = UDim2.new(1, 0, 0, 40)
-featuresTitle.Position = UDim2.new(0, 0, 0, 140)
-featuresTitle.BackgroundTransparency = 1
-featuresTitle.Font = Enum.Font.GothamBold
-featuresTitle.TextSize = 18
-featuresTitle.Text = "PREMIUM FEATURES"
-featuresTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-featuresTitle.TextXAlignment = Enum.TextXAlignment.Left
-featuresTitle.Parent = contentArea
-
--- Feature card function
-local function createFeatureCard(title, desc, icon, x, y)
-    local card = Instance.new("Frame")
-    card.Size = UDim2.new(0, 220, 0, 100)
-    card.Position = UDim2.new(0, x, 0, y)
-    card.BackgroundColor3 = SECOND
-    card.BorderSizePixel = 0
-    card.Parent = contentArea
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = card
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(50, 50, 50)
-    stroke.Thickness = 1
-    stroke.Parent = card
-    
-    local iconBg = Instance.new("Frame")
-    iconBg.Size = UDim2.new(0, 50, 0, 50)
-    iconBg.Position = UDim2.new(0, 15, 0, 15)
-    iconBg.BackgroundColor3 = ACCENT
-    iconBg.BorderSizePixel = 0
-    iconBg.Parent = card
-    
-    local iconCorner = Instance.new("UICorner")
-    iconCorner.CornerRadius = UDim.new(0, 8)
-    iconCorner.Parent = iconBg
-    
-    local iconLabel = Instance.new("TextLabel")
-    iconLabel.Size = UDim2.new(1,0,1,0)
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.Font = Enum.Font.GothamBlack
-    iconLabel.TextSize = 18
-    iconLabel.Text = icon
-    iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    iconLabel.TextXAlignment = Enum.TextXAlignment.Center
-    iconLabel.TextYAlignment = Enum.TextYAlignment.Center
-    iconLabel.Parent = iconBg
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -80, 0, 24)
-    titleLabel.Position = UDim2.new(0, 75, 0, 15)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextSize = 14
-    titleLabel.Text = title
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = card
-    
-    local descLabel = Instance.new("TextLabel")
-    descLabel.Size = UDim2.new(1, -80, 0, 40)
-    descLabel.Position = UDim2.new(0, 75, 0, 40)
-    descLabel.BackgroundTransparency = 1
-    descLabel.Font = Enum.Font.Gotham
-    descLabel.TextSize = 11
-    descLabel.Text = desc
-    descLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
-    descLabel.TextXAlignment = Enum.TextXAlignment.Left
-    descLabel.TextWrapped = true
-    descLabel.Parent = card
-    
-    -- Hover effect
-    card.MouseEnter:Connect(function()
-        TweenService:Create(card, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(25, 25, 30)}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = ACCENT}):Play()
+    local itCorner = Instance.new("UICorner", it); itCorner.CornerRadius = UDim.new(0,6)
+    it.MouseEnter:Connect(function() TweenService:Create(it, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(30,8,8), BackgroundTransparency = 0.1}):Play() end)
+    it.MouseLeave:Connect(function() TweenService:Create(it, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(24,24,26), BackgroundTransparency = 0.2}):Play() end)
+    it.MouseButton1Click:Connect(function()
+        ddBtn.Text = name
+        -- close list
+        TweenService:Create(ddList, TweenInfo.new(0.18), {Size = UDim2.new(0,200,0,0)}):Play()
+        print("[UI] Selected island:", name)
     end)
+end
+
+-- action buttons
+local action1 = Instance.new("TextButton", panel)
+action1.Size = UDim2.new(0, 140, 0, 34)
+action1.Position = UDim2.new(0, 12, 0, 150)
+action1.BackgroundColor3 = ACCENT_RED
+action1.BackgroundTransparency = 0.2 -- TRANSPARAN
+action1.Font = Enum.Font.GothamBold
+action1.TextSize = 14
+action1.Text = "Teleport"
+action1.TextColor3 = Color3.fromRGB(30,30,30)
+local actionCorner = Instance.new("UICorner", action1); actionCorner.CornerRadius = UDim.new(0,6)
+
+local action2 = Instance.new("TextButton", panel)
+action2.Size = UDim2.new(0, 120, 0, 34)
+action2.Position = UDim2.new(0, 164, 0, 150)
+action2.BackgroundColor3 = Color3.fromRGB(40,40,40)
+action2.BackgroundTransparency = 0.3 -- TRANSPARAN
+action2.Font = Enum.Font.GothamBold
+action2.TextSize = 14
+action2.Text = "Sell Fish"
+action2.TextColor3 = Color3.fromRGB(230,230,230)
+local action2Corner = Instance.new("UICorner", action2); action2Corner.CornerRadius = UDim.new(0,6)
+
+-- EFEK PARTIKEL MERAH & BIRU
+local particleContainer = Instance.new("Frame", screen)
+particleContainer.Name = "ParticleContainer"
+particleContainer.Size = UDim2.new(1, 0, 1, 0)
+particleContainer.Position = UDim2.new(0, 0, 0, 0)
+particleContainer.BackgroundTransparency = 1
+particleContainer.ZIndex = 0
+
+local particles = {}
+local particleCount = 30
+
+-- Fungsi untuk membuat partikel
+local function createParticle()
+    local particle = Instance.new("Frame")
+    particle.Size = UDim2.new(0, math.random(4, 12), 0, math.random(4, 12))
+    particle.Position = UDim2.new(0, math.random(-100, WIDTH + 100), 0, math.random(-100, HEIGHT + 100))
+    particle.BackgroundColor3 = math.random() > 0.5 and ACCENT_RED or ACCENT_BLUE
+    particle.BackgroundTransparency = 0.7
+    particle.BorderSizePixel = 0
+    particle.ZIndex = 0
+    particle.Parent = particleContainer
     
-    card.MouseLeave:Connect(function()
-        TweenService:Create(card, TweenInfo.new(0.2), {BackgroundColor3 = SECOND}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(50, 50, 50)}):Play()
+    local corner = Instance.new("UICorner", particle)
+    corner.CornerRadius = UDim.new(1, 0)
+    
+    return {
+        frame = particle,
+        speedX = (math.random() - 0.5) * 2,
+        speedY = (math.random() - 0.5) * 2,
+        opacity = 0.7,
+        pulseSpeed = math.random() * 0.02 + 0.01
+    }
+end
+
+-- Buat partikel
+for i = 1, particleCount do
+    table.insert(particles, createParticle())
+end
+
+-- Update partikel
+local particleConnection
+local function startParticles()
+    if particleConnection then
+        particleConnection:Disconnect()
+    end
+    
+    particleConnection = RunService.Heartbeat:Connect(function(delta)
+        for _, p in ipairs(particles) do
+            local posX = p.frame.Position.X.Offset + p.speedX
+            local posY = p.frame.Position.Y.Offset + p.speedY
+            
+            -- Boundary check
+            if posX < -50 then posX = WIDTH + 50 end
+            if posX > WIDTH + 50 then posX = -50 end
+            if posY < -50 then posY = HEIGHT + 50 end
+            if posY > HEIGHT + 50 then posY = -50 end
+            
+            p.frame.Position = UDim2.new(0, posX, 0, posY)
+            
+            -- Pulsing effect
+            p.opacity = 0.5 + math.sin(tick() * p.pulseSpeed) * 0.2
+            p.frame.BackgroundTransparency = 1 - p.opacity
+        end
     end)
-    
-    return card
 end
 
--- Create feature cards
-local features = {
-    {"Smart AI Fishing", "Advanced pattern recognition", "🤖", 0, 190},
-    {"Performance Boost", "Optimized for maximum FPS", "⚡", 230, 190},
-    {"Anti-Detection", "Advanced safety systems", "🛡️", 460, 190},
-    {"Multi-Spot Fishing", "Fish multiple locations", "🎯", 0, 310},
-    {"Auto Perfection", "Always perfect catches", "⭐", 230, 310},
-    {"Ultra Speed", "5x faster than normal", "🚀", 460, 310}
-}
+-- interactions
+local ddOpen = false
+ddBtn.MouseButton1Click:Connect(function()
+    ddOpen = not ddOpen
+    if ddOpen then
+        TweenService:Create(ddList, TweenInfo.new(0.18), {Size = UDim2.new(0,200,0, #islandNames*34)}):Play()
+    else
+        TweenService:Create(ddList, TweenInfo.new(0.14), {Size = UDim2.new(0,200,0,0)}):Play()
+    end
+end)
 
-for i, feature in ipairs(features) do
-    createFeatureCard(feature[1], feature[2], feature[3], feature[4], feature[5])
+action1.MouseButton1Click:Connect(function()
+    print("[UI] Teleport button pressed. Selected:", ddBtn.Text)
+    -- placeholder: show feedback label
+    local f = Instance.new("TextLabel", panel)
+    f.Size = UDim2.new(0.5,0,0,28)
+    f.Position = UDim2.new(0,12,0,190)
+    f.BackgroundTransparency = 1
+    f.Font = Enum.Font.GothamBold
+    f.TextSize = 13
+    f.Text = "Attempting teleport to: "..ddBtn.Text
+    f.TextColor3 = Color3.fromRGB(200,255,200)
+    delay(1.2, function() if f and f.Parent then f:Destroy() end end)
+end)
+
+action2.MouseButton1Click:Connect(function()
+    print("[UI] Sell Fish clicked")
+    local f = Instance.new("TextLabel", panel)
+    f.Size = UDim2.new(0.5,0,0,28)
+    f.Position = UDim2.new(0,12,0,190)
+    f.BackgroundTransparency = 1
+    f.Font = Enum.Font.GothamBold
+    f.TextSize = 13
+    f.Text = "Sell action (ui demo)"
+    f.TextColor3 = Color3.fromRGB(255,220,120)
+    delay(1.2, function() if f and f.Parent then f:Destroy() end end)
+end)
+
+-- menu navigation: highlight active and update content title (demo)
+local activeMenu = "Teleport"
+for name, btn in pairs(menuButtons) do
+    btn.MouseButton1Click:Connect(function()
+        -- highlight selected
+        for n, b in pairs(menuButtons) do
+            b.BackgroundColor3 = Color3.fromRGB(20,20,20)
+            b.BackgroundTransparency = 0.3
+        end
+        btn.BackgroundColor3 = Color3.fromRGB(32,8,8)
+        btn.BackgroundTransparency = 0.2
+        -- set content title
+        cTitle.Text = name
+        print("[UI] Menu selected:", name)
+        -- For demo: if selected not Teleport, show placeholder panel text
+        if name ~= "Teleport" then
+            pTitle.Text = name
+            ddBtn.Text = "Select option"
+        else
+            pTitle.Text = "Teleport"
+        end
+    end)
 end
 
--- Stats panel
-local statsPanel = Instance.new("Frame")
-statsPanel.Size = UDim2.new(1, 0, 0, 80)
-statsPanel.Position = UDim2.new(0, 0, 0, 430)
-statsPanel.BackgroundColor3 = SECOND
-statsPanel.BorderSizePixel = 0
-statsPanel.Parent = contentArea
-
-local statsCorner = Instance.new("UICorner")
-statsCorner.CornerRadius = UDim.new(0, 12)
-statsCorner.Parent = statsPanel
-
--- Stats items
-local stats = {
-    {"System Status", "🟢 ONLINE", Color3.fromRGB(100, 255, 100)},
-    {"Performance", "⚡ OPTIMAL", Color3.fromRGB(255, 215, 0)},
-    {"Memory Usage", "💾 12.4 MB", Color3.fromRGB(100, 200, 255)},
-    {"Uptime", "⏱️ 00:00:00", Color3.fromRGB(200, 100, 255)}
-}
-
-for i, stat in ipairs(stats) do
-    local statFrame = Instance.new("Frame")
-    statFrame.Size = UDim2.new(0.24, -10, 1, -20)
-    statFrame.Position = UDim2.new((i-1)*0.25 + 0.02, 0, 0, 10)
-    statFrame.BackgroundTransparency = 1
-    statFrame.Parent = statsPanel
-    
-    local statTitle = Instance.new("TextLabel")
-    statTitle.Size = UDim2.new(1,0,0,20)
-    statTitle.BackgroundTransparency = 1
-    statTitle.Font = Enum.Font.Gotham
-    statTitle.TextSize = 11
-    statTitle.Text = stat[1]
-    statTitle.TextColor3 = Color3.fromRGB(180, 180, 200)
-    statTitle.TextXAlignment = Enum.TextXAlignment.Left
-    statTitle.Parent = statFrame
-    
-    local statValue = Instance.new("TextLabel")
-    statValue.Size = UDim2.new(1,0,0,24)
-    statValue.Position = UDim2.new(0,0,0,25)
-    statValue.BackgroundTransparency = 1
-    statValue.Font = Enum.Font.GothamBold
-    statValue.TextSize = 14
-    statValue.Text = stat[2]
-    statValue.TextColor3 = stat[3]
-    statValue.TextXAlignment = Enum.TextXAlignment.Left
-    statValue.Parent = statFrame
+-- close/open toggle with G (with pop animation)
+local uiOpen = false
+local function toggleUI(show)
+    uiOpen = show
+    if show then
+        card.Visible = true
+        glow.Visible = true
+        particleContainer.Visible = true
+        container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
+        container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
+        container.AnchorPoint = Vector2.new(0.5,0.5)
+        container.ZIndex = 2
+        card:TweenSize(UDim2.new(0, WIDTH,0,HEIGHT), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.28, true)
+        TweenService:Create(glow, TweenInfo.new(0.28), {ImageTransparency = 0.8}):Play()
+        startParticles()
+    else
+        TweenService:Create(glow, TweenInfo.new(0.18), {ImageTransparency = 0.96}):Play()
+        card:TweenSize(UDim2.new(0, WIDTH*0.9,0,HEIGHT*0.9), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.16, true)
+        delay(0.16, function()
+            card.Visible = true -- keep visible but scaled down (demo)
+            glow.Visible = false
+            particleContainer.Visible = false
+            if particleConnection then
+                particleConnection:Disconnect()
+            end
+        end)
+    end
 end
 
--- Update content area size
-contentArea.CanvasSize = UDim2.new(0, 0, 0, 530)
+-- initial hide
+toggleUI(false)
 
--- Tray Icon (akan muncul ketika minimize)
-local trayIcon = Instance.new("ImageButton")
-trayIcon.Name = "TrayIcon"
-trayIcon.Size = UDim2.new(0, 0, 0, 0)
-trayIcon.Position = UDim2.new(1, -70, 0, 20)
-trayIcon.BackgroundColor3 = ACCENT
-trayIcon.Image = "rbxassetid://3926305904"
-trayIcon.Visible = false
-trayIcon.ZIndex = 10
-trayIcon.Parent = screen
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.G then
+        toggleUI(not uiOpen)
+    end
+end)
 
-local trayCorner = Instance.new("UICorner")
-trayCorner.CornerRadius = UDim.new(0, 12)
-trayCorner.Parent = trayIcon
+-- small update loop for mem label (demo)
+spawn(function()
+    while true do
+        local mem = math.floor(collectgarbage("count"))
+        memLabel.Text = "Client Memory Usage: "..mem.." KB"
+        wait(1.2)
+    end
+end)
 
-local trayGlow = Instance.new("ImageLabel")
-trayGlow.Name = "TrayGlow"
-trayGlow.Size = UDim2.new(1, 20, 1, 20)
-trayGlow.Position = UDim2.new(0, -10, 0, -10)
-trayGlow.BackgroundTransparency = 1
-trayGlow.Image = "rbxassetid://5050741616"
-trayGlow.ImageColor3 = ACCENT
-trayGlow.ImageTransparency = 0.8
-trayGlow.ZIndex = 9
-trayGlow.Parent = trayIcon
-
--- Window Controls Functionality
-local uiOpen = true
-
--- Show Tray Icon
-local function showTrayIcon()
-    trayIcon.Visible = true
-    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 60, 0, 60)}):Play()
-    TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 0.7}):Play()
-end
-
--- Hide Tray Icon  
-local function hideTrayIcon()
-    TweenService:Create(trayIcon, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-    TweenService:Create(trayGlow, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
-    wait(0.3)
-    trayIcon.Visible = false
-end
-
--- Show Main UI
-local function showMainUI()
-    container.Visible = true
-    TweenService:Create(container, TweenInfo.new(0.4), {
-        Size = UDim2.new(0, WIDTH, 0, HEIGHT),
-        Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
-    }):Play()
-    TweenService:Create(glow1, TweenInfo.new(0.4), {ImageTransparency = 0.94}):Play()
-    TweenService:Create(glow2, TweenInfo.new(0.4), {ImageTransparency = 0.92}):Play()
-    
-    hideTrayIcon()
-    uiOpen = true
-    print("[UI] Premium Dashboard Opened")
-end
+print("[NeonDashboardUI] Loaded (UI-only). Press G to toggle.")
