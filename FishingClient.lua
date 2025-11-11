@@ -111,7 +111,7 @@ toggleButton.BackgroundColor3 = ACCENT_RED
 toggleButton.BackgroundTransparency = 0.2
 toggleButton.Font = Enum.Font.GothamBold
 toggleButton.TextSize = 14
-toggleButton.Text = "Toggle UI"
+toggleButton.Text = "Open UI"
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 toggleButton.AutoButtonColor = false
 local toggleCorner = Instance.new("UICorner", toggleButton)
@@ -496,44 +496,74 @@ for name, btn in pairs(menuButtons) do
     end)
 end
 
--- close/open toggle function
+-- FIXED: close/open toggle function
 local uiOpen = false
 local function toggleUI(show)
+    if uiOpen == show then return end -- Prevent double execution
+    
     uiOpen = show
+    
     if show then
+        -- Show UI
         card.Visible = true
         glow.Visible = true
         particleContainer.Visible = true
+        container.Visible = true
+        
+        -- Reset size and position
+        card.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
         container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
-        container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
-        container.AnchorPoint = Vector2.new(0.5,0.5)
-        container.ZIndex = 2
-        card:TweenSize(UDim2.new(0, WIDTH,0,HEIGHT), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.28, true)
+        
+        -- Animate open
+        card:TweenSize(UDim2.new(0, WIDTH, 0, HEIGHT), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.28, true)
         TweenService:Create(glow, TweenInfo.new(0.28), {ImageTransparency = 0.8}):Play()
+        
         startParticles()
         toggleButton.Text = "Close UI"
+        print("[UI] Opened")
     else
+        -- Animate close
         TweenService:Create(glow, TweenInfo.new(0.18), {ImageTransparency = 0.96}):Play()
-        card:TweenSize(UDim2.new(0, WIDTH*0.9,0,HEIGHT*0.9), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.16, true)
-        delay(0.16, function()
+        
+        local closeTween = TweenService:Create(card, TweenInfo.new(0.16), {Size = UDim2.new(0, WIDTH*0.9, 0, HEIGHT*0.9)})
+        closeTween:Play()
+        
+        closeTween.Completed:Connect(function()
+            -- Hide after animation completes
             card.Visible = false
             glow.Visible = false
             particleContainer.Visible = false
+            container.Visible = false
+            
             if particleConnection then
                 particleConnection:Disconnect()
+                particleConnection = nil
             end
+            
+            toggleButton.Text = "Open UI"
+            print("[UI] Closed")
         end)
-        toggleButton.Text = "Open UI"
     end
 end
 
--- Toggle button functionality
+-- FIXED: Toggle button functionality dengan debounce
+local debounce = false
 toggleButton.MouseButton1Click:Connect(function()
+    if debounce then return end
+    debounce = true
+    
     toggleUI(not uiOpen)
+    
+    wait(0.3) -- Debounce time
+    debounce = false
 end)
 
--- initial hide
-toggleUI(false)
+-- Initial state - UI hidden
+card.Visible = false
+glow.Visible = false
+particleContainer.Visible = false
+container.Visible = false
+toggleButton.Text = "Open UI"
 
 -- small update loop for mem label (demo)
 spawn(function()
