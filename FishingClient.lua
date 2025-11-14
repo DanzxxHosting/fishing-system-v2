@@ -610,12 +610,13 @@ local function showTeleportContent()
     end)
 end
 
--- AUTO FISHING CONTENT
+-- AUTO FISHING SYSTEM
 local AutoFishing = {
     Enabled = false,
     Fishing = false,
     LastCatch = 0,
-    TotalCatches = 0
+    TotalCatches = 0,
+    Connection = nil
 }
 
 local function showAutoFishingContent()
@@ -750,57 +751,171 @@ local function showAutoFishingContent()
     local toggleSellCorner = Instance.new("UICorner", autoSellToggle)
     toggleSellCorner.CornerRadius = UDim.new(0,4)
     
-    -- Fishing Functions
-    local function simulateFishing()
-        if not AutoFishing.Enabled then return end
+    -- REAL FISHING FUNCTIONS
+    local function findFishingButton()
+        -- Mencari tombol fishing di game
+        local fishingButtons = {
+            "FishButton", "FishingButton", "CastButton", "Fish", "Fishing",
+            "StartFishing", "CastLine", "FishCast"
+        }
         
-        AutoFishing.Fishing = true
-        statusLabel.Text = "Status: FISHING..."
-        statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
-        
-        -- Simulate fishing process
-        wait(2)
-        
-        if AutoFishing.Enabled then
-            -- Simulate catch
-            AutoFishing.TotalCatches = AutoFishing.TotalCatches + 1
-            AutoFishing.LastCatch = os.time()
-            
-            -- Update stats
-            local timeAgo = "Just now"
-            statsLabel.Text = string.format("Total Catches: %d | Last: %s", AutoFishing.TotalCatches, timeAgo)
-            
-            -- Simulate auto sell
-            if autoSellToggle.Text == "Auto Sell: ON" then
-                statusLabel.Text = "Status: SELLING FISH..."
-                statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-                wait(1)
+        for _, name in pairs(fishingButtons) do
+            local button = playerGui:FindFirstChild(name, true)
+            if button and button:IsA("TextButton") then
+                return button
             end
-            
-            statusLabel.Text = "Status: WAITING..."
-            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
         end
+        
+        -- Coba cari di ScreenGui lainnya
+        for _, gui in pairs(playerGui:GetChildren()) do
+            if gui:IsA("ScreenGui") then
+                for _, name in pairs(fishingButtons) do
+                    local button = gui:FindFirstChild(name, true)
+                    if button and button:IsA("TextButton") then
+                        return button
+                    end
+                end
+            end
+        end
+        
+        return nil
+    end
+    
+    local function findSellButton()
+        -- Mencari tombol sell di game
+        local sellButtons = {
+            "SellButton", "SellFish", "Sell", "SellAll", "SellAllFish"
+        }
+        
+        for _, name in pairs(sellButtons) do
+            local button = playerGui:FindFirstChild(name, true)
+            if button and button:IsA("TextButton") then
+                return button
+            end
+        end
+        
+        return nil
+    end
+    
+    local function performFishing()
+        if not AutoFishing.Enabled then return false end
+        
+        local fishingButton = findFishingButton()
+        
+        if fishingButton then
+            -- Klik tombol fishing
+            statusLabel.Text = "Status: CASTING LINE..."
+            statusLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
+            
+            -- Simulate click
+            fishingButton:FireServer("Cast")
+            fishingButton:FireServer("Fish")
+            fishingButton:FireServer("StartFishing")
+            
+            -- Juga coba invoke events
+            pcall(function()
+                fishingButton:InvokeServer("Cast")
+            end)
+            pcall(function()
+                fishingButton:InvokeServer("Fish")
+            end)
+            
+            -- Juga coba click biasa
+            pcall(function()
+                fishingButton:Fire("Activated")
+            end)
+            
+            -- Wait for fishing process
+            wait(3)
+            
+            if AutoFishing.Enabled then
+                -- Update stats
+                AutoFishing.TotalCatches = AutoFishing.TotalCatches + 1
+                AutoFishing.LastCatch = os.time()
+                
+                local timeAgo = "Just now"
+                local currentTime = os.time()
+                local timeDiff = currentTime - AutoFishing.LastCatch
+                
+                if timeDiff > 60 then
+                    timeAgo = math.floor(timeDiff / 60) .. " minutes ago"
+                elseif timeDiff > 1 then
+                    timeAgo = timeDiff .. " seconds ago"
+                end
+                
+                statsLabel.Text = string.format("Total Catches: %d | Last: %s", AutoFishing.TotalCatches, timeAgo)
+                
+                -- Auto Sell jika diaktifkan
+                if autoSellToggle.Text == "Auto Sell: ON" then
+                    statusLabel.Text = "Status: SELLING FISH..."
+                    statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+                    
+                    local sellButton = findSellButton()
+                    if sellButton then
+                        sellButton:FireServer("Sell")
+                        sellButton:FireServer("SellAll")
+                        pcall(function()
+                            sellButton:InvokeServer("Sell")
+                        end)
+                        wait(1)
+                    else
+                        statusLabel.Text = "Status: SELL BUTTON NOT FOUND"
+                        statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+                    end
+                end
+                
+                statusLabel.Text = "Status: WAITING..."
+                statusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+                return true
+            end
+        else
+            statusLabel.Text = "Status: FISHING BUTTON NOT FOUND"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            return false
+        end
+        
+        return false
     end
     
     local function startFishingLoop()
+        if AutoFishing.Connection then
+            AutoFishing.Connection:Disconnect()
+        end
+        
         AutoFishing.Enabled = true
         toggleBtn.Text = "STOP AUTO FISHING"
         toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 255, 60)
         statusLabel.Text = "Status: STARTING..."
         statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         
-        spawn(function()
-            while AutoFishing.Enabled do
-                if not AutoFishing.Fishing then
-                    simulateFishing()
-                end
+        -- Cek apakah fishing button ditemukan
+        local fishingButton = findFishingButton()
+        if not fishingButton then
+            statusLabel.Text = "Status: NO FISHING BUTTON FOUND"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            AutoFishing.Enabled = false
+            toggleBtn.Text = "START AUTO FISHING"
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+            return
+        end
+        
+        statusLabel.Text = "Status: FISHING BUTTON FOUND!"
+        statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        wait(1)
+        
+        AutoFishing.Connection = RunService.Heartbeat:Connect(function()
+            if AutoFishing.Enabled and not AutoFishing.Fishing then
+                AutoFishing.Fishing = true
                 
-                local delay = tonumber(delayValue.Text)
-                wait(delay)
-                
-                if AutoFishing.Enabled then
-                    AutoFishing.Fishing = false
-                end
+                spawn(function()
+                    local success = performFishing()
+                    
+                    if AutoFishing.Enabled then
+                        local delay = tonumber(delayValue.Text)
+                        wait(delay)
+                        AutoFishing.Fishing = false
+                    end
+                end)
             end
         end)
     end
@@ -808,6 +923,12 @@ local function showAutoFishingContent()
     local function stopFishingLoop()
         AutoFishing.Enabled = false
         AutoFishing.Fishing = false
+        
+        if AutoFishing.Connection then
+            AutoFishing.Connection:Disconnect()
+            AutoFishing.Connection = nil
+        end
+        
         toggleBtn.Text = "START AUTO FISHING"
         toggleBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
         statusLabel.Text = "Status: IDLE"
@@ -869,6 +990,19 @@ local function showAutoFishingContent()
     autoSellToggle.MouseLeave:Connect(function()
         TweenService:Create(autoSellToggle, TweenInfo.new(0.12), {BackgroundTransparency = 0.3}):Play()
     end)
+    
+    -- Auto-detect fishing button saat panel dibuka
+    spawn(function()
+        wait(1)
+        local fishingButton = findFishingButton()
+        if fishingButton then
+            statusLabel.Text = "Status: READY (Button Found)"
+            statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            statusLabel.Text = "Status: MANUAL MODE (No Button)"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+        end
+    end)
 end
 
 -- =============================================
@@ -925,6 +1059,15 @@ local function toggleUI(show)
         startParticles()
         toggleButton.Text = "Close UI"
     else
+        -- Stop auto fishing ketika UI ditutup
+        if AutoFishing.Enabled then
+            AutoFishing.Enabled = false
+            if AutoFishing.Connection then
+                AutoFishing.Connection:Disconnect()
+                AutoFishing.Connection = nil
+            end
+        end
+        
         -- Hide UI dengan animasi
         TweenService:Create(glow, TweenInfo.new(0.2), {ImageTransparency = 0.96}):Play()
         
@@ -969,3 +1112,4 @@ showDefaultContent("Main")
 print("[Kaitun Fish IT] UI Loaded Successfully!")
 print("- Toggle Button: Click to open/close")
 print("- Features: Teleport, Auto Fishing, and more!")
+print("- Auto Fishing: Automatically detects fishing buttons!")
