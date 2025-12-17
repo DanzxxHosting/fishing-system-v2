@@ -1,5 +1,6 @@
--- Clean Highlight UI LocalScript
--- Place in StarterPlayerScripts
+
+-- Clean Centered UI with 50% Transparency
+-- ui.lua - Place in StarterPlayerScripts
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,190 +11,184 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Create RemoteEvent if it doesn't exist
+-- Create RemoteEvent for communication
 if not ReplicatedStorage:FindFirstChild("HighlightToggle") then
     Instance.new("RemoteEvent", ReplicatedStorage).Name = "HighlightToggle"
 end
 
--- Clean UI Design
+-- Create main UI
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "HighlightPanel"
+screenGui.Name = "HighlightUI"
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.ResetOnSpawn = false
+screenGui.Enabled = false
 
--- Main Container
+-- Background Blur
+local blur = Instance.new("BlurEffect")
+blur.Size = 0
+blur.Name = "UIBlur"
+blur.Parent = game:GetService("Lighting")
+
+-- Main Container (Centered, 50% transparent)
 local mainContainer = Instance.new("Frame")
 mainContainer.Name = "MainContainer"
-mainContainer.Size = UDim2.new(0, 300, 0, 380)
-mainContainer.Position = UDim2.new(1, -320, 0.5, -190)
-mainContainer.AnchorPoint = Vector2.new(0, 0.5)
-mainContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-mainContainer.BackgroundTransparency = 0.05
+mainContainer.Size = UDim2.new(0, 400, 0, 500)
+mainContainer.Position = UDim2.new(0.5, -200, 0.5, -250)
+mainContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+mainContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+mainContainer.BackgroundTransparency = 0.5 -- 50% transparent
 mainContainer.BorderSizePixel = 0
 
 local containerCorner = Instance.new("UICorner")
-containerCorner.CornerRadius = UDim.new(0, 8)
+containerCorner.CornerRadius = UDim.new(0, 12)
 containerCorner.Parent = mainContainer
 
-local containerShadow = Instance.new("ImageLabel")
-containerShadow.Name = "Shadow"
-containerShadow.Image = "rbxassetid://5554236805"
-containerShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-containerShadow.ImageTransparency = 0.8
-containerShadow.ScaleType = Enum.ScaleType.Slice
-containerShadow.SliceCenter = Rect.new(23, 23, 277, 277)
-containerShadow.Size = UDim2.new(1, 30, 1, 30)
-containerShadow.Position = UDim2.new(0.5, -15, 0.5, -15)
-containerShadow.AnchorPoint = Vector2.new(0.5, 0.5)
-containerShadow.BackgroundTransparency = 1
-containerShadow.Parent = mainContainer
-containerShadow.ZIndex = -1
+local containerStroke = Instance.new("UIStroke")
+containerStroke.Name = "ContainerStroke"
+containerStroke.Color = Color3.fromRGB(60, 60, 80)
+containerStroke.Thickness = 2
+containerStroke.Transparency = 0.3
+containerStroke.Parent = mainContainer
 
 -- Header
 local header = Instance.new("Frame")
 header.Name = "Header"
-header.Size = UDim2.new(1, 0, 0, 50)
-header.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+header.Size = UDim2.new(1, 0, 0, 60)
+header.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+header.BackgroundTransparency = 0.3
 header.BorderSizePixel = 0
 
 local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 8)
+headerCorner.CornerRadius = UDim.new(0, 12)
 headerCorner.Parent = header
 
 local title = Instance.new("TextLabel")
 title.Name = "Title"
-title.Size = UDim2.new(1, -50, 1, 0)
-title.Position = UDim2.new(0, 15, 0, 0)
+title.Size = UDim2.new(1, -100, 1, 0)
+title.Position = UDim2.new(0, 20, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "PLAYER HIGHLIGHTS"
-title.TextColor3 = Color3.fromRGB(220, 220, 220)
-title.TextSize = 18
-title.Font = Enum.Font.GothamSemibold
+title.TextColor3 = Color3.fromRGB(240, 240, 240)
+title.TextSize = 22
+title.Font = Enum.Font.GothamBold
 title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Toggle Button in Header
-local toggleButton = Instance.new("TextButton")
-toggleButton.Name = "ToggleButton"
-toggleButton.Size = UDim2.new(0, 80, 0, 30)
-toggleButton.Position = UDim2.new(1, -85, 0.5, -15)
-toggleButton.AnchorPoint = Vector2.new(1, 0.5)
-toggleButton.BackgroundColor3 = Color3.fromRGB(60, 160, 255)
-toggleButton.Text = "OFF"
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.TextSize = 14
-toggleButton.Font = Enum.Font.GothamSemibold
-toggleButton.AutoButtonColor = false
+local icon = Instance.new("ImageLabel")
+icon.Name = "Icon"
+icon.Size = UDim2.new(0, 32, 0, 32)
+icon.Position = UDim2.new(0, 20, 0.5, -16)
+icon.AnchorPoint = Vector2.new(0, 0.5)
+icon.BackgroundTransparency = 1
+icon.Image = "rbxassetid://3926305904"
+icon.ImageRectOffset = Vector2.new(124, 124)
+icon.ImageRectSize = Vector2.new(36, 36)
+icon.ImageColor3 = Color3.fromRGB(100, 200, 255)
+
+-- Toggle Switch
+local toggleFrame = Instance.new("Frame")
+toggleFrame.Name = "ToggleFrame"
+toggleFrame.Size = UDim2.new(0, 100, 0, 40)
+toggleFrame.Position = UDim2.new(1, -120, 0.5, -20)
+toggleFrame.AnchorPoint = Vector2.new(1, 0.5)
+toggleFrame.BackgroundTransparency = 1
+
+local toggleBackground = Instance.new("Frame")
+toggleBackground.Name = "ToggleBackground"
+toggleBackground.Size = UDim2.new(1, 0, 0, 24)
+toggleBackground.Position = UDim2.new(0, 0, 0.5, -12)
+toggleBackground.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+toggleBackground.BorderSizePixel = 0
 
 local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0, 6)
-toggleCorner.Parent = toggleButton
+toggleCorner.CornerRadius = UDim.new(1, 0)
+toggleCorner.Parent = toggleBackground
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 36, 0, 36)
+toggleButton.Position = UDim2.new(0, -2, 0.5, -18)
+toggleButton.AnchorPoint = Vector2.new(0, 0.5)
+toggleButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+toggleButton.Text = ""
+toggleButton.AutoButtonColor = false
+
+local toggleButtonCorner = Instance.new("UICorner")
+toggleButtonCorner.CornerRadius = UDim.new(1, 0)
+toggleButtonCorner.Parent = toggleButton
+
+local toggleStatus = Instance.new("TextLabel")
+toggleStatus.Name = "ToggleStatus"
+toggleStatus.Size = UDim2.new(1, 0, 0, 20)
+toggleStatus.Position = UDim2.new(0, 0, 1, 5)
+toggleStatus.BackgroundTransparency = 1
+toggleStatus.Text = "OFF"
+toggleStatus.TextColor3 = Color3.fromRGB(255, 120, 120)
+toggleStatus.TextSize = 12
+toggleStatus.Font = Enum.Font.GothamSemibold
+toggleStatus.TextXAlignment = Enum.TextXAlignment.Center
 
 -- Close Button
 local closeButton = Instance.new("ImageButton")
 closeButton.Name = "CloseButton"
-closeButton.Size = UDim2.new(0, 24, 0, 24)
-closeButton.Position = UDim2.new(1, -30, 0, 13)
-closeButton.AnchorPoint = Vector2.new(1, 0)
-closeButton.BackgroundTransparency = 1
+closeButton.Size = UDim2.new(0, 40, 0, 40)
+closeButton.Position = UDim2.new(1, -50, 0.5, -20)
+closeButton.AnchorPoint = Vector2.new(1, 0.5)
+closeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+closeButton.BackgroundTransparency = 0.3
 closeButton.Image = "rbxassetid://3926305904"
 closeButton.ImageRectOffset = Vector2.new(284, 4)
 closeButton.ImageRectSize = Vector2.new(24, 24)
-closeButton.ImageColor3 = Color3.fromRGB(180, 180, 180)
+closeButton.ImageColor3 = Color3.fromRGB(200, 200, 200)
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(1, 0)
+closeCorner.Parent = closeButton
 
 -- Content Area
 local content = Instance.new("Frame")
 content.Name = "Content"
-content.Size = UDim2.new(1, 0, 1, -50)
-content.Position = UDim2.new(0, 0, 0, 50)
+content.Size = UDim2.new(1, -40, 1, -80)
+content.Position = UDim2.new(0, 20, 0, 70)
 content.BackgroundTransparency = 1
 
--- Preview Section
-local previewSection = Instance.new("Frame")
-previewSection.Name = "PreviewSection"
-previewSection.Size = UDim2.new(1, -20, 0, 80)
-previewSection.Position = UDim2.new(0, 10, 0, 10)
-previewSection.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-previewSection.BorderSizePixel = 0
-
-local previewCorner = Instance.new("UICorner")
-previewCorner.CornerRadius = UDim.new(0, 6)
-previewCorner.Parent = previewSection
-
-local previewLabel = Instance.new("TextLabel")
-previewLabel.Name = "PreviewLabel"
-previewLabel.Size = UDim2.new(1, 0, 0, 25)
-previewLabel.Position = UDim2.new(0, 10, 0, 5)
-previewLabel.BackgroundTransparency = 1
-previewLabel.Text = "PREVIEW"
-previewLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-previewLabel.TextSize = 12
-previewLabel.Font = Enum.Font.GothamSemibold
-previewLabel.TextXAlignment = Enum.TextXAlignment.Left
-
--- Preview Example
-local previewExample = Instance.new("Frame")
-previewExample.Name = "PreviewExample"
-previewExample.Size = UDim2.new(0, 120, 0, 40)
-previewExample.Position = UDim2.new(0.5, -60, 0.5, 0)
-previewExample.AnchorPoint = Vector2.new(0.5, 0.5)
-previewExample.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-previewExample.BorderSizePixel = 0
-
-local exampleCorner = Instance.new("UICorner")
-exampleCorner.CornerRadius = UDim.new(0, 4)
-exampleCorner.Parent = previewExample
-
-local previewHighlight = Instance.new("Frame")
-previewHighlight.Name = "PreviewHighlight"
-previewHighlight.Size = UDim2.new(1, 4, 1, 4)
-previewHighlight.Position = UDim2.new(0, -2, 0, -2)
-previewHighlight.BackgroundColor3 = Color3.fromRGB(60, 160, 255)
-previewHighlight.BackgroundTransparency = 0.3
-previewHighlight.BorderSizePixel = 0
-previewHighlight.ZIndex = -1
-
-local highlightCorner = Instance.new("UICorner")
-highlightCorner.CornerRadius = UDim.new(0, 6)
-highlightCorner.Parent = previewHighlight
-
--- Color Selection
+-- Color Selection Section
 local colorSection = Instance.new("Frame")
 colorSection.Name = "ColorSection"
-colorSection.Size = UDim2.new(1, -20, 0, 100)
-colorSection.Position = UDim2.new(0, 10, 0, 100)
-colorSection.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+colorSection.Size = UDim2.new(1, 0, 0, 120)
+colorSection.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+colorSection.BackgroundTransparency = 0.3
 colorSection.BorderSizePixel = 0
 
 local colorCorner = Instance.new("UICorner")
-colorCorner.CornerRadius = UDim.new(0, 6)
+colorCorner.CornerRadius = UDim.new(0, 8)
 colorCorner.Parent = colorSection
 
-local colorLabel = Instance.new("TextLabel")
-colorLabel.Name = "ColorLabel"
-colorLabel.Size = UDim2.new(1, 0, 0, 25)
-colorLabel.Position = UDim2.new(0, 10, 0, 5)
-colorLabel.BackgroundTransparency = 1
-colorLabel.Text = "HIGHLIGHT COLOR"
-colorLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-colorLabel.TextSize = 12
-colorLabel.Font = Enum.Font.GothamSemibold
-colorLabel.TextXAlignment = Enum.TextXAlignment.Left
+local colorTitle = Instance.new("TextLabel")
+colorTitle.Name = "ColorTitle"
+colorTitle.Size = UDim2.new(1, -20, 0, 30)
+colorTitle.Position = UDim2.new(0, 15, 0, 10)
+colorTitle.BackgroundTransparency = 1
+colorTitle.Text = "HIGHLIGHT COLOR"
+colorTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+colorTitle.TextSize = 16
+colorTitle.Font = Enum.Font.GothamSemibold
+colorTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Color Grid
 local colorGrid = Instance.new("UIGridLayout")
 colorGrid.Name = "ColorGrid"
-colorGrid.CellSize = UDim2.new(0, 32, 0, 32)
-colorGrid.CellPadding = UDim2.new(0, 6, 0, 6)
+colorGrid.CellSize = UDim2.new(0, 40, 0, 40)
+colorGrid.CellPadding = UDim2.new(0, 8, 0, 8)
 colorGrid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 colorGrid.SortOrder = Enum.SortOrder.LayoutOrder
 colorGrid.StartCorner = Enum.StartCorner.TopLeft
 
 -- Color Options
 local colors = {
-    {Color3.fromRGB(60, 160, 255), "Blue"},
-    {Color3.fromRGB(0, 230, 118), "Green"},
-    {Color3.fromRGB(255, 82, 82), "Red"},
-    {Color3.fromRGB(255, 214, 0), "Yellow"},
+    {Color3.fromRGB(100, 200, 255), "Sky Blue"},
+    {Color3.fromRGB(0, 230, 118), "Emerald"},
+    {Color3.fromRGB(255, 82, 82), "Ruby"},
+    {Color3.fromRGB(255, 214, 0), "Gold"},
     {Color3.fromRGB(255, 94, 247), "Pink"},
     {Color3.fromRGB(0, 230, 230), "Cyan"},
     {Color3.fromRGB(255, 170, 0), "Orange"},
@@ -201,183 +196,121 @@ local colors = {
 }
 
 local colorButtons = {}
+local colorContainer = Instance.new("Frame")
+colorContainer.Name = "ColorContainer"
+colorContainer.Size = UDim2.new(1, -30, 0, 80)
+colorContainer.Position = UDim2.new(0, 15, 0, 40)
+colorContainer.BackgroundTransparency = 1
 
 -- Settings Section
 local settingsSection = Instance.new("Frame")
 settingsSection.Name = "SettingsSection"
-settingsSection.Size = UDim2.new(1, -20, 0, 120)
-settingsSection.Position = UDim2.new(0, 10, 0, 210)
-settingsSection.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+settingsSection.Size = UDim2.new(1, 0, 0, 160)
+settingsSection.Position = UDim2.new(0, 0, 0, 130)
+settingsSection.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+settingsSection.BackgroundTransparency = 0.3
 settingsSection.BorderSizePixel = 0
 
 local settingsCorner = Instance.new("UICorner")
-settingsCorner.CornerRadius = UDim.new(0, 6)
+settingsCorner.CornerRadius = UDim.new(0, 8)
 settingsCorner.Parent = settingsSection
 
-local settingsLabel = Instance.new("TextLabel")
-settingsLabel.Name = "SettingsLabel"
-settingsLabel.Size = UDim2.new(1, 0, 0, 25)
-settingsLabel.Position = UDim2.new(0, 10, 0, 5)
-settingsLabel.BackgroundTransparency = 1
-settingsLabel.Text = "SETTINGS"
-settingsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-settingsLabel.TextSize = 12
-settingsLabel.Font = Enum.Font.GothamSemibold
-settingsLabel.TextXAlignment = Enum.TextXAlignment.Left
+local settingsTitle = Instance.new("TextLabel")
+settingsTitle.Name = "SettingsTitle"
+settingsTitle.Size = UDim2.new(1, -20, 0, 30)
+settingsTitle.Position = UDim2.new(0, 15, 0, 10)
+settingsTitle.BackgroundTransparency = 1
+settingsTitle.Text = "SETTINGS"
+settingsTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+settingsTitle.TextSize = 16
+settingsTitle.Font = Enum.Font.GothamSemibold
+settingsTitle.TextXAlignment = Enum.TextXAlignment.Left
 
--- Transparency Setting
-local transparencyFrame = Instance.new("Frame")
-transparencyFrame.Name = "TransparencyFrame"
-transparencyFrame.Size = UDim2.new(1, -20, 0, 50)
-transparencyFrame.Position = UDim2.new(0, 10, 0, 30)
-transparencyFrame.BackgroundTransparency = 1
+-- Preview Section
+local previewSection = Instance.new("Frame")
+previewSection.Name = "PreviewSection"
+previewSection.Size = UDim2.new(1, 0, 0, 140)
+previewSection.Position = UDim2.new(0, 0, 0, 300)
+previewSection.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+previewSection.BackgroundTransparency = 0.3
+previewSection.BorderSizePixel = 0
 
-local transparencyLabel = Instance.new("TextLabel")
-transparencyLabel.Name = "TransparencyLabel"
-transparencyLabel.Size = UDim2.new(0.4, 0, 1, 0)
-transparencyLabel.BackgroundTransparency = 1
-transparencyLabel.Text = "Transparency:"
-transparencyLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-transparencyLabel.TextSize = 14
-transparencyLabel.Font = Enum.Font.Gotham
-transparencyLabel.TextXAlignment = Enum.TextXAlignment.Left
+local previewCorner = Instance.new("UICorner")
+previewCorner.CornerRadius = UDim.new(0, 8)
+previewCorner.Parent = previewSection
 
-local transparencyValue = Instance.new("TextLabel")
-transparencyValue.Name = "TransparencyValue"
-transparencyValue.Size = UDim2.new(0.2, 0, 1, 0)
-transparencyValue.Position = UDim2.new(0.8, 0, 0, 0)
-transparencyValue.BackgroundTransparency = 1
-transparencyValue.Text = "0.7"
-transparencyValue.TextColor3 = Color3.fromRGB(200, 200, 200)
-transparencyValue.TextSize = 14
-transparencyValue.Font = Enum.Font.GothamSemibold
-transparencyValue.TextXAlignment = Enum.TextXAlignment.Right
+local previewTitle = Instance.new("TextLabel")
+previewTitle.Name = "PreviewTitle"
+previewTitle.Size = UDim2.new(1, -20, 0, 30)
+previewTitle.Position = UDim2.new(0, 15, 0, 10)
+previewTitle.BackgroundTransparency = 1
+previewTitle.Text = "LIVE PREVIEW"
+previewTitle.TextColor3 = Color3.fromRGB(220, 220, 220)
+previewTitle.TextSize = 16
+previewTitle.Font = Enum.Font.GothamSemibold
+previewTitle.TextXAlignment = Enum.TextXAlignment.Left
 
-local transparencySlider = Instance.new("Frame")
-transparencySlider.Name = "TransparencySlider"
-transparencySlider.Size = UDim2.new(0.4, 0, 0, 6)
-transparencySlider.Position = UDim2.new(0.4, 0, 0.5, -3)
-transparencySlider.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-transparencySlider.BorderSizePixel = 0
+local previewFrame = Instance.new("Frame")
+previewFrame.Name = "PreviewFrame"
+previewFrame.Size = UDim2.new(1, -30, 0, 80)
+previewFrame.Position = UDim2.new(0, 15, 0, 45)
+previewFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+previewFrame.BackgroundTransparency = 0.2
+previewFrame.BorderSizePixel = 0
 
-local sliderCorner = Instance.new("UICorner")
-sliderCorner.CornerRadius = UDim.new(1, 0)
-sliderCorner.Parent = transparencySlider
+local previewFrameCorner = Instance.new("UICorner")
+previewFrameCorner.CornerRadius = UDim.new(0, 6)
+previewFrameCorner.Parent = previewFrame
 
-local sliderFill = Instance.new("Frame")
-sliderFill.Name = "SliderFill"
-sliderFill.Size = UDim2.new(0.7, 0, 1, 0)
-sliderFill.BackgroundColor3 = Color3.fromRGB(60, 160, 255)
-sliderFill.BorderSizePixel = 0
+local previewCharacter = Instance.new("Frame")
+previewCharacter.Name = "PreviewCharacter"
+previewCharacter.Size = UDim2.new(0, 60, 0, 100)
+previewCharacter.Position = UDim2.new(0.5, -30, 0.5, -50)
+previewCharacter.AnchorPoint = Vector2.new(0.5, 0.5)
+previewCharacter.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+previewCharacter.BorderSizePixel = 0
 
-local sliderFillCorner = Instance.new("UICorner")
-sliderFillCorner.CornerRadius = UDim.new(1, 0)
-sliderFillCorner.Parent = sliderFill
+local previewCharacterCorner = Instance.new("UICorner")
+previewCharacterCorner.CornerRadius = UDim.new(0, 4)
+previewCharacterCorner.Parent = previewCharacter
 
-local sliderHandle = Instance.new("Frame")
-sliderHandle.Name = "SliderHandle"
-sliderHandle.Size = UDim2.new(0, 16, 0, 16)
-sliderHandle.Position = UDim2.new(0.7, -8, 0.5, -8)
-sliderHandle.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-sliderHandle.BorderSizePixel = 0
+local previewHighlight = Instance.new("Frame")
+previewHighlight.Name = "PreviewHighlight"
+previewHighlight.Size = UDim2.new(1, 8, 1, 8)
+previewHighlight.Position = UDim2.new(0, -4, 0, -4)
+previewHighlight.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+previewHighlight.BackgroundTransparency = 0.5
+previewHighlight.BorderSizePixel = 0
+previewHighlight.ZIndex = -1
 
-local handleCorner = Instance.new("UICorner")
-handleCorner.CornerRadius = UDim.new(1, 0)
-handleCorner.Parent = sliderHandle
-
--- Intensity Setting
-local intensityFrame = Instance.new("Frame")
-intensityFrame.Name = "IntensityFrame"
-intensityFrame.Size = UDim2.new(1, -20, 0, 50)
-intensityFrame.Position = UDim2.new(0, 10, 0, 80)
-intensityFrame.BackgroundTransparency = 1
-
-local intensityLabel = Instance.new("TextLabel")
-intensityLabel.Name = "IntensityLabel"
-intensityLabel.Size = UDim2.new(0.4, 0, 1, 0)
-intensityLabel.BackgroundTransparency = 1
-intensityLabel.Text = "Intensity:"
-intensityLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-intensityLabel.TextSize = 14
-intensityLabel.Font = Enum.Font.Gotham
-intensityLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local intensityValue = Instance.new("TextLabel")
-intensityValue.Name = "IntensityValue"
-intensityValue.Size = UDim2.new(0.2, 0, 1, 0)
-intensityValue.Position = UDim2.new(0.8, 0, 0, 0)
-intensityValue.BackgroundTransparency = 1
-intensityValue.Text = "0.8"
-intensityValue.TextColor3 = Color3.fromRGB(200, 200, 200)
-intensityValue.TextSize = 14
-intensityValue.Font = Enum.Font.GothamSemibold
-intensityValue.TextXAlignment = Enum.TextXAlignment.Right
-
-local intensitySlider = Instance.new("Frame")
-intensitySlider.Name = "IntensitySlider"
-intensitySlider.Size = UDim2.new(0.4, 0, 0, 6)
-intensitySlider.Position = UDim2.new(0.4, 0, 0.5, -3)
-intensitySlider.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-intensitySlider.BorderSizePixel = 0
-
-local intensitySliderCorner = Instance.new("UICorner")
-intensitySliderCorner.CornerRadius = UDim.new(1, 0)
-intensitySliderCorner.Parent = intensitySlider
-
-local intensityFill = Instance.new("Frame")
-intensityFill.Name = "IntensityFill"
-intensityFill.Size = UDim2.new(0.8, 0, 1, 0)
-intensityFill.BackgroundColor3 = Color3.fromRGB(60, 160, 255)
-intensityFill.BorderSizePixel = 0
-
-local intensityFillCorner = Instance.new("UICorner")
-intensityFillCorner.CornerRadius = UDim.new(1, 0)
-intensityFillCorner.Parent = intensityFill
-
-local intensityHandle = Instance.new("Frame")
-intensityHandle.Name = "IntensityHandle"
-intensityHandle.Size = UDim2.new(0, 16, 0, 16)
-intensityHandle.Position = UDim2.new(0.8, -8, 0.5, -8)
-intensityHandle.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-intensityHandle.BorderSizePixel = 0
-
-local intensityHandleCorner = Instance.new("UICorner")
-intensityHandleCorner.CornerRadius = UDim.new(1, 0)
-intensityHandleCorner.Parent = intensityHandle
+local previewHighlightCorner = Instance.new("UICorner")
+previewHighlightCorner.CornerRadius = UDim.new(0, 6)
+previewHighlightCorner.Parent = previewHighlight
 
 -- Assemble UI
-transparencyLabel.Parent = transparencyFrame
-transparencyValue.Parent = transparencyFrame
-sliderFill.Parent = transparencySlider
-sliderHandle.Parent = transparencySlider
-transparencySlider.Parent = transparencyFrame
+previewHighlight.Parent = previewCharacter
+previewCharacter.Parent = previewFrame
+previewFrame.Parent = previewSection
+previewTitle.Parent = previewSection
 
-intensityLabel.Parent = intensityFrame
-intensityValue.Parent = intensityFrame
-intensityFill.Parent = intensitySlider
-intensityHandle.Parent = intensitySlider
-intensitySlider.Parent = intensityFrame
+settingsTitle.Parent = settingsSection
 
-transparencyFrame.Parent = settingsSection
-intensityFrame.Parent = settingsSection
+colorTitle.Parent = colorSection
+colorGrid.Parent = colorContainer
+colorContainer.Parent = colorSection
 
-previewLabel.Parent = previewSection
-previewHighlight.Parent = previewExample
-previewExample.Parent = previewSection
-
-colorLabel.Parent = colorSection
-colorGrid.Parent = colorSection
-
-settingsLabel.Parent = settingsSection
-
-previewSection.Parent = content
-colorSection.Parent = content
-settingsSection.Parent = content
-
+toggleBackground.Parent = toggleFrame
+toggleButton.Parent = toggleFrame
+toggleStatus.Parent = toggleFrame
+toggleFrame.Parent = header
+icon.Parent = header
 title.Parent = header
-toggleButton.Parent = header
 closeButton.Parent = header
 header.Parent = mainContainer
+
+colorSection.Parent = content
+settingsSection.Parent = content
+previewSection.Parent = content
 content.Parent = mainContainer
 mainContainer.Parent = screenGui
 screenGui.Parent = playerGui
@@ -386,7 +319,7 @@ screenGui.Parent = playerGui
 for i, colorData in ipairs(colors) do
     local colorButton = Instance.new("TextButton")
     colorButton.Name = "Color_" .. colorData[2]
-    colorButton.Size = UDim2.new(0, 32, 0, 32)
+    colorButton.Size = UDim2.new(0, 40, 0, 40)
     colorButton.BackgroundColor3 = colorData[1]
     colorButton.Text = ""
     colorButton.AutoButtonColor = false
@@ -398,10 +331,10 @@ for i, colorData in ipairs(colors) do
     -- Selection indicator
     local selectionRing = Instance.new("Frame")
     selectionRing.Name = "SelectionRing"
-    selectionRing.Size = UDim2.new(1, 4, 1, 4)
-    selectionRing.Position = UDim2.new(0, -2, 0, -2)
+    selectionRing.Size = UDim2.new(1, 6, 1, 6)
+    selectionRing.Position = UDim2.new(0, -3, 0, -3)
     selectionRing.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    selectionRing.BackgroundTransparency = 0.8
+    selectionRing.BackgroundTransparency = 0.7
     selectionRing.BorderSizePixel = 0
     selectionRing.Visible = (i == 1) -- First color selected by default
     
@@ -410,78 +343,171 @@ for i, colorData in ipairs(colors) do
     selectionCorner.Parent = selectionRing
     
     selectionRing.Parent = colorButton
-    colorButton.Parent = colorSection
-    colorButtons[colorButton] = {color = colorData[1], name = colorData[2], ring = selectionRing}
+    colorButton.Parent = colorContainer
+    colorButtons[colorButton] = {
+        color = colorData[1],
+        name = colorData[2],
+        ring = selectionRing
+    }
 end
+
+-- Create settings sliders
+local function createSlider(parent, name, label, defaultValue, minValue, maxValue, step)
+    local sliderContainer = Instance.new("Frame")
+    sliderContainer.Name = name .. "Container"
+    sliderContainer.Size = UDim2.new(1, -30, 0, 50)
+    sliderContainer.Position = UDim2.new(0, 15, 0, 40 + (#parent:GetChildren() - 1) * 55)
+    sliderContainer.BackgroundTransparency = 1
+    
+    local sliderLabel = Instance.new("TextLabel")
+    sliderLabel.Name = name .. "Label"
+    sliderLabel.Size = UDim2.new(0.4, 0, 0, 20)
+    sliderLabel.Position = UDim2.new(0, 0, 0, 0)
+    sliderLabel.BackgroundTransparency = 1
+    sliderLabel.Text = label
+    sliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    sliderLabel.TextSize = 14
+    sliderLabel.Font = Enum.Font.Gotham
+    sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local sliderValue = Instance.new("TextLabel")
+    sliderValue.Name = name .. "Value"
+    sliderValue.Size = UDim2.new(0.2, 0, 0, 20)
+    sliderValue.Position = UDim2.new(0.8, 0, 0, 0)
+    sliderValue.BackgroundTransparency = 1
+    sliderValue.Text = tostring(defaultValue)
+    sliderValue.TextColor3 = Color3.fromRGB(200, 200, 200)
+    sliderValue.TextSize = 14
+    sliderValue.Font = Enum.Font.GothamSemibold
+    sliderValue.TextXAlignment = Enum.TextXAlignment.Right
+    
+    local sliderTrack = Instance.new("Frame")
+    sliderTrack.Name = name .. "Track"
+    sliderTrack.Size = UDim2.new(1, 0, 0, 6)
+    sliderTrack.Position = UDim2.new(0, 0, 0, 30)
+    sliderTrack.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    sliderTrack.BorderSizePixel = 0
+    
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(1, 0)
+    trackCorner.Parent = sliderTrack
+    
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Name = name .. "Fill"
+    sliderFill.Size = UDim2.new(defaultValue, 0, 1, 0)
+    sliderFill.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+    sliderFill.BorderSizePixel = 0
+    
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(1, 0)
+    fillCorner.Parent = sliderFill
+    
+    local sliderHandle = Instance.new("Frame")
+    sliderHandle.Name = name .. "Handle"
+    sliderHandle.Size = UDim2.new(0, 20, 0, 20)
+    sliderHandle.Position = UDim2.new(defaultValue, -10, 0.5, -10)
+    sliderHandle.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+    sliderHandle.BorderSizePixel = 0
+    
+    local handleCorner = Instance.new("UICorner")
+    handleCorner.CornerRadius = UDim.new(1, 0)
+    handleCorner.Parent = sliderHandle
+    
+    sliderFill.Parent = sliderTrack
+    sliderHandle.Parent = sliderTrack
+    
+    sliderLabel.Parent = sliderContainer
+    sliderValue.Parent = sliderContainer
+    sliderTrack.Parent = sliderContainer
+    
+    sliderContainer.Parent = parent
+    
+    return {
+        container = sliderContainer,
+        label = sliderLabel,
+        value = sliderValue,
+        track = sliderTrack,
+        fill = sliderFill,
+        handle = sliderHandle,
+        current = defaultValue,
+        min = minValue,
+        max = maxValue,
+        step = step
+    }
+end
+
+-- Create sliders
+local transparencySlider = createSlider(settingsSection, "Transparency", "Transparency", 0.5, 0.1, 0.9, 0.05)
+local intensitySlider = createSlider(settingsSection, "Intensity", "Intensity", 0.8, 0.3, 1.0, 0.05)
+local thicknessSlider = createSlider(settingsSection, "Thickness", "Outline Thickness", 2, 1, 5, 0.5)
 
 -- UI State
 local isHighlightEnabled = false
 local selectedColor = colors[1][1]
-local currentTransparency = 0.7
-local currentIntensity = 0.8
+local settings = {
+    Transparency = 0.5,
+    Intensity = 0.8,
+    Thickness = 2
+}
 
 -- Update preview
 local function updatePreview()
     previewHighlight.BackgroundColor3 = selectedColor
-    previewHighlight.BackgroundTransparency = currentTransparency
+    previewHighlight.BackgroundTransparency = settings.Transparency
+    
+    -- Animate preview when enabled
+    if isHighlightEnabled then
+        local pulse = TweenService:Create(previewHighlight, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+            BackgroundTransparency = settings.Transparency + 0.1
+        })
+        pulse:Play()
+    else
+        -- Stop all tweens
+        local tweens = TweenService:GetRunningTweens(previewHighlight)
+        for _, tween in ipairs(tweens) do
+            tween:Cancel()
+        end
+    end
 end
 
--- Update toggle button
-local function updateToggleButton()
+-- Update toggle switch
+local function updateToggle()
     if isHighlightEnabled then
-        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 200, 83)
-        toggleButton.Text = "ON"
-        
-        -- Animate the preview when enabled
-        local pulseTween = TweenService:Create(previewHighlight, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-            BackgroundTransparency = currentTransparency + 0.1
-        })
-        pulseTween:Play()
+        TweenService:Create(toggleButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundColor3 = Color3.fromRGB(80, 255, 140),
+            Position = UDim2.new(1, -36, 0.5, -18)
+        }):Play()
+        TweenService:Create(toggleBackground, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundColor3 = Color3.fromRGB(40, 100, 60)
+        }):Play()
+        toggleStatus.Text = "ON"
+        toggleStatus.TextColor3 = Color3.fromRGB(80, 255, 140)
     else
-        toggleButton.BackgroundColor3 = Color3.fromRGB(60, 160, 255)
-        toggleButton.Text = "OFF"
-        
-        -- Stop animations
-        TweenService:GetRunningTweens(previewHighlight)
+        TweenService:Create(toggleButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundColor3 = Color3.fromRGB(255, 80, 80),
+            Position = UDim2.new(0, -2, 0.5, -18)
+        }):Play()
+        TweenService:Create(toggleBackground, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+        }):Play()
+        toggleStatus.Text = "OFF"
+        toggleStatus.TextColor3 = Color3.fromRGB(255, 120, 120)
     end
     updatePreview()
 end
 
--- Update sliders
-local function updateSlider(slider, fill, handle, valueLabel, value, min, max)
-    local percent = (value - min) / (max - min)
-    fill.Size = UDim2.new(percent, 0, 1, 0)
-    handle.Position = UDim2.new(percent, -8, 0.5, -8)
-    valueLabel.Text = string.format("%.1f", value)
-end
-
--- Initialize sliders
-updateSlider(transparencySlider, sliderFill, sliderHandle, transparencyValue, currentTransparency, 0, 1)
-updateSlider(intensitySlider, intensityFill, intensityHandle, intensityValue, currentIntensity, 0.1, 1)
-
--- Toggle highlights
+-- Toggle highlight system
 toggleButton.MouseButton1Click:Connect(function()
     isHighlightEnabled = not isHighlightEnabled
-    updateToggleButton()
+    updateToggle()
     
-    -- Send to server
+    -- Send toggle to server
     ReplicatedStorage.HighlightToggle:FireServer(isHighlightEnabled, {
         Color = selectedColor,
-        Transparency = currentTransparency,
-        Intensity = currentIntensity
+        Transparency = settings.Transparency,
+        Intensity = settings.Intensity,
+        Thickness = settings.Thickness
     })
-    
-    -- Button animation
-    local originalSize = toggleButton.Size
-    TweenService:Create(toggleButton, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = originalSize - UDim2.new(0, 5, 0, 5)
-    }):Play()
-    
-    task.wait(0.1)
-    
-    TweenService:Create(toggleButton, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Size = originalSize
-    }):Play()
 end)
 
 -- Color selection
@@ -498,38 +524,73 @@ for button, data in pairs(colorButtons) do
         -- Update preview
         updatePreview()
         
-        -- Send update if highlights are enabled
+        -- Update server if enabled
         if isHighlightEnabled then
             ReplicatedStorage.HighlightToggle:FireServer(isHighlightEnabled, {
                 Color = selectedColor,
-                Transparency = currentTransparency,
-                Intensity = currentIntensity
+                Transparency = settings.Transparency,
+                Intensity = settings.Intensity,
+                Thickness = settings.Thickness
             })
         end
     end)
 end
 
 -- Slider functionality
-local function setupSlider(sliderFrame, fill, handle, valueLabel, onValueChanged)
+local function setupSlider(sliderData)
     local isDragging = false
     
-    local function updateValue(xPosition)
-        local absoluteX = sliderFrame.AbsolutePosition.X
-        local absoluteWidth = sliderFrame.AbsoluteSize.X
+    local function updateSliderValue(xPosition)
+        local absoluteX = sliderData.track.AbsolutePosition.X
+        local absoluteWidth = sliderData.track.AbsoluteSize.X
         local percent = math.clamp((xPosition - absoluteX) / absoluteWidth, 0, 1)
         
-        onValueChanged(percent)
-        updateSlider(sliderFrame, fill, handle, valueLabel, percent, 0, 1)
+        -- Apply step
+        local value = sliderData.min + (percent * (sliderData.max - sliderData.min))
+        value = math.floor(value / sliderData.step + 0.5) * sliderData.step
+        
+        sliderData.current = value
+        sliderData.value.Text = string.format("%.2f", value)
+        sliderData.fill.Size = UDim2.new(percent, 0, 1, 0)
+        sliderData.handle.Position = UDim2.new(percent, -10, 0.5, -10)
+        
+        -- Update settings
+        settings[sliderData.label.Text] = value
+        
+        -- Update preview
+        updatePreview()
+        
+        -- Update server if enabled
+        if isHighlightEnabled then
+            ReplicatedStorage.HighlightToggle:FireServer(isHighlightEnabled, {
+                Color = selectedColor,
+                Transparency = settings.Transparency,
+                Intensity = settings.Intensity,
+                Thickness = settings.Thickness
+            })
+        end
     end
     
-    sliderFrame.InputBegan:Connect(function(input)
+    sliderData.track.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isDragging = true
-            updateValue(input.Position.X)
+            updateSliderValue(input.Position.X)
         end
     end)
     
-    sliderFrame.InputEnded:Connect(function(input)
+    sliderData.track.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isDragging = false
+        end
+    end)
+    
+    sliderData.handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isDragging = true
+        end
+    end)
+    
+    sliderData.handle.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isDragging = false
         end
@@ -537,86 +598,58 @@ local function setupSlider(sliderFrame, fill, handle, valueLabel, onValueChanged
     
     UserInputService.InputChanged:Connect(function(input)
         if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            updateValue(input.Position.X)
-        end
-    end)
-    
-    handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDragging = true
-        end
-    end)
-    
-    handle.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDragging = false
+            updateSliderValue(input.Position.X)
         end
     end)
 end
 
--- Setup sliders
-setupSlider(transparencySlider, sliderFill, sliderHandle, transparencyValue, function(value)
-    currentTransparency = value
-    updatePreview()
-    
-    if isHighlightEnabled then
-        ReplicatedStorage.HighlightToggle:FireServer(isHighlightEnabled, {
-            Color = selectedColor,
-            Transparency = currentTransparency,
-            Intensity = currentIntensity
-        })
-    end
-end)
-
-setupSlider(intensitySlider, intensityFill, intensityHandle, intensityValue, function(value)
-    currentIntensity = value
-    
-    if isHighlightEnabled then
-        ReplicatedStorage.HighlightToggle:FireServer(isHighlightEnabled, {
-            Color = selectedColor,
-            Transparency = currentTransparency,
-            Intensity = currentIntensity
-        })
-    end
-end)
+-- Setup all sliders
+setupSlider(transparencySlider)
+setupSlider(intensitySlider)
+setupSlider(thicknessSlider)
 
 -- Close button
 closeButton.MouseButton1Click:Connect(function()
-    -- Slide out animation
-    local tween = TweenService:Create(mainContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Position = UDim2.new(1, 20, 0.5, -190)
-    })
-    tween:Play()
-    
-    tween.Completed:Wait()
-    screenGui.Enabled = false
+    toggleUI()
 end)
 
--- Open/Close toggle with T key
+-- Toggle UI function
+local function toggleUI()
+    screenGui.Enabled = not screenGui.Enabled
+    
+    if screenGui.Enabled then
+        -- Fade in blur
+        TweenService:Create(blur, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = 12
+        }):Play()
+        
+        -- Scale in animation
+        mainContainer.Size = UDim2.new(0, 0, 0, 0)
+        TweenService:Create(mainContainer, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 400, 0, 500)
+        }):Play()
+    else
+        -- Fade out blur
+        TweenService:Create(blur, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = 0
+        }):Play()
+        
+        -- Scale out animation
+        TweenService:Create(mainContainer, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 0, 0, 0)
+        }):Play()
+    end
+end
+
+-- Keyboard shortcut (F3)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.T then
-        if not screenGui.Enabled then
-            screenGui.Enabled = true
-            -- Slide in from right
-            mainContainer.Position = UDim2.new(1, 20, 0.5, -190)
-            local tween = TweenService:Create(mainContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Position = UDim2.new(1, -320, 0.5, -190)
-            })
-            tween:Play()
-        else
-            -- Slide out
-            local tween = TweenService:Create(mainContainer, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Position = UDim2.new(1, 20, 0.5, -190)
-            })
-            tween:Play()
-            tween.Completed:Wait()
-            screenGui.Enabled = false
-        end
+    if not gameProcessed and input.KeyCode == Enum.KeyCode.F3 then
+        toggleUI()
     end
 end)
 
 -- Initialize
-updateToggleButton()
+updateToggle()
 updatePreview()
 
-print("Clean Highlight UI loaded! Press T to toggle UI.")
+print("Highlight UI loaded! Press F3 to toggle.")
