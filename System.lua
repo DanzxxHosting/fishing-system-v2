@@ -1,5 +1,5 @@
--- Working Highlight System
--- Place in ServerScriptService
+ -- Advanced Highlight Features System
+-- features.lua - Place in ServerScriptService
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,138 +10,291 @@ if not ReplicatedStorage:FindFirstChild("HighlightToggle") then
     Instance.new("RemoteEvent", ReplicatedStorage).Name = "HighlightToggle"
 end
 
--- Store player highlights
-local PlayerHighlights = {}
+-- Configuration
+local Config = {
+    MaxDistance = 1000, -- Maximum distance to show highlights
+    UpdateRate = 1, -- How often to update (seconds)
+    CleanupInterval = 30, -- Cleanup interval (seconds)
+    TeamBased = false, -- Set to true for team-based highlighting
+    IncludeSelf = false -- Set to true to highlight self
+}
 
--- Clean up function
-local function cleanupPlayerHighlights(player)
-    if PlayerHighlights[player] then
-        for _, highlight in pairs(PlayerHighlights[player]) do
-            if highlight and highlight.Parent then
-                highlight:Destroy()
-            end
-        end
-        PlayerHighlights[player] = nil
-    end
-end
+-- Data storage
+local PlayerHighlights = {} -- [viewer] = {[target] = highlight}
+local PlayerSettings = {} -- [player] = {color, transparency, intensity, thickness}
 
--- Create highlight for a character
-local function createHighlight(character, color, transparency, intensity)
+-- Create advanced highlight
+local function createAdvancedHighlight(character, settings)
     local highlight = Instance.new("Highlight")
-    highlight.Name = "PlayerHighlight"
-    highlight.FillColor = color
-    highlight.OutlineColor = color
-    highlight.FillTransparency = transparency
+    highlight.Name = "PlayerHighlight_" .. os.time()
+    
+    -- Apply settings
+    highlight.FillColor = settings.Color
+    highlight.OutlineColor = settings.Color
+    highlight.FillTransparency = settings.Transparency
     highlight.OutlineTransparency = 0
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     
-    -- Adjust intensity
-    if intensity then
-        highlight.FillTransparency = transparency + (1 - intensity) * 0.3
+    -- Intensity affects fill transparency
+    highlight.FillTransparency = settings.Transparency + (1 - settings.Intensity) * 0.4
+    
+    -- Outline thickness (custom property)
+    highlight:SetAttribute("OutlineThickness", settings.Thickness)
+    
+    -- Custom glow effect
+    local glow = Instance.new("PointLight")
+    glow.Name = "HighlightGlow"
+    glow.Color = settings.Color
+    glow.Range = 15
+    glow.Brightness = 0.5 * settings.Intensity
+    glow.Enabled = false -- Will be enabled based on distance
+    glow.Parent = highlight
+    
+    -- Pulse effect
+    local pulseEnabled = false
+    if settings.Pulse then
+        pulseEnabled = true
     end
     
     highlight.Adornee = character
     highlight.Parent = character
     
-    return highlight
+    return highlight, glow, pulseEnabled
 end
 
--- Highlight all players for a viewer
-local function highlightAllPlayers(viewer, color, transparency, intensity)
-    -- Clean up existing highlights
-    cleanupPlayerHighlights(viewer)
+-- Distance-based highlighting
+local function isWithinDistance(viewerChar, targetChar)
+    if not viewerChar or not targetChar then return false end
     
-    -- Create new highlights for all other players
+    local viewerPos = viewerChar:GetPivot().Position
+    local targetPos = targetChar:GetPivot().Position
+    
+    return (viewerPos - targetPos).Magnitude <= Config.MaxDistance
+end
+
+-- Team check
+local function shouldHighlight(viewer, target, settings)
+    if viewer == target and not Config.IncludeSelf then
+        return false
+    end
+    
+    if Config.TeamBased then
+        local viewerTeam = viewer.Team
+        local targetTeam = target.Team
+        
+        if viewerTeam and targetTeam then
+            if settings.TeamMode == "Allies" then
+                return viewerTeam == targetTeam
+            elseif settings.TeamMode == "Enemies" then
+                return viewerTeam ~= targetTeam
+            end
+        end
+    end
+    
+    return true
+end
+
+-- Update highlights for a viewer
+local function updateHighlightsForViewer(viewer, settings)
+    -- Clean up old highlights
+    if PlayerHighlights[viewer] then
+        for _, highlight in pairs(PlayerHighlights[viewer]) do
+            if highlight then
+                highlight:Destroy()
+            end
+        end
+    end
+    
     PlayerHighlights[viewer] = {}
     
-    for _, target in ipairs(Players:GetPlayers()) do
-        if target ~= viewer and target.Character then
-            local highlight = createHighlight(target.Character, color, transparency, intensity)
-            highlight.Name = viewer.Name .. "_View_" .. target.Name
-            PlayerHighlights[viewer][target] = highlight
-        end
-    end
+    local viewerChar = viewer.Character
+    if not viewerChar then return end
     
-    -- Set up character added events for all players
+    -- Create highlights for valid targets
     for _, target in ipairs(Players:GetPlayers()) do
-        if target ~= viewer then
-            target.CharacterAdded:Connect(function(character)
-                task.wait(1) -- Wait for character to load
+        if shouldHighlight(viewer, target, settings) and target.Character then
+            if isWithinDistance(viewerChar, target.Character) then
+                local highlight, glow, pulseEnabled = createAdvancedHighlight(target.Character, settings)
+                PlayerHighlights[viewer][target] = highlight
                 
-                if PlayerHighlights[viewer] and PlayerHighlights[viewer][target] then
-                    -- Update existing highlight
-                    PlayerHighlights[viewer][target].Adornee = character
-                    PlayerHighlights[viewer][target].Parent = character
-                elseif PlayerHighlights[viewer] then
-                    -- Create new highlight
-                    local highlight = createHighlight(character, color, transparency, intensity)
-                    highlight.Name = viewer.Name .. "_View_" .. target.Name
-                    PlayerHighlights[viewer][target] = highlight
-                end
-            end)
+                -- Setup glow based on distance
+                local distance = (viewerChar:GetPivot().Position - target.Character:GetPivot().Position).Magnitude
+                glow.Enabled = distance < 50
+            end
         end
     end
 end
 
--- Handle toggle requests
-ReplicatedStorage.HighlightToggle.OnServerEvent:Connect(function(player, enabled, settings)
+-- Handle pulse effect
+local function startPulseEffect(highlight, settings)
+    coroutine.wrap(function()
+        while highlight and highlight.Parent do
+            local currentTransparency = highlight.FillTransparency
+            local targetTransparency = settings.Transparency + 0.2
+            
+            -- Pulse up
+            for i = 1, 10 do
+                if not highlight or not highlight.Parent then break end
+                highlight.FillTransparency = currentTransparency + (targetTransparency - currentTransparency) * (i / 10)
+                task.wait(0.05)
+            end
+            
+            -- Pulse down
+            for i = 1, 10 do
+                if not highlight or not highlight.Parent then break end
+                highlight.FillTransparency = targetTransparency - (targetTransparency - currentTransparency) * (i / 10)
+                task.wait(0.05)
+            end
+        end
+    end)()
+end
+
+-- Main toggle handler
+ReplicatedStorage.HighlightToggle.OnServerEvent:Connect(function(player, enabled, settingsData)
     if enabled then
+        -- Store player settings
+        PlayerSettings[player] = {
+            Color = settingsData.Color or Color3.fromRGB(100, 200, 255),
+            Transparency = settingsData.Transparency or 0.5,
+            Intensity = settingsData.Intensity or 0.8,
+            Thickness = settingsData.Thickness or 2,
+            Pulse = settingsData.Pulse or false,
+            TeamMode = settingsData.TeamMode or "All"
+        }
+        
         -- Enable highlights
-        local color = settings.Color or Color3.fromRGB(60, 160, 255)
-        local transparency = settings.Transparency or 0.7
-        local intensity = settings.Intensity or 0.8
+        updateHighlightsForViewer(player, PlayerSettings[player])
         
-        print(player.Name .. " enabled highlights with color: " .. tostring(color))
+        print(player.Name .. " enabled advanced highlights")
         
-        highlightAllPlayers(player, color, transparency, intensity)
-        
-        -- Notify player
-        task.spawn(function()
-            local notification = Instance.new("Sound")
-            notification.SoundId = "rbxassetid://3570574874" -- Click sound
-            notification.Parent = player.Character or player:WaitForChild("Character")
-            notification:Play()
-            game:GetService("Debris"):AddItem(notification, 2)
-        end)
+        -- Notify client
+        ReplicatedStorage.HighlightToggle:FireClient(player, "Enabled", {
+            Message = "Highlights enabled!",
+            Color = PlayerSettings[player].Color
+        })
     else
         -- Disable highlights
-        cleanupPlayerHighlights(player)
+        if PlayerHighlights[player] then
+            for _, highlight in pairs(PlayerHighlights[player]) do
+                if highlight then
+                    highlight:Destroy()
+                end
+            end
+            PlayerHighlights[player] = nil
+        end
+        PlayerSettings[player] = nil
+        
         print(player.Name .. " disabled highlights")
         
-        -- Notify player
-        task.spawn(function()
-            local notification = Instance.new("Sound")
-            notification.SoundId = "rbxassetid://3570574874"
-            notification.Parent = player.Character or player:WaitForChild("Character")
-            notification:Play()
-            game:GetService("Debris"):AddItem(notification, 2)
-        end)
+        -- Notify client
+        ReplicatedStorage.HighlightToggle:FireClient(player, "Disabled", {
+            Message = "Highlights disabled."
+        })
     end
 end)
 
 -- Handle player joining
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function(character)
-        -- Check if any player is highlighting this new player
+        task.wait(1) -- Wait for character to load
+        
+        -- Update highlights for all viewers who have this player highlighted
         for viewer, highlights in pairs(PlayerHighlights) do
-            if viewer ~= player and highlights then
-                task.wait(1)
-                for target, highlight in pairs(highlights) do
-                    if target == player and highlight then
-                        highlight.Adornee = character
-                        highlight.Parent = character
-                    end
+            if viewer ~= player and highlights[player] then
+                if highlights[player] then
+                    highlights[player].Adornee = character
+                    highlights[player].Parent = character
                 end
             end
         end
     end)
 end)
 
+-- Continuous update loop
+coroutine.wrap(function()
+    while true do
+        task.wait(Config.UpdateRate)
+        
+        -- Update all active highlights
+        for viewer, settings in pairs(PlayerSettings) do
+            if PlayerHighlights[viewer] then
+                local viewerChar = viewer.Character
+                if not viewerChar then continue end
+                
+                for target, highlight in pairs(PlayerHighlights[viewer]) do
+                    if target and target.Character and highlight then
+                        -- Update based on distance
+                        local distance = (viewerChar:GetPivot().Position - target.Character:GetPivot().Position).Magnitude
+                        
+                        if distance <= Config.MaxDistance then
+                            -- Update glow
+                            local glow = highlight:FindFirstChild("HighlightGlow")
+                            if glow then
+                                glow.Enabled = distance < 50
+                                glow.Brightness = 0.5 * settings.Intensity * (1 - distance / 100)
+                            end
+                            
+                            -- Update transparency based on distance
+                            local distanceFactor = 1 - (distance / Config.MaxDistance)
+                            highlight.FillTransparency = settings.Transparency + (1 - distanceFactor) * 0.3
+                        else
+                            -- Out of range, hide highlight
+                            highlight.FillTransparency = 1
+                            highlight.OutlineTransparency = 1
+                            local glow = highlight:FindFirstChild("HighlightGlow")
+                            if glow then
+                                glow.Enabled = false
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)()
+
+-- Cleanup loop
+coroutine.wrap(function()
+    while true do
+        task.wait(Config.CleanupInterval)
+        
+        -- Remove invalid highlights
+        for viewer, highlights in pairs(PlayerHighlights) do
+            if not viewer or not viewer.Parent then
+                for _, highlight in pairs(highlights) do
+                    if highlight then
+                        highlight:Destroy()
+                    end
+                end
+                PlayerHighlights[viewer] = nil
+                PlayerSettings[viewer] = nil
+            else
+                for target, highlight in pairs(highlights) do
+                    if not target or not target.Parent or not target.Character or not highlight or not highlight.Parent then
+                        if highlight then
+                            highlight:Destroy()
+                        end
+                        highlights[target] = nil
+                    end
+                end
+            end
+        end
+    end
+end)()
+
 -- Clean up when player leaves
 Players.PlayerRemoving:Connect(function(player)
-    cleanupPlayerHighlights(player)
+    if PlayerHighlights[player] then
+        for _, highlight in pairs(PlayerHighlights[player]) do
+            if highlight then
+                highlight:Destroy()
+            end
+        end
+        PlayerHighlights[player] = nil
+    end
+    PlayerSettings[player] = nil
     
-    -- Remove highlights targeting this player
+    -- Remove from other players' highlights
     for viewer, highlights in pairs(PlayerHighlights) do
         if highlights[player] then
             highlights[player]:Destroy()
@@ -150,22 +303,4 @@ Players.PlayerRemoving:Connect(function(player)
     end
 end)
 
--- Optional: Auto-cleanup every 30 seconds to prevent memory leaks
-while true do
-    task.wait(30)
-    
-    for viewer, highlights in pairs(PlayerHighlights) do
-        if not viewer or not viewer.Parent then
-            cleanupPlayerHighlights(viewer)
-        else
-            for target, highlight in pairs(highlights) do
-                if not target or not target.Parent or not highlight or not highlight.Parent then
-                    if highlight then
-                        highlight:Destroy()
-                    end
-                    highlights[target] = nil
-                end
-            end
-        end
-    end
-end
+print("Advanced Highlight Features loaded!")
