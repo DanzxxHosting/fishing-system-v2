@@ -2,6 +2,7 @@
 -- Tema: Glass Effect + Neon Red
 -- Keybind: G untuk toggle
 -- Navigation System: Dashboard, Teleport, Shop, Settings, About
+-- Optimized untuk ukuran 520x280
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -14,7 +15,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- CONFIG
 local WIDTH = 520
 local HEIGHT = 280
-local SIDEBAR_W = 200
+local SIDEBAR_W = 160  -- Diperkecil agar pas
 local ACCENT = Color3.fromRGB(255, 62, 62) -- neon merah
 local ACCENT_GLOW = Color3.fromRGB(255, 100, 100)
 local BG = Color3.fromRGB(10, 10, 12) -- hitam gelap
@@ -63,19 +64,19 @@ glass.Parent = container
 
 -- Glass effect
 local glassCorner = Instance.new("UICorner")
-glassCorner.CornerRadius = UDim.new(0, 16)
+glassCorner.CornerRadius = UDim.new(0, 12)  -- Radius dikurangi
 glassCorner.Parent = glass
 
 local glassStroke = Instance.new("UIStroke")
 glassStroke.Color = Color3.fromRGB(40, 40, 50)
-glassStroke.Thickness = 2
+glassStroke.Thickness = 1  -- Dikurangi
 glassStroke.Parent = glass
 
 -- Outer glow
 local glow = Instance.new("ImageLabel")
 glow.Name = "Glow"
 glow.AnchorPoint = Vector2.new(0.5, 0.5)
-glow.Size = UDim2.new(1, 40, 1, 40)
+glow.Size = UDim2.new(1, 20, 1, 20)  -- Diperkecil
 glow.Position = UDim2.new(0.5, 0, 0.5, 0)
 glow.BackgroundTransparency = 1
 glow.Image = "rbxassetid://8992236561" -- Circular glow
@@ -89,24 +90,24 @@ glow.ZIndex = -1
 -- Inner container
 local inner = Instance.new("Frame")
 inner.Name = "Inner"
-inner.Size = UDim2.new(1, -24, 1, -24)
-inner.Position = UDim2.new(0, 12, 0, 12)
+inner.Size = UDim2.new(1, -16, 1, -16)  -- Padding dikurangi
+inner.Position = UDim2.new(0, 8, 0, 8)
 inner.BackgroundTransparency = 1
 inner.Parent = glass
 
 -- Title bar
 local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 50)
+titleBar.Size = UDim2.new(1, 0, 0, 35)  -- Diperpendek
 titleBar.Position = UDim2.new(0, 0, 0, 0)
 titleBar.BackgroundTransparency = 1
 titleBar.Parent = inner
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(0.6, 0, 1, 0)
-title.Position = UDim2.new(0, 12, 0, 0)
+title.Position = UDim2.new(0, 8, 0, 0)  -- Padding dikurangi
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
-title.TextSize = 20
+title.TextSize = 16  -- Dikecilkan
 title.Text = "⚡ NEON UI"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
@@ -127,8 +128,8 @@ titleGlow.ZIndex = -1
 
 -- Stats bar
 local statsBar = Instance.new("Frame")
-statsBar.Size = UDim2.new(0.4, -16, 1, 0)
-statsBar.Position = UDim2.new(0.6, 12, 0, 0)
+statsBar.Size = UDim2.new(0.4, -8, 1, 0)  -- Diperkecil
+statsBar.Position = UDim2.new(0.6, 8, 0, 0)
 statsBar.BackgroundTransparency = 1
 statsBar.Parent = titleBar
 
@@ -137,7 +138,7 @@ memLabel.Size = UDim2.new(1, 0, 0.5, 0)
 memLabel.Position = UDim2.new(0, 0, 0, 0)
 memLabel.BackgroundTransparency = 1
 memLabel.Font = Enum.Font.Gotham
-memLabel.TextSize = 12
+memLabel.TextSize = 10  -- Dikecilkan
 memLabel.Text = "RAM: 0 MB"
 memLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
 memLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -148,7 +149,7 @@ fpsLabel.Size = UDim2.new(1, 0, 0.5, 0)
 fpsLabel.Position = UDim2.new(0, 0, 0.5, 0)
 fpsLabel.BackgroundTransparency = 1
 fpsLabel.Font = Enum.Font.Gotham
-fpsLabel.TextSize = 12
+fpsLabel.TextSize = 10  -- Dikecilkan
 fpsLabel.Text = "FPS: 60"
 fpsLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
 fpsLabel.TextXAlignment = Enum.TextXAlignment.Right
@@ -157,15 +158,15 @@ fpsLabel.Parent = statsBar
 -- Sidebar (Glass)
 local sidebar = Instance.new("Frame")
 sidebar.Name = "Sidebar"
-sidebar.Size = UDim2.new(0, SIDEBAR_W, 1, -70)
-sidebar.Position = UDim2.new(0, 0, 0, 60)
+sidebar.Size = UDim2.new(0, SIDEBAR_W, 1, -55)  -- Diperpendek
+sidebar.Position = UDim2.new(0, 0, 0, 45)  -- Dinaikkan
 sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 sidebar.BackgroundTransparency = 0.2
 sidebar.BorderSizePixel = 0
 sidebar.Parent = inner
 
 local sidebarCorner = Instance.new("UICorner")
-sidebarCorner.CornerRadius = UDim.new(0, 12)
+sidebarCorner.CornerRadius = UDim.new(0, 8)  -- Dikecilkan
 sidebarCorner.Parent = sidebar
 
 local sidebarStroke = Instance.new("UIStroke")
@@ -175,13 +176,13 @@ sidebarStroke.Parent = sidebar
 
 -- Sidebar header
 local sbHeader = Instance.new("Frame")
-sbHeader.Size = UDim2.new(1, 0, 0, 80)
+sbHeader.Size = UDim2.new(1, 0, 0, 50)  -- Diperpendek
 sbHeader.BackgroundTransparency = 1
 sbHeader.Parent = sidebar
 
 local logoContainer = Instance.new("Frame")
-logoContainer.Size = UDim2.new(0, 60, 0, 60)
-logoContainer.Position = UDim2.new(0, 16, 0, 10)
+logoContainer.Size = UDim2.new(0, 40, 0, 40)  -- Diperkecil
+logoContainer.Position = UDim2.new(0, 10, 0, 5)  -- Disesuaikan
 logoContainer.BackgroundTransparency = 1
 logoContainer.Parent = sbHeader
 
@@ -193,8 +194,8 @@ logo.ImageColor3 = ACCENT
 logo.Parent = logoContainer
 
 local logoGlow = Instance.new("ImageLabel")
-logoGlow.Size = UDim2.new(1, 10, 1, 10)
-logoGlow.Position = UDim2.new(0, -5, 0, -5)
+logoGlow.Size = UDim2.new(1, 8, 1, 8)  -- Diperkecil
+logoGlow.Position = UDim2.new(0, -4, 0, -4)
 logoGlow.BackgroundTransparency = 1
 logoGlow.Image = "rbxassetid://8992236561"
 logoGlow.ImageColor3 = ACCENT
@@ -203,48 +204,48 @@ logoGlow.Parent = logoContainer
 logoGlow.ZIndex = -1
 
 local sTitle = Instance.new("TextLabel")
-sTitle.Size = UDim2.new(1, -96, 0, 30)
-sTitle.Position = UDim2.new(0, 88, 0, 15)
+sTitle.Size = UDim2.new(1, -56, 0, 25)  -- Disesuaikan
+sTitle.Position = UDim2.new(0, 56, 0, 2)  -- Disesuaikan
 sTitle.BackgroundTransparency = 1
 sTitle.Font = Enum.Font.GothamBold
-sTitle.TextSize = 18
-sTitle.Text = "NAVIGATION"
+sTitle.TextSize = 14  -- Dikecilkan
+sTitle.Text = "MENU"
 sTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 sTitle.TextXAlignment = Enum.TextXAlignment.Left
 sTitle.Parent = sbHeader
 
 local sSubtitle = Instance.new("TextLabel")
-sSubtitle.Size = UDim2.new(1, -96, 0, 20)
-sSubtitle.Position = UDim2.new(0, 88, 0, 45)
+sSubtitle.Size = UDim2.new(1, -56, 0, 15)  -- Disesuaikan
+sSubtitle.Position = UDim2.new(0, 56, 0, 25)  -- Disesuaikan
 sSubtitle.BackgroundTransparency = 1
 sSubtitle.Font = Enum.Font.Gotham
-sSubtitle.TextSize = 12
-sSubtitle.Text = "Select Feature"
+sSubtitle.TextSize = 10  -- Dikecilkan
+sSubtitle.Text = "Select feature"
 sSubtitle.TextColor3 = Color3.fromRGB(180, 180, 200)
 sSubtitle.TextXAlignment = Enum.TextXAlignment.Left
 sSubtitle.Parent = sbHeader
 
 -- Menu container
 local menuContainer = Instance.new("ScrollingFrame")
-menuContainer.Size = UDim2.new(1, -12, 1, -100)
-menuContainer.Position = UDim2.new(0, 6, 0, 88)
+menuContainer.Size = UDim2.new(1, -8, 1, -66)  -- Disesuaikan
+menuContainer.Position = UDim2.new(0, 4, 0, 56)
 menuContainer.BackgroundTransparency = 1
 menuContainer.BorderSizePixel = 0
-menuContainer.ScrollBarThickness = 3
+menuContainer.ScrollBarThickness = 2  -- Diperkecil
 menuContainer.ScrollBarImageColor3 = ACCENT
 menuContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 menuContainer.Parent = sidebar
 
 local menuLayout = Instance.new("UIListLayout")
 menuLayout.SortOrder = Enum.SortOrder.LayoutOrder
-menuLayout.Padding = UDim.new(0, 8)
+menuLayout.Padding = UDim.new(0, 5)  -- Dikurangi
 menuLayout.Parent = menuContainer
 
 -- Function to create navigation button
 local function createNavButton(text, icon, id, order)
     local btn = Instance.new("TextButton")
     btn.Name = "Btn" .. id
-    btn.Size = UDim2.new(1, 0, 0, 46)
+    btn.Size = UDim2.new(1, 0, 0, 36)  -- Diperpendek
     btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     btn.BackgroundTransparency = 0.3
     btn.AutoButtonColor = false
@@ -254,7 +255,7 @@ local function createNavButton(text, icon, id, order)
     btn.Parent = menuContainer
     
     local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 10)
+    btnCorner.CornerRadius = UDim.new(0, 6)  -- Dikecilkan
     btnCorner.Parent = btn
     
     local btnStroke = Instance.new("UIStroke")
@@ -264,11 +265,11 @@ local function createNavButton(text, icon, id, order)
     
     -- Icon
     local iconLabel = Instance.new("TextLabel")
-    iconLabel.Size = UDim2.new(0, 40, 1, 0)
-    iconLabel.Position = UDim2.new(0, 8, 0, 0)
+    iconLabel.Size = UDim2.new(0, 30, 1, 0)  -- Diperkecil
+    iconLabel.Position = UDim2.new(0, 6, 0, 0)  -- Disesuaikan
     iconLabel.BackgroundTransparency = 1
     iconLabel.Font = Enum.Font.GothamBold
-    iconLabel.TextSize = 20
+    iconLabel.TextSize = 16  -- Dikecilkan
     iconLabel.Text = icon
     iconLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
     iconLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -278,10 +279,10 @@ local function createNavButton(text, icon, id, order)
     -- Text
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(0.7, 0, 1, 0)
-    textLabel.Position = UDim2.new(0, 56, 0, 0)
+    textLabel.Position = UDim2.new(0, 40, 0, 0)  -- Disesuaikan
     textLabel.BackgroundTransparency = 1
     textLabel.Font = Enum.Font.GothamSemibold
-    textLabel.TextSize = 14
+    textLabel.TextSize = 12  -- Dikecilkan
     textLabel.Text = text
     textLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
     textLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -335,20 +336,20 @@ strokeMain.Color = ACCENT
 iconMain.TextColor3 = ACCENT
 
 -- Update canvas size
-menuContainer.CanvasSize = UDim2.new(0, 0, 0, 5 * 54)
+menuContainer.CanvasSize = UDim2.new(0, 0, 0, 5 * 41)  -- Disesuaikan
 
 -- Content area (Glass)
 local content = Instance.new("Frame")
 content.Name = "Content"
-content.Size = UDim2.new(1, -SIDEBAR_W - 30, 1, -70)
-content.Position = UDim2.new(0, SIDEBAR_W + 20, 0, 60)
+content.Size = UDim2.new(1, -SIDEBAR_W - 16, 1, -55)  -- Disesuaikan
+content.Position = UDim2.new(0, SIDEBAR_W + 12, 0, 45)
 content.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 content.BackgroundTransparency = 0.2
 content.BorderSizePixel = 0
 content.Parent = inner
 
 local contentCorner = Instance.new("UICorner")
-contentCorner.CornerRadius = UDim.new(0, 12)
+contentCorner.CornerRadius = UDim.new(0, 8)  -- Dikecilkan
 contentCorner.Parent = content
 
 local contentStroke = Instance.new("UIStroke")
@@ -358,29 +359,29 @@ contentStroke.Parent = content
 
 -- Content header
 local contentHeader = Instance.new("Frame")
-contentHeader.Size = UDim2.new(1, -24, 0, 50)
-contentHeader.Position = UDim2.new(0, 12, 0, 12)
+contentHeader.Size = UDim2.new(1, -16, 0, 35)  -- Diperpendek
+contentHeader.Position = UDim2.new(0, 8, 0, 8)
 contentHeader.BackgroundTransparency = 1
 contentHeader.Parent = content
 
 local contentTitle = Instance.new("TextLabel")
-contentTitle.Size = UDim2.new(0.6, 0, 1, 0)
+contentTitle.Size = UDim2.new(0.7, 0, 1, 0)
 contentTitle.Position = UDim2.new(0, 0, 0, 0)
 contentTitle.BackgroundTransparency = 1
 contentTitle.Font = Enum.Font.GothamBold
-contentTitle.TextSize = 18
-contentTitle.Text = "MAIN DASHBOARD"
+contentTitle.TextSize = 14  -- Dikecilkan
+contentTitle.Text = "DASHBOARD"
 contentTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 contentTitle.TextXAlignment = Enum.TextXAlignment.Left
 contentTitle.Parent = contentHeader
 
 local contentSubtitle = Instance.new("TextLabel")
-contentSubtitle.Size = UDim2.new(0.4, -10, 1, 0)
-contentSubtitle.Position = UDim2.new(0.6, 10, 0, 0)
+contentSubtitle.Size = UDim2.new(0.3, -4, 1, 0)
+contentSubtitle.Position = UDim2.new(0.7, 4, 0, 0)
 contentSubtitle.BackgroundTransparency = 1
 contentSubtitle.Font = Enum.Font.Gotham
-contentSubtitle.TextSize = 12
-contentSubtitle.Text = "Welcome to Neon UI"
+contentSubtitle.TextSize = 10  -- Dikecilkan
+contentSubtitle.Text = "Welcome"
 contentSubtitle.TextColor3 = Color3.fromRGB(180, 180, 200)
 contentSubtitle.TextXAlignment = Enum.TextXAlignment.Right
 contentSubtitle.Parent = contentHeader
@@ -388,8 +389,8 @@ contentSubtitle.Parent = contentHeader
 -- Content pages container
 local pagesContainer = Instance.new("Frame")
 pagesContainer.Name = "Pages"
-pagesContainer.Size = UDim2.new(1, -24, 1, -80)
-pagesContainer.Position = UDim2.new(0, 12, 0, 64)
+pagesContainer.Size = UDim2.new(1, -16, 1, -60)  -- Disesuaikan
+pagesContainer.Position = UDim2.new(0, 8, 0, 48)
 pagesContainer.BackgroundTransparency = 1
 pagesContainer.ClipsDescendants = true
 pagesContainer.Parent = content
@@ -404,6 +405,7 @@ local function switchPage(pageId, titleText)
     
     -- Update content title
     contentTitle.Text = titleText:upper()
+    contentSubtitle.Text = pageId
     
     -- Update all buttons active state
     local buttons = {
@@ -484,11 +486,11 @@ local function createPage(pageId, title)
     
     -- Page title
     local pageTitle = Instance.new("TextLabel")
-    pageTitle.Size = UDim2.new(1, 0, 0, 40)
+    pageTitle.Size = UDim2.new(1, 0, 0, 25)  -- Diperpendek
     pageTitle.Position = UDim2.new(0, 0, 0, 0)
     pageTitle.BackgroundTransparency = 1
     pageTitle.Font = Enum.Font.GothamBold
-    pageTitle.TextSize = 16
+    pageTitle.TextSize = 13  -- Dikecilkan
     pageTitle.Text = title
     pageTitle.TextColor3 = Color3.fromRGB(255, 220, 220)
     pageTitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -496,8 +498,8 @@ local function createPage(pageId, title)
     
     -- Page content
     local pageContent = Instance.new("Frame")
-    pageContent.Size = UDim2.new(1, 0, 1, -50)
-    pageContent.Position = UDim2.new(0, 0, 0, 50)
+    pageContent.Size = UDim2.new(1, 0, 1, -30)  -- Disesuaikan
+    pageContent.Position = UDim2.new(0, 0, 0, 30)
     pageContent.BackgroundTransparency = 1
     pageContent.Parent = page
     
@@ -506,22 +508,22 @@ local function createPage(pageId, title)
 end
 
 -- Create all pages
-local mainContent = createPage("Main", "Dashboard Overview")
+local mainContent = createPage("Main", "Dashboard")
 local teleportContent = createPage("Teleport", "Teleport System")
 local shopContent = createPage("Shop", "Shop Features")
-local settingsContent = createPage("Settings", "Settings Panel")
-local infoContent = createPage("Info", "About Neon UI")
+local settingsContent = createPage("Settings", "Settings")
+local infoContent = createPage("Info", "About")
 
 -- Main Page Content
 local mainPanel = Instance.new("Frame")
-mainPanel.Size = UDim2.new(1, 0, 0.6, 0)
+mainPanel.Size = UDim2.new(1, 0, 1, 0)
 mainPanel.Position = UDim2.new(0, 0, 0, 0)
 mainPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 mainPanel.BackgroundTransparency = 0.2
 mainPanel.Parent = mainContent
 
 local mainPanelCorner = Instance.new("UICorner")
-mainPanelCorner.CornerRadius = UDim.new(0, 12)
+mainPanelCorner.CornerRadius = UDim.new(0, 8)  -- Dikecilkan
 mainPanelCorner.Parent = mainPanel
 
 local mainPanelStroke = Instance.new("UIStroke")
@@ -532,20 +534,20 @@ mainPanelStroke.Parent = mainPanel
 
 -- Status indicator
 local statusContainer = Instance.new("Frame")
-statusContainer.Size = UDim2.new(1, -24, 0, 80)
-statusContainer.Position = UDim2.new(0, 12, 0, 12)
+statusContainer.Size = UDim2.new(1, -12, 0, 60)  -- Diperkecil
+statusContainer.Position = UDim2.new(0, 6, 0, 6)
 statusContainer.BackgroundTransparency = 1
 statusContainer.Parent = mainPanel
 
 local statusDot = Instance.new("Frame")
-statusDot.Size = UDim2.new(0, 12, 0, 12)
-statusDot.Position = UDim2.new(0, 0, 0, 10)
+statusDot.Size = UDim2.new(0, 10, 0, 10)  -- Diperkecil
+statusDot.Position = UDim2.new(0, 0, 0, 5)
 statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
 statusDot.Parent = statusContainer
 
 local statusDotGlow = Instance.new("Frame")
-statusDotGlow.Size = UDim2.new(0, 20, 0, 20)
-statusDotGlow.Position = UDim2.new(0, -4, 0, 6)
+statusDotGlow.Size = UDim2.new(0, 16, 0, 16)  -- Diperkecil
+statusDotGlow.Position = UDim2.new(0, -3, 0, 3)
 statusDotGlow.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
 statusDotGlow.BackgroundTransparency = 0.7
 statusDotGlow.Parent = statusContainer
@@ -560,136 +562,204 @@ glowCorner.CornerRadius = UDim.new(1, 0)
 glowCorner.Parent = statusDotGlow
 
 local statusText = Instance.new("TextLabel")
-statusText.Size = UDim2.new(1, -40, 0, 30)
-statusText.Position = UDim2.new(0, 30, 0, 5)
+statusText.Size = UDim2.new(1, -25, 0, 25)  -- Disesuaikan
+statusText.Position = UDim2.new(0, 20, 0, 0)
 statusText.BackgroundTransparency = 1
 statusText.Font = Enum.Font.GothamSemibold
-statusText.TextSize = 14
+statusText.TextSize = 12  -- Dikecilkan
 statusText.Text = "Status: READY"
 statusText.TextColor3 = Color3.fromRGB(200, 255, 200)
 statusText.TextXAlignment = Enum.TextXAlignment.Left
 statusText.Parent = statusContainer
 
 local statusDesc = Instance.new("TextLabel")
-statusDesc.Size = UDim2.new(1, -40, 0, 40)
-statusDesc.Position = UDim2.new(0, 30, 0, 30)
+statusDesc.Size = UDim2.new(1, 0, 0, 30)  -- Disesuaikan
+statusDesc.Position = UDim2.new(0, 0, 0, 25)
 statusDesc.BackgroundTransparency = 1
 statusDesc.Font = Enum.Font.Gotham
-statusDesc.TextSize = 12
-statusDesc.Text = "Neon UI Premium Edition loaded successfully. Select a feature from the navigation panel."
+statusDesc.TextSize = 10  -- Dikecilkan
+statusDesc.Text = "Neon UI loaded. Select feature from menu."
 statusDesc.TextColor3 = Color3.fromRGB(180, 180, 200)
 statusDesc.TextXAlignment = Enum.TextXAlignment.Left
-statusDesc.TextYAlignment = Enum.TextYAlignment.Top
 statusDesc.Parent = statusContainer
 
 -- Feature grid
 local featuresGrid = Instance.new("Frame")
-featuresGrid.Size = UDim2.new(1, -24, 0, 120)
-featuresGrid.Position = UDim2.new(0, 12, 0, 104)
+featuresGrid.Size = UDim2.new(1, -12, 0, 90)  -- Diperkecil
+featuresGrid.Position = UDim2.new(0, 6, 0, 72)
 featuresGrid.BackgroundTransparency = 1
 featuresGrid.Parent = mainPanel
 
 local featuresTitle = Instance.new("TextLabel")
-featuresTitle.Size = UDim2.new(1, 0, 0, 25)
+featuresTitle.Size = UDim2.new(1, 0, 0, 20)  -- Diperpendek
 featuresTitle.Position = UDim2.new(0, 0, 0, 0)
 featuresTitle.BackgroundTransparency = 1
 featuresTitle.Font = Enum.Font.GothamBold
-featuresTitle.TextSize = 14
-featuresTitle.Text = "Available Features:"
+featuresTitle.TextSize = 12  -- Dikecilkan
+featuresTitle.Text = "Features:"
 featuresTitle.TextColor3 = Color3.fromRGB(255, 220, 220)
 featuresTitle.TextXAlignment = Enum.TextXAlignment.Left
 featuresTitle.Parent = featuresGrid
 
 local feature1 = Instance.new("TextLabel")
-feature1.Size = UDim2.new(0.5, -10, 0, 25)
-feature1.Position = UDim2.new(0, 0, 0, 35)
+feature1.Size = UDim2.new(0.5, -5, 0, 20)  -- Disesuaikan
+feature1.Position = UDim2.new(0, 0, 0, 25)
 feature1.BackgroundTransparency = 1
 feature1.Font = Enum.Font.Gotham
-feature1.TextSize = 13
-feature1.Text = "✓ Teleport System"
+feature1.TextSize = 11  -- Dikecilkan
+feature1.Text = "✓ Teleport"
 feature1.TextColor3 = Color3.fromRGB(180, 255, 180)
 feature1.TextXAlignment = Enum.TextXAlignment.Left
 feature1.Parent = featuresGrid
 
 local feature2 = Instance.new("TextLabel")
-feature2.Size = UDim2.new(0.5, -10, 0, 25)
-feature2.Position = UDim2.new(0.5, 10, 0, 35)
+feature2.Size = UDim2.new(0.5, -5, 0, 20)  -- Disesuaikan
+feature2.Position = UDim2.new(0.5, 5, 0, 25)
 feature2.BackgroundTransparency = 1
 feature2.Font = Enum.Font.Gotham
-feature2.TextSize = 13
-feature2.Text = "✓ Shop Features"
+feature2.TextSize = 11  -- Dikecilkan
+feature2.Text = "✓ Shop"
 feature2.TextColor3 = Color3.fromRGB(180, 255, 180)
 feature2.TextXAlignment = Enum.TextXAlignment.Left
 feature2.Parent = featuresGrid
 
 local feature3 = Instance.new("TextLabel")
-feature3.Size = UDim2.new(0.5, -10, 0, 25)
-feature3.Position = UDim2.new(0, 0, 0, 65)
+feature3.Size = UDim2.new(0.5, -5, 0, 20)  -- Disesuaikan
+feature3.Position = UDim2.new(0, 0, 0, 50)
 feature3.BackgroundTransparency = 1
 feature3.Font = Enum.Font.Gotham
-feature3.TextSize = 13
-feature3.Text = "✓ Settings Panel"
+feature3.TextSize = 11  -- Dikecilkan
+feature3.Text = "✓ Settings"
 feature3.TextColor3 = Color3.fromRGB(180, 255, 180)
 feature3.TextXAlignment = Enum.TextXAlignment.Left
 feature3.Parent = featuresGrid
 
 local feature4 = Instance.new("TextLabel")
-feature4.Size = UDim2.new(0.5, -10, 0, 25)
-feature4.Position = UDim2.new(0.5, 10, 0, 65)
+feature4.Size = UDim2.new(0.5, -5, 0, 20)  -- Disesuaikan
+feature4.Position = UDim2.new(0.5, 5, 0, 50)
 feature4.BackgroundTransparency = 1
 feature4.Font = Enum.Font.Gotham
-feature4.TextSize = 13
+feature4.TextSize = 11  -- Dikecilkan
 feature4.Text = "✓ Premium UI"
 feature4.TextColor3 = Color3.fromRGB(180, 255, 180)
 feature4.TextXAlignment = Enum.TextXAlignment.Left
 feature4.Parent = featuresGrid
 
 -- Teleport Page Content (Placeholder)
+local teleportPanel = Instance.new("Frame")
+teleportPanel.Size = UDim2.new(1, 0, 1, 0)
+teleportPanel.Position = UDim2.new(0, 0, 0, 0)
+teleportPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+teleportPanel.BackgroundTransparency = 0.2
+teleportPanel.Parent = teleportContent
+
+local teleportPanelCorner = Instance.new("UICorner")
+teleportPanelCorner.CornerRadius = UDim.new(0, 8)
+teleportPanelCorner.Parent = teleportPanel
+
 local teleportTitle = Instance.new("TextLabel")
-teleportTitle.Size = UDim2.new(1, 0, 0, 40)
-teleportTitle.Position = UDim2.new(0, 0, 0, 0)
+teleportTitle.Size = UDim2.new(1, -12, 0, 30)
+teleportTitle.Position = UDim2.new(0, 6, 0, 6)
 teleportTitle.BackgroundTransparency = 1
 teleportTitle.Font = Enum.Font.GothamBold
-teleportTitle.TextSize = 14
-teleportTitle.Text = "Teleport System - Coming Soon"
+teleportTitle.TextSize = 13
+teleportTitle.Text = "Teleport System"
 teleportTitle.TextColor3 = Color3.fromRGB(255, 200, 200)
 teleportTitle.TextXAlignment = Enum.TextXAlignment.Center
-teleportTitle.Parent = teleportContent
+teleportTitle.Parent = teleportPanel
+
+local teleportDesc = Instance.new("TextLabel")
+teleportDesc.Size = UDim2.new(1, -12, 0, 50)
+teleportDesc.Position = UDim2.new(0, 6, 0, 40)
+teleportDesc.BackgroundTransparency = 1
+teleportDesc.Font = Enum.Font.Gotham
+teleportDesc.TextSize = 11
+teleportDesc.Text = "Teleport features will be added here.\nSelect locations and teleport instantly."
+teleportDesc.TextColor3 = Color3.fromRGB(180, 180, 200)
+teleportDesc.TextXAlignment = Enum.TextXAlignment.Center
+teleportDesc.TextYAlignment = Enum.TextYAlignment.Top
+teleportDesc.Parent = teleportPanel
 
 -- Shop Page Content (Placeholder)
+local shopPanel = Instance.new("Frame")
+shopPanel.Size = UDim2.new(1, 0, 1, 0)
+shopPanel.Position = UDim2.new(0, 0, 0, 0)
+shopPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+shopPanel.BackgroundTransparency = 0.2
+shopPanel.Parent = shopContent
+
+local shopPanelCorner = Instance.new("UICorner")
+shopPanelCorner.CornerRadius = UDim.new(0, 8)
+shopPanelCorner.Parent = shopPanel
+
 local shopTitle = Instance.new("TextLabel")
-shopTitle.Size = UDim2.new(1, 0, 0, 40)
-shopTitle.Position = UDim2.new(0, 0, 0, 0)
+shopTitle.Size = UDim2.new(1, -12, 0, 30)
+shopTitle.Position = UDim2.new(0, 6, 0, 6)
 shopTitle.BackgroundTransparency = 1
 shopTitle.Font = Enum.Font.GothamBold
-shopTitle.TextSize = 14
-shopTitle.Text = "Shop Features - Coming Soon"
+shopTitle.TextSize = 13
+shopTitle.Text = "Shop Features"
 shopTitle.TextColor3 = Color3.fromRGB(255, 200, 200)
 shopTitle.TextXAlignment = Enum.TextXAlignment.Center
-shopTitle.Parent = shopContent
+shopTitle.Parent = shopPanel
+
+local shopDesc = Instance.new("TextLabel")
+shopDesc.Size = UDim2.new(1, -12, 0, 50)
+shopDesc.Position = UDim2.new(0, 6, 0, 40)
+shopDesc.BackgroundTransparency = 1
+shopDesc.Font = Enum.Font.Gotham
+shopDesc.TextSize = 11
+shopDesc.Text = "Shop features will be added here.\nBuy items, upgrades, and more."
+shopDesc.TextColor3 = Color3.fromRGB(180, 180, 200)
+shopDesc.TextXAlignment = Enum.TextXAlignment.Center
+shopDesc.TextYAlignment = Enum.TextYAlignment.Top
+shopDesc.Parent = shopPanel
 
 -- Settings Page Content (Placeholder)
+local settingsPanel = Instance.new("Frame")
+settingsPanel.Size = UDim2.new(1, 0, 1, 0)
+settingsPanel.Position = UDim2.new(0, 0, 0, 0)
+settingsPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+settingsPanel.BackgroundTransparency = 0.2
+settingsPanel.Parent = settingsContent
+
+local settingsPanelCorner = Instance.new("UICorner")
+settingsPanelCorner.CornerRadius = UDim.new(0, 8)
+settingsPanelCorner.Parent = settingsPanel
+
 local settingsTitle = Instance.new("TextLabel")
-settingsTitle.Size = UDim2.new(1, 0, 0, 40)
-settingsTitle.Position = UDim2.new(0, 0, 0, 0)
+settingsTitle.Size = UDim2.new(1, -12, 0, 30)
+settingsTitle.Position = UDim2.new(0, 6, 0, 6)
 settingsTitle.BackgroundTransparency = 1
 settingsTitle.Font = Enum.Font.GothamBold
-settingsTitle.TextSize = 14
-settingsTitle.Text = "Settings Panel - Coming Soon"
+settingsTitle.TextSize = 13
+settingsTitle.Text = "Settings Panel"
 settingsTitle.TextColor3 = Color3.fromRGB(255, 200, 200)
 settingsTitle.TextXAlignment = Enum.TextXAlignment.Center
-settingsTitle.Parent = settingsContent
+settingsTitle.Parent = settingsPanel
+
+local settingsDesc = Instance.new("TextLabel")
+settingsDesc.Size = UDim2.new(1, -12, 0, 50)
+settingsDesc.Position = UDim2.new(0, 6, 0, 40)
+settingsDesc.BackgroundTransparency = 1
+settingsDesc.Font = Enum.Font.Gotham
+settingsDesc.TextSize = 11
+settingsDesc.Text = "Settings will be added here.\nConfigure UI, keybinds, and preferences."
+settingsDesc.TextColor3 = Color3.fromRGB(180, 180, 200)
+settingsDesc.TextXAlignment = Enum.TextXAlignment.Center
+settingsDesc.TextYAlignment = Enum.TextYAlignment.Top
+settingsDesc.Parent = settingsPanel
 
 -- Info Page Content
 local infoPanel = Instance.new("Frame")
-infoPanel.Size = UDim2.new(1, 0, 0.7, 0)
+infoPanel.Size = UDim2.new(1, 0, 1, 0)
 infoPanel.Position = UDim2.new(0, 0, 0, 0)
 infoPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 infoPanel.BackgroundTransparency = 0.2
 infoPanel.Parent = infoContent
 
 local infoPanelCorner = Instance.new("UICorner")
-infoPanelCorner.CornerRadius = UDim.new(0, 12)
+infoPanelCorner.CornerRadius = UDim.new(0, 8)
 infoPanelCorner.Parent = infoPanel
 
 local infoPanelStroke = Instance.new("UIStroke")
@@ -699,27 +769,17 @@ infoPanelStroke.Thickness = 1
 infoPanelStroke.Parent = infoPanel
 
 local infoText = Instance.new("TextLabel")
-infoText.Size = UDim2.new(1, -24, 1, -24)
-infoText.Position = UDim2.new(0, 12, 0, 12)
+infoText.Size = UDim2.new(1, -12, 1, -12)
+infoText.Position = UDim2.new(0, 6, 0, 6)
 infoText.BackgroundTransparency = 1
 infoText.Font = Enum.Font.Gotham
-infoText.TextSize = 13
-infoText.Text = [[
-⚡ NEON UI PREMIUM EDITION
+infoText.TextSize = 11  -- Dikecilkan
+infoText.Text = [[⚡ NEON UI v2.0
 
-Version: 2.0
-Developer: Kaitun Team
+Developer: Kaitun
 Status: Active
-
-Features:
-• Premium Glass UI Design
-• Smooth Animations
-• Navigation System
-• Performance Monitor
-• Custom Keybinds
-
-Press G to toggle interface
-]]
+Features: Teleport, Shop, Settings
+Press G to toggle UI]]
 infoText.TextColor3 = Color3.fromRGB(220, 220, 240)
 infoText.TextXAlignment = Enum.TextXAlignment.Left
 infoText.TextYAlignment = Enum.TextYAlignment.Top
@@ -727,8 +787,8 @@ infoText.Parent = infoPanel
 
 -- Bottom info
 local bottomInfo = Instance.new("Frame")
-bottomInfo.Size = UDim2.new(1, -24, 0, 30)
-bottomInfo.Position = UDim2.new(0, 12, 1, -40)
+bottomInfo.Size = UDim2.new(1, -16, 0, 20)  -- Diperpendek
+bottomInfo.Position = UDim2.new(0, 8, 1, -25)
 bottomInfo.BackgroundTransparency = 1
 bottomInfo.Parent = content
 
@@ -737,8 +797,8 @@ versionText.Size = UDim2.new(0.5, 0, 1, 0)
 versionText.Position = UDim2.new(0, 0, 0, 0)
 versionText.BackgroundTransparency = 1
 versionText.Font = Enum.Font.Gotham
-versionText.TextSize = 11
-versionText.Text = "NeonUI v2.0 • Premium Edition"
+versionText.TextSize = 9  -- Dikecilkan
+versionText.Text = "NeonUI v2.0"
 versionText.TextColor3 = Color3.fromRGB(150, 150, 170)
 versionText.TextXAlignment = Enum.TextXAlignment.Left
 versionText.Parent = bottomInfo
@@ -748,15 +808,15 @@ keybindText.Size = UDim2.new(0.5, 0, 1, 0)
 keybindText.Position = UDim2.new(0.5, 0, 0, 0)
 keybindText.BackgroundTransparency = 1
 keybindText.Font = Enum.Font.Gotham
-keybindText.TextSize = 11
-keybindText.Text = "Toggle: [G] Key"
+keybindText.TextSize = 9  -- Dikecilkan
+keybindText.Text = "Toggle: [G]"
 keybindText.TextColor3 = ACCENT
 keybindText.TextXAlignment = Enum.TextXAlignment.Right
 keybindText.Parent = bottomInfo
 
 -- Connect button click events
 btnMain.MouseButton1Click:Connect(function() 
-    switchPage("Main", "Main Dashboard") 
+    switchPage("Main", "Dashboard") 
 end)
 
 btnTeleport.MouseButton1Click:Connect(function() 
@@ -772,7 +832,7 @@ btnSettings.MouseButton1Click:Connect(function()
 end)
 
 btnInfo.MouseButton1Click:Connect(function() 
-    switchPage("Info", "About Neon") 
+    switchPage("Info", "About") 
 end)
 
 -- UI Toggle System
@@ -856,7 +916,7 @@ end)
 
 -- Initial state
 toggleUI(false)
-switchPage("Main", "Main Dashboard")
+switchPage("Main", "Dashboard")
 
 -- Loading animation
 spawn(function()
