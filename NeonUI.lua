@@ -1,465 +1,626 @@
--- UI.lua
--- Simple UI untuk Fish It
-
--- Tunggu game selesai load
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+-- Neon Dashboard UI Premium
+-- Tema: Glass Effect + Neon Red
+-- Keybind: G untuk toggle
+-- Safe: UI only
 
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
--- Tunggu player
 local player = Players.LocalPlayer
-if not player then
-    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
-    player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- CONFIG
+local WIDTH = 900
+local HEIGHT = 500
+local SIDEBAR_W = 200
+local ACCENT = Color3.fromRGB(255, 62, 62) -- neon merah
+local ACCENT_GLOW = Color3.fromRGB(255, 100, 100)
+local BG = Color3.fromRGB(10, 10, 12) -- hitam gelap
+local GLASS_COLOR = Color3.fromRGB(20, 20, 25)
+local GLASS_TRANSPARENCY = 0.3
+
+-- Cleanup old UI
+if playerGui:FindFirstChild("NeonDashboard") then
+    playerGui.NeonDashboard:Destroy()
 end
 
--- Buat ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FishItHub"
-screenGui.DisplayOrder = 999
-screenGui.ResetOnSpawn = false
-screenGui.Parent = player:WaitForChild("PlayerGui")
+-- ScreenGui
+local screen = Instance.new("ScreenGui")
+screen.Name = "NeonDashboard"
+screen.ResetOnSpawn = false
+screen.Parent = playerGui
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Main Window
-local mainWindow = Instance.new("Frame")
-mainWindow.Name = "MainWindow"
-mainWindow.Size = UDim2.new(0, 300, 0, 350)
-mainWindow.Position = UDim2.new(0.5, -150, 0.5, -175)
-mainWindow.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-mainWindow.BorderSizePixel = 0
+-- Main container
+local container = Instance.new("Frame")
+container.Name = "Container"
+container.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
+container.Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
+container.BackgroundTransparency = 1
+container.Parent = screen
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
-corner.Parent = mainWindow
+-- Background blur effect
+local blur = Instance.new("Frame")
+blur.Name = "BlurBackground"
+blur.Size = UDim2.new(1, 0, 1, 0)
+blur.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+blur.BackgroundTransparency = 0.5
+blur.BorderSizePixel = 0
+blur.Parent = container
+blur.Visible = false
 
-mainWindow.Parent = screenGui
+-- Glass Panel
+local glass = Instance.new("Frame")
+glass.Name = "GlassPanel"
+glass.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
+glass.Position = UDim2.new(0, 0, 0, 0)
+glass.BackgroundColor3 = GLASS_COLOR
+glass.BackgroundTransparency = GLASS_TRANSPARENCY
+glass.BorderSizePixel = 0
+glass.Parent = container
 
--- Title Bar
+-- Glass effect
+local glassCorner = Instance.new("UICorner")
+glassCorner.CornerRadius = UDim.new(0, 16)
+glassCorner.Parent = glass
+
+local glassStroke = Instance.new("UIStroke")
+glassStroke.Color = Color3.fromRGB(40, 40, 50)
+glassStroke.Thickness = 2
+glassStroke.Parent = glass
+
+-- Outer glow
+local glow = Instance.new("ImageLabel")
+glow.Name = "Glow"
+glow.AnchorPoint = Vector2.new(0.5, 0.5)
+glow.Size = UDim2.new(1, 40, 1, 40)
+glow.Position = UDim2.new(0.5, 0, 0.5, 0)
+glow.BackgroundTransparency = 1
+glow.Image = "rbxassetid://8992236561" -- Circular glow
+glow.ImageColor3 = ACCENT
+glow.ImageTransparency = 0.9
+glow.ScaleType = Enum.ScaleType.Slice
+glow.SliceCenter = Rect.new(256, 256, 256, 256)
+glow.Parent = glass
+glow.ZIndex = -1
+
+-- Inner container
+local inner = Instance.new("Frame")
+inner.Name = "Inner"
+inner.Size = UDim2.new(1, -24, 1, -24)
+inner.Position = UDim2.new(0, 12, 0, 12)
+inner.BackgroundTransparency = 1
+inner.Parent = glass
+
+-- Title bar
 local titleBar = Instance.new("Frame")
-titleBar.Name = "TitleBar"
-titleBar.Size = UDim2.new(1, 0, 0, 35)
+titleBar.Size = UDim2.new(1, 0, 0, 50)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
-titleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-titleBar.BorderSizePixel = 0
+titleBar.BackgroundTransparency = 1
+titleBar.Parent = inner
 
-local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 10, 0, 0)
-titleCorner.Parent = titleBar
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0.6, 0, 1, 0)
+title.Position = UDim2.new(0, 12, 0, 0)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.Text = "⚡ KAITUN FISH IT"
+title.TextColor3 = Color3.fromRGB(255, 220, 220)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = titleBar
 
-titleBar.Parent = mainWindow
+local titleGlow = Instance.new("TextLabel")
+titleGlow.Size = title.Size
+titleGlow.Position = title.Position
+titleGlow.BackgroundTransparency = 1
+titleGlow.Font = title.Font
+titleGlow.TextSize = title.TextSize
+titleGlow.Text = title.Text
+titleGlow.TextColor3 = ACCENT_GLOW
+titleGlow.TextTransparency = 0.7
+titleGlow.TextXAlignment = Enum.TextXAlignment.Left
+titleGlow.Parent = titleBar
+titleGlow.ZIndex = -1
 
--- Title Text
-local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(0.7, 0, 1, 0)
-titleText.Position = UDim2.new(0, 10, 0, 0)
-titleText.BackgroundTransparency = 1
-titleText.Text = "🎣 Fish It Hub"
-titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleText.Font = Enum.Font.GothamBold
-titleText.TextSize = 16
-titleText.TextXAlignment = Enum.TextXAlignment.Left
-titleText.Parent = titleBar
+-- Stats bar
+local statsBar = Instance.new("Frame")
+statsBar.Size = UDim2.new(0.4, -16, 1, 0)
+statsBar.Position = UDim2.new(0.6, 12, 0, 0)
+statsBar.BackgroundTransparency = 1
+statsBar.Parent = titleBar
 
--- Close Button
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 25, 0, 25)
-closeBtn.Position = UDim2.new(1, -30, 0.5, -12.5)
-closeBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-closeBtn.Text = "X"
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 12
-closeBtn.AutoButtonColor = true
+local memLabel = Instance.new("TextLabel")
+memLabel.Size = UDim2.new(1, 0, 0.5, 0)
+memLabel.Position = UDim2.new(0, 0, 0, 0)
+memLabel.BackgroundTransparency = 1
+memLabel.Font = Enum.Font.Gotham
+memLabel.TextSize = 12
+memLabel.Text = "RAM: 0 MB"
+memLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+memLabel.TextXAlignment = Enum.TextXAlignment.Right
+memLabel.Parent = statsBar
 
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 5)
-closeCorner.Parent = closeBtn
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Size = UDim2.new(1, 0, 0.5, 0)
+fpsLabel.Position = UDim2.new(0, 0, 0.5, 0)
+fpsLabel.BackgroundTransparency = 1
+fpsLabel.Font = Enum.Font.Gotham
+fpsLabel.TextSize = 12
+fpsLabel.Text = "FPS: 60"
+fpsLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+fpsLabel.TextXAlignment = Enum.TextXAlignment.Right
+fpsLabel.Parent = statsBar
 
-closeBtn.Parent = titleBar
+-- Sidebar (Glass)
+local sidebar = Instance.new("Frame")
+sidebar.Name = "Sidebar"
+sidebar.Size = UDim2.new(0, SIDEBAR_W, 1, -70)
+sidebar.Position = UDim2.new(0, 0, 0, 60)
+sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+sidebar.BackgroundTransparency = 0.2
+sidebar.BorderSizePixel = 0
+sidebar.Parent = inner
 
--- Tab Container
-local tabContainer = Instance.new("Frame")
-tabContainer.Name = "TabContainer"
-tabContainer.Size = UDim2.new(1, -20, 0, 30)
-tabContainer.Position = UDim2.new(0, 10, 0, 45)
-tabContainer.BackgroundTransparency = 1
-tabContainer.Parent = mainWindow
+local sidebarCorner = Instance.new("UICorner")
+sidebarCorner.CornerRadius = UDim.new(0, 12)
+sidebarCorner.Parent = sidebar
 
--- Content Area
-local contentArea = Instance.new("Frame")
-contentArea.Name = "ContentArea"
-contentArea.Size = UDim2.new(1, -20, 1, -120)
-contentArea.Position = UDim2.new(0, 10, 0, 85)
-contentArea.BackgroundTransparency = 1
-contentArea.Parent = mainWindow
+local sidebarStroke = Instance.new("UIStroke")
+sidebarStroke.Color = Color3.fromRGB(40, 40, 50)
+sidebarStroke.Thickness = 1
+sidebarStroke.Parent = sidebar
 
--- Status Bar
-local statusBar = Instance.new("Frame")
-statusBar.Name = "StatusBar"
-statusBar.Size = UDim2.new(1, -20, 0, 25)
-statusBar.Position = UDim2.new(0, 10, 1, -30)
-statusBar.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-statusBar.BorderSizePixel = 0
+-- Sidebar header
+local sbHeader = Instance.new("Frame")
+sbHeader.Size = UDim2.new(1, 0, 0, 80)
+sbHeader.BackgroundTransparency = 1
+sbHeader.Parent = sidebar
 
-local statusCorner = Instance.new("UICorner")
-statusCorner.CornerRadius = UDim.new(0, 5)
-statusCorner.Parent = statusBar
+local logoContainer = Instance.new("Frame")
+logoContainer.Size = UDim2.new(0, 60, 0, 60)
+logoContainer.Position = UDim2.new(0, 16, 0, 10)
+logoContainer.BackgroundTransparency = 1
+logoContainer.Parent = sbHeader
 
-statusBar.Parent = mainWindow
+local logo = Instance.new("ImageLabel")
+logo.Size = UDim2.new(1, 0, 1, 0)
+logo.BackgroundTransparency = 1
+logo.Image = "rbxassetid://3926307971" -- Fish icon
+logo.ImageColor3 = ACCENT
+logo.Parent = logoContainer
 
--- Status Text
+local logoGlow = Instance.new("ImageLabel")
+logoGlow.Size = UDim2.new(1, 10, 1, 10)
+logoGlow.Position = UDim2.new(0, -5, 0, -5)
+logoGlow.BackgroundTransparency = 1
+logoGlow.Image = "rbxassetid://8992236561"
+logoGlow.ImageColor3 = ACCENT
+logoGlow.ImageTransparency = 0.8
+logoGlow.Parent = logoContainer
+logoGlow.ZIndex = -1
+
+local sTitle = Instance.new("TextLabel")
+sTitle.Size = UDim2.new(1, -96, 0, 30)
+sTitle.Position = UDim2.new(0, 88, 0, 15)
+sTitle.BackgroundTransparency = 1
+sTitle.Font = Enum.Font.GothamBold
+sTitle.TextSize = 18
+sTitle.Text = "KAITUN"
+sTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+sTitle.TextXAlignment = Enum.TextXAlignment.Left
+sTitle.Parent = sbHeader
+
+local sSubtitle = Instance.new("TextLabel")
+sSubtitle.Size = UDim2.new(1, -96, 0, 20)
+sSubtitle.Position = UDim2.new(0, 88, 0, 45)
+sSubtitle.BackgroundTransparency = 1
+sSubtitle.Font = Enum.Font.Gotham
+sSubtitle.TextSize = 12
+sSubtitle.Text = "Premium Hub"
+sSubtitle.TextColor3 = Color3.fromRGB(180, 180, 200)
+sSubtitle.TextXAlignment = Enum.TextXAlignment.Left
+sSubtitle.Parent = sbHeader
+
+-- Menu container
+local menuContainer = Instance.new("ScrollingFrame")
+menuContainer.Size = UDim2.new(1, -12, 1, -100)
+menuContainer.Position = UDim2.new(0, 6, 0, 88)
+menuContainer.BackgroundTransparency = 1
+menuContainer.BorderSizePixel = 0
+menuContainer.ScrollBarThickness = 3
+menuContainer.ScrollBarImageColor3 = ACCENT
+menuContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+menuContainer.Parent = sidebar
+
+local menuLayout = Instance.new("UIListLayout")
+menuLayout.SortOrder = Enum.SortOrder.LayoutOrder
+menuLayout.Padding = UDim.new(0, 8)
+menuLayout.Parent = menuContainer
+
+-- Menu item function
+local function createMenuItem(name, icon)
+    local item = Instance.new("TextButton")
+    item.Size = UDim2.new(1, 0, 0, 46)
+    item.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    item.BackgroundTransparency = 0.3
+    item.AutoButtonColor = false
+    item.BorderSizePixel = 0
+    item.Text = ""
+    item.LayoutOrder = #menuContainer:GetChildren()
+    item.Parent = menuContainer
+    
+    local itemCorner = Instance.new("UICorner")
+    itemCorner.CornerRadius = UDim.new(0, 10)
+    itemCorner.Parent = item
+    
+    local itemStroke = Instance.new("UIStroke")
+    itemStroke.Color = Color3.fromRGB(40, 40, 50)
+    itemStroke.Thickness = 1
+    itemStroke.Parent = item
+    
+    -- Icon
+    local iconLabel = Instance.new("TextLabel")
+    iconLabel.Size = UDim2.new(0, 40, 1, 0)
+    iconLabel.Position = UDim2.new(0, 8, 0, 0)
+    iconLabel.BackgroundTransparency = 1
+    iconLabel.Font = Enum.Font.GothamBold
+    iconLabel.TextSize = 18
+    iconLabel.Text = icon
+    iconLabel.TextColor3 = ACCENT
+    iconLabel.TextXAlignment = Enum.TextXAlignment.Center
+    iconLabel.TextYAlignment = Enum.TextYAlignment.Center
+    iconLabel.Parent = item
+    
+    -- Text
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    textLabel.Position = UDim2.new(0, 56, 0, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Font = Enum.Font.GothamSemibold
+    textLabel.TextSize = 14
+    textLabel.Text = name
+    textLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.Parent = item
+    
+    -- Hover effects
+    item.MouseEnter:Connect(function()
+        TweenService:Create(item, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(35, 10, 10),
+            BackgroundTransparency = 0.1
+        }):Play()
+        TweenService:Create(itemStroke, TweenInfo.new(0.2), {
+            Color = ACCENT
+        }):Play()
+    end)
+    
+    item.MouseLeave:Connect(function()
+        TweenService:Create(item, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(25, 25, 35),
+            BackgroundTransparency = 0.3
+        }):Play()
+        TweenService:Create(itemStroke, TweenInfo.new(0.2), {
+            Color = Color3.fromRGB(40, 40, 50)
+        }):Play()
+    end)
+    
+    return item
+end
+
+-- Create menu items
+local menuItems = {
+    {"Main", "★"},
+    {"Spawn Boat", "⛵"},
+    {"Buy Rod", "🎣"},
+    {"Buy Weather", "☁️"},
+    {"Buy Bait", "🪱"},
+    {"Teleport", "📍"},
+    {"Settings", "⚙️"},
+}
+
+local menuButtons = {}
+for _, item in ipairs(menuItems) do
+    local btn = createMenuItem(item[1], item[2])
+    menuButtons[item[1]] = btn
+end
+
+-- Update canvas size
+menuContainer.CanvasSize = UDim2.new(0, 0, 0, #menuItems * 54)
+
+-- Content area (Glass)
+local content = Instance.new("Frame")
+content.Name = "Content"
+content.Size = UDim2.new(1, -SIDEBAR_W - 30, 1, -70)
+content.Position = UDim2.new(0, SIDEBAR_W + 20, 0, 60)
+content.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+content.BackgroundTransparency = 0.2
+content.BorderSizePixel = 0
+content.Parent = inner
+
+local contentCorner = Instance.new("UICorner")
+contentCorner.CornerRadius = UDim.new(0, 12)
+contentCorner.Parent = content
+
+local contentStroke = Instance.new("UIStroke")
+contentStroke.Color = Color3.fromRGB(40, 40, 50)
+contentStroke.Thickness = 1
+contentStroke.Parent = content
+
+-- Content header
+local contentHeader = Instance.new("Frame")
+contentHeader.Size = UDim2.new(1, -24, 0, 50)
+contentHeader.Position = UDim2.new(0, 12, 0, 12)
+contentHeader.BackgroundTransparency = 1
+contentHeader.Parent = content
+
+local contentTitle = Instance.new("TextLabel")
+contentTitle.Size = UDim2.new(0.6, 0, 1, 0)
+contentTitle.Position = UDim2.new(0, 0, 0, 0)
+contentHeader.BackgroundTransparency = 1
+contentTitle.Font = Enum.Font.GothamBold
+contentTitle.TextSize = 18
+contentTitle.Text = "DASHBOARD"
+contentTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+contentTitle.TextXAlignment = Enum.TextXAlignment.Left
+contentTitle.Parent = contentHeader
+
+-- Demo panel
+local demoPanel = Instance.new("Frame")
+demoPanel.Size = UDim2.new(1, -24, 0.6, 0)
+demoPanel.Position = UDim2.new(0, 12, 0, 74)
+demoPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+demoPanel.BackgroundTransparency = 0.2
+demoPanel.Parent = content
+
+local demoCorner = Instance.new("UICorner")
+demoCorner.CornerRadius = UDim.new(0, 12)
+demoCorner.Parent = demoPanel
+
+local demoStroke = Instance.new("UIStroke")
+demoStroke.Color = ACCENT
+demoStroke.Transparency = 0.7
+demoStroke.Thickness = 1
+demoStroke.Parent = demoPanel
+
+-- Panel title
+local panelTitle = Instance.new("TextLabel")
+panelTitle.Size = UDim2.new(1, -24, 0, 40)
+panelTitle.Position = UDim2.new(0, 12, 0, 8)
+panelTitle.BackgroundTransparency = 1
+panelTitle.Font = Enum.Font.GothamBold
+panelTitle.TextSize = 16
+panelTitle.Text = "⚡ PREMIUM FEATURES"
+panelTitle.TextColor3 = Color3.fromRGB(255, 220, 220)
+panelTitle.TextXAlignment = Enum.TextXAlignment.Left
+panelTitle.Parent = demoPanel
+
+-- Status indicator
+local statusContainer = Instance.new("Frame")
+statusContainer.Size = UDim2.new(1, -24, 0, 80)
+statusContainer.Position = UDim2.new(0, 12, 0, 60)
+statusContainer.BackgroundTransparency = 1
+statusContainer.Parent = demoPanel
+
+local statusDot = Instance.new("Frame")
+statusDot.Size = UDim2.new(0, 12, 0, 12)
+statusDot.Position = UDim2.new(0, 0, 0, 10)
+statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+statusDot.Parent = statusContainer
+
+local statusDotGlow = Instance.new("Frame")
+statusDotGlow.Size = UDim2.new(0, 20, 0, 20)
+statusDotGlow.Position = UDim2.new(0, -4, 0, 6)
+statusDotGlow.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+statusDotGlow.BackgroundTransparency = 0.7
+statusDotGlow.Parent = statusContainer
+statusDotGlow.ZIndex = -1
+
+local dotCorner = Instance.new("UICorner")
+dotCorner.CornerRadius = UDim.new(1, 0)
+dotCorner.Parent = statusDot
+
+local glowCorner = Instance.new("UICorner")
+glowCorner.CornerRadius = UDim.new(1, 0)
+glowCorner.Parent = statusDotGlow
+
 local statusText = Instance.new("TextLabel")
-statusText.Size = UDim2.new(1, -10, 1, 0)
-statusText.Position = UDim2.new(0, 5, 0, 0)
+statusText.Size = UDim2.new(1, -40, 0, 30)
+statusText.Position = UDim2.new(0, 30, 0, 5)
 statusText.BackgroundTransparency = 1
-statusText.Text = "Ready"
-statusText.TextColor3 = Color3.fromRGB(200, 200, 200)
-statusText.Font = Enum.Font.Gotham
-statusText.TextSize = 12
+statusText.Font = Enum.Font.GothamSemibold
+statusText.TextSize = 14
+statusText.Text = "Status: READY"
+statusText.TextColor3 = Color3.fromRGB(200, 255, 200)
 statusText.TextXAlignment = Enum.TextXAlignment.Left
-statusText.Parent = statusBar
+statusText.Parent = statusContainer
 
--- Buat Tab Buttons
-local tabs = {"Auto Fishing", "Settings"}
-local currentTab = "Auto Fishing"
+local statusDesc = Instance.new("TextLabel")
+statusDesc.Size = UDim2.new(1, -40, 0, 40)
+statusDesc.Position = UDim2.new(0, 30, 0, 30)
+statusDesc.BackgroundTransparency = 1
+statusDesc.Font = Enum.Font.Gotham
+statusDesc.TextSize = 12
+statusDesc.Text = "Premium UI loaded successfully. Press G to toggle visibility."
+statusDesc.TextColor3 = Color3.fromRGB(180, 180, 200)
+statusDesc.TextXAlignment = Enum.TextXAlignment.Left
+statusDesc.TextYAlignment = Enum.TextYAlignment.Top
+statusDesc.Parent = statusContainer
 
-for i, tabName in ipairs(tabs) do
-    local tabBtn = Instance.new("TextButton")
-    tabBtn.Size = UDim2.new(0.5, -5, 1, 0)
-    tabBtn.Position = UDim2.new((i-1) * 0.5, 0, 0, 0)
+-- Bottom info
+local bottomInfo = Instance.new("Frame")
+bottomInfo.Size = UDim2.new(1, -24, 0, 30)
+bottomInfo.Position = UDim2.new(0, 12, 1, -40)
+bottomInfo.BackgroundTransparency = 1
+bottomInfo.Parent = content
+
+local versionText = Instance.new("TextLabel")
+versionText.Size = UDim2.new(0.5, 0, 1, 0)
+versionText.Position = UDim2.new(0, 0, 0, 0)
+versionText.BackgroundTransparency = 1
+versionText.Font = Enum.Font.Gotham
+versionText.TextSize = 11
+versionText.Text = "NeonUI v2.0 • Premium Edition"
+versionText.TextColor3 = Color3.fromRGB(150, 150, 170)
+versionText.TextXAlignment = Enum.TextXAlignment.Left
+versionText.Parent = bottomInfo
+
+local keybindText = Instance.new("TextLabel")
+keybindText.Size = UDim2.new(0.5, 0, 1, 0)
+keybindText.Position = UDim2.new(0.5, 0, 0, 0)
+keybindText.BackgroundTransparency = 1
+keybindText.Font = Enum.Font.Gotham
+keybindText.TextSize = 11
+keybindText.Text = "Toggle: [G] Key"
+keybindText.TextColor3 = ACCENT
+keybindText.TextXAlignment = Enum.TextXAlignment.Right
+keybindText.Parent = bottomInfo
+
+-- Menu navigation
+local activeMenu = "Main"
+for name, btn in pairs(menuButtons) do
+    btn.MouseButton1Click:Connect(function()
+        activeMenu = name
+        
+        -- Update all buttons
+        for n, b in pairs(menuButtons) do
+            local stroke = b:FindFirstChild("UIStroke")
+            if stroke then
+                TweenService:Create(stroke, TweenInfo.new(0.2), {
+                    Color = (n == name) and ACCENT or Color3.fromRGB(40, 40, 50)
+                }):Play()
+            end
+        end
+        
+        -- Update content title
+        contentTitle.Text = name:upper()
+        
+        -- Animate content change
+        TweenService:Create(contentStroke, TweenInfo.new(0.3), {
+            Color = ACCENT
+        }):Play()
+        
+        wait(0.1)
+        TweenService:Create(contentStroke, TweenInfo.new(0.3), {
+            Color = Color3.fromRGB(40, 40, 50)
+        }):Play()
+    end)
+end
+
+-- UI Toggle System
+local uiVisible = false
+
+local function toggleUI(show)
+    uiVisible = show
     
-    if tabName == currentTab then
-        tabBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    if show then
+        -- Show with animation
+        container.Visible = true
+        blur.Visible = true
+        
+        -- Scale up animation
+        container.Size = UDim2.new(0, 0, 0, 0)
+        container.Position = UDim2.new(0.5, 0, 0.5, 0)
+        
+        TweenService:Create(container, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, WIDTH, 0, HEIGHT),
+            Position = UDim2.new(0.5, -WIDTH/2, 0.5, -HEIGHT/2)
+        }):Play()
+        
+        -- Fade in blur
+        blur.BackgroundTransparency = 1
+        TweenService:Create(blur, TweenInfo.new(0.3), {
+            BackgroundTransparency = 0.5
+        }):Play()
+        
+        -- Glow effect
+        glow.ImageTransparency = 0.9
+        TweenService:Create(glow, TweenInfo.new(0.4), {
+            ImageTransparency = 0.7
+        }):Play()
     else
-        tabBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    end
-    
-    tabBtn.Text = tabName
-    tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tabBtn.Font = Enum.Font.Gotham
-    tabBtn.TextSize = 13
-    tabBtn.AutoButtonColor = false
-    
-    local tabCorner = Instance.new("UICorner")
-    tabCorner.CornerRadius = UDim.new(0, 5)
-    tabCorner.Parent = tabBtn
-    
-    tabBtn.Parent = tabContainer
-    
-    -- Tab Click Handler
-    tabBtn.MouseButton1Click:Connect(function()
-        currentTab = tabName
+        -- Hide with animation
+        TweenService:Create(container, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0.5, 0, 0.5, 0)
+        }):Play()
         
-        -- Update semua tab button warna
-        for _, child in ipairs(tabContainer:GetChildren()) do
-            if child:IsA("TextButton") then
-                if child.Text == currentTab then
-                    child.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-                else
-                    child.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-                end
-            end
-        end
+        -- Fade out blur
+        TweenService:Create(blur, TweenInfo.new(0.2), {
+            BackgroundTransparency = 1
+        }):Play()
         
-        -- Update content
-        updateTabContent()
-    end)
-end
-
--- Fungsi untuk load Auto Fishing Tab
-local function loadAutoFishingTab()
-    -- Clear content dulu
-    for _, child in ipairs(contentArea:GetChildren()) do
-        child:Destroy()
-    end
-    
-    -- Container
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 1, 0)
-    container.BackgroundTransparency = 1
-    container.Parent = contentArea
-    
-    -- Status Panel
-    local statusPanel = Instance.new("Frame")
-    statusPanel.Size = UDim2.new(1, 0, 0, 70)
-    statusPanel.Position = UDim2.new(0, 0, 0, 0)
-    statusPanel.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    statusPanel.BorderSizePixel = 0
-    
-    local panelCorner = Instance.new("UICorner")
-    panelCorner.CornerRadius = UDim.new(0, 8)
-    panelCorner.Parent = statusPanel
-    
-    statusPanel.Parent = container
-    
-    -- Status Indicator
-    local statusIndicator = Instance.new("Frame")
-    statusIndicator.Size = UDim2.new(0, 15, 0, 15)
-    statusIndicator.Position = UDim2.new(0, 10, 0, 10)
-    statusIndicator.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-    
-    local indicatorCorner = Instance.new("UICorner")
-    indicatorCorner.CornerRadius = UDim.new(1, 0)
-    indicatorCorner.Parent = statusIndicator
-    
-    statusIndicator.Parent = statusPanel
-    
-    -- Status Text
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1, -30, 0, 20)
-    statusLabel.Position = UDim2.new(0, 30, 0, 10)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = "Auto Fishing: OFF"
-    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    statusLabel.Font = Enum.Font.GothamBold
-    statusLabel.TextSize = 14
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    statusLabel.Parent = statusPanel
-    
-    -- Info Text
-    local infoText = Instance.new("TextLabel")
-    infoText.Size = UDim2.new(1, -20, 0, 30)
-    infoText.Position = UDim2.new(0, 10, 0, 35)
-    infoText.BackgroundTransparency = 1
-    infoText.Text = "Automatically catch fish while AFK"
-    infoText.TextColor3 = Color3.fromRGB(180, 180, 180)
-    infoText.Font = Enum.Font.Gotham
-    infoText.TextSize = 12
-    infoText.TextXAlignment = Enum.TextXAlignment.Left
-    infoText.Parent = statusPanel
-    
-    -- Button Container
-    local buttonContainer = Instance.new("Frame")
-    buttonContainer.Size = UDim2.new(1, 0, 0, 110)
-    buttonContainer.Position = UDim2.new(0, 0, 0, 80)
-    buttonContainer.BackgroundTransparency = 1
-    buttonContainer.Parent = container
-    
-    -- Enable Button
-    local enableBtn = Instance.new("TextButton")
-    enableBtn.Size = UDim2.new(1, 0, 0, 45)
-    enableBtn.Position = UDim2.new(0, 0, 0, 0)
-    enableBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-    enableBtn.Text = "🔄 ENABLE AUTO FISHING"
-    enableBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    enableBtn.Font = Enum.Font.GothamBold
-    enableBtn.TextSize = 14
-    enableBtn.AutoButtonColor = true
-    
-    local enableCorner = Instance.new("UICorner")
-    enableCorner.CornerRadius = UDim.new(0, 6)
-    enableCorner.Parent = enableBtn
-    
-    enableBtn.Parent = buttonContainer
-    
-    -- Disable Button
-    local disableBtn = Instance.new("TextButton")
-    disableBtn.Size = UDim2.new(1, 0, 0, 45)
-    disableBtn.Position = UDim2.new(0, 0, 0, 55)
-    disableBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-    disableBtn.Text = "⏹️ DISABLE AUTO FISHING"
-    disableBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    disableBtn.Font = Enum.Font.GothamBold
-    disableBtn.TextSize = 14
-    disableBtn.AutoButtonColor = true
-    
-    local disableCorner = Instance.new("UICorner")
-    disableCorner.CornerRadius = UDim.new(0, 6)
-    disableCorner.Parent = disableBtn
-    
-    disableBtn.Parent = buttonContainer
-    
-    -- Fungsi update status
-    local function updateStatus(isEnabled)
-        if isEnabled then
-            statusIndicator.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-            statusLabel.Text = "Auto Fishing: ON"
-            statusLabel.TextColor3 = Color3.fromRGB(0, 180, 0)
-        else
-            statusIndicator.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-            statusLabel.Text = "Auto Fishing: OFF"
-            statusLabel.TextColor3 = Color3.fromRGB(220, 60, 60)
-        end
-    end
-    
-    -- Button Click Handlers
-    enableBtn.MouseButton1Click:Connect(function()
-        -- Panggil fitur auto fishing
-        local success = pcall(function()
-            local args = {true}
-            local remote = game:GetService("ReplicatedStorage"):WaitForChild("Packages")
-                :WaitForChild("_Index"):WaitForChild("sleitnick_net@0.2.0")
-                :WaitForChild("net"):WaitForChild("RF/UpdateAutoFishingState")
-            
-            remote:InvokeServer(unpack(args))
-            return true
-        end)
+        -- Fade glow
+        TweenService:Create(glow, TweenInfo.new(0.2), {
+            ImageTransparency = 0.9
+        }):Play()
         
-        if success then
-            updateStatus(true)
-            statusText.Text = "Auto fishing enabled!"
-        else
-            statusText.Text = "Failed to enable auto fishing"
-        end
-    end)
-    
-    disableBtn.MouseButton1Click:Connect(function()
-        -- Panggil fitur auto fishing
-        local success = pcall(function()
-            local args = {false}
-            local remote = game:GetService("ReplicatedStorage"):WaitForChild("Packages")
-                :WaitForChild("_Index"):WaitForChild("sleitnick_net@0.2.0")
-                :WaitForChild("net"):WaitForChild("RF/UpdateAutoFishingState")
-            
-            remote:InvokeServer(unpack(args))
-            return true
-        end)
-        
-        if success then
-            updateStatus(false)
-            statusText.Text = "Auto fishing disabled!"
-        else
-            statusText.Text = "Failed to disable auto fishing"
-        end
-    end)
-    
-    -- Set initial status
-    updateStatus(false)
-end
-
--- Fungsi untuk load Settings Tab
-local function loadSettingsTab()
-    -- Clear content dulu
-    for _, child in ipairs(contentArea:GetChildren()) do
-        child:Destroy()
-    end
-    
-    -- Container
-    local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 1, 0)
-    container.BackgroundTransparency = 1
-    container.Parent = contentArea
-    
-    -- Toggle UI Button
-    local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Size = UDim2.new(1, 0, 0, 45)
-    toggleBtn.Position = UDim2.new(0, 0, 0, 20)
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    toggleBtn.Text = "Toggle UI Visibility (F9)"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.TextSize = 14
-    toggleBtn.AutoButtonColor = true
-    
-    local toggleCorner = Instance.new("UICorner")
-    toggleCorner.CornerRadius = UDim.new(0, 6)
-    toggleCorner.Parent = toggleBtn
-    
-    toggleBtn.Parent = container
-    
-    -- Keybind Info
-    local keybindInfo = Instance.new("TextLabel")
-    keybindInfo.Size = UDim2.new(1, 0, 0, 30)
-    keybindInfo.Position = UDim2.new(0, 0, 0, 75)
-    keybindInfo.BackgroundTransparency = 1
-    keybindInfo.Text = "Press F9 to toggle UI"
-    keybindInfo.TextColor3 = Color3.fromRGB(180, 180, 180)
-    keybindInfo.Font = Enum.Font.Gotham
-    keybindInfo.TextSize = 12
-    keybindInfo.Parent = container
-    
-    -- Version Info
-    local versionInfo = Instance.new("TextLabel")
-    versionInfo.Size = UDim2.new(1, 0, 0, 20)
-    versionInfo.Position = UDim2.new(0, 0, 1, -25)
-    versionInfo.BackgroundTransparency = 1
-    versionInfo.Text = "Fish It Hub v1.0"
-    versionInfo.TextColor3 = Color3.fromRGB(150, 150, 150)
-    versionInfo.Font = Enum.Font.Gotham
-    versionInfo.TextSize = 11
-    versionInfo.Parent = container
-    
-    -- Toggle Button Handler
-    toggleBtn.MouseButton1Click:Connect(function()
-        screenGui.Enabled = not screenGui.Enabled
-        if screenGui.Enabled then
-            statusText.Text = "UI is visible"
-        else
-            statusText.Text = "UI is hidden"
-        end
-    end)
-end
-
--- Fungsi update tab content
-local function updateTabContent()
-    if currentTab == "Auto Fishing" then
-        loadAutoFishingTab()
-    elseif currentTab == "Settings" then
-        loadSettingsTab()
-    end
-end
-
--- Initial load
-updateTabContent()
-
--- Draggable Window
-local dragging = false
-local dragStart, startPos
-
-titleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = mainWindow.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
+        delay(0.3, function()
+            container.Visible = false
+            blur.Visible = false
         end)
     end
-end)
+end
 
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        mainWindow.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset + delta.X,
-            startPos.Y.Scale, startPos.Y.Offset + delta.Y
-        )
-    end
-end)
-
--- Close Button Handler
-closeBtn.MouseButton1Click:Connect(function()
-    screenGui:Destroy()
-end)
-
--- F9 Keybind untuk toggle UI
+-- Keybind system
 UserInputService.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.F9 then
-        screenGui.Enabled = not screenGui.Enabled
-        if screenGui.Enabled then
-            statusText.Text = "UI toggled ON (F9)"
-        else
-            statusText.Text = "UI toggled OFF (F9)"
-        end
+    if processed then return end
+    
+    if input.KeyCode == Enum.KeyCode.G then
+        toggleUI(not uiVisible)
     end
 end)
 
-print("🎣 Fish It Hub UI Loaded!")
-print("📌 Press F9 to toggle UI")
-print("🎯 Use tabs to navigate")
+-- Performance monitor
+spawn(function()
+    while true do
+        -- Update memory usage
+        local mem = math.floor(collectgarbage("count") / 1024 * 10) / 10
+        memLabel.Text = string.format("RAM: %.1f MB", mem)
+        
+        -- Update FPS
+        local fps = math.floor(1 / RunService.RenderStepped:Wait())
+        fpsLabel.Text = string.format("FPS: %d", math.min(fps, 999))
+        
+        wait(1)
+    end
+end)
 
+-- Initial state
+toggleUI(false)
+
+-- Loading animation
+spawn(function()
+    wait(0.5)
+    statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+    statusDotGlow.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+    statusText.Text = "Status: READY"
+    statusText.TextColor3 = Color3.fromRGB(200, 255, 200)
+end)
+
+print("=======================================")
+print("⚡ NEON UI LOADED SUCCESSFULLY")
+print("📌 Press G to toggle the interface")
+print("🎮 Premium Glass Effect Activated")
+print("=======================================")
+
+-- Return UI controller
 return {
     Toggle = function()
-        screenGui.Enabled = not screenGui.Enabled
+        toggleUI(not uiVisible)
+    end,
+    
+    Show = function()
+        toggleUI(true)
+    end,
+    
+    Hide = function()
+        toggleUI(false)
     end,
     
     Destroy = function()
-        screenGui:Destroy()
+        screen:Destroy()
     end
 }
