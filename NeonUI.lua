@@ -1,16 +1,16 @@
--- Neon Dashboard UI Premium - WITH SECURITY LOADER INTEGRATION
--- Tema: Glass Effect + Neon Red
--- Keybind: G untuk toggle
--- Navigation System: Dashboard, Teleport, Shop, Settings, About
-
+-- NeonUI_Main.lua
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- Cleanup old UI
+if playerGui:FindFirstChild("NeonDashboard") then
+    playerGui.NeonDashboard:Destroy()
+end
 
 -- CONFIG
 local WIDTH = 520
@@ -18,32 +18,30 @@ local HEIGHT = 280
 local SIDEBAR_W = 160
 local ACCENT = Color3.fromRGB(255, 62, 62)
 local ACCENT_GLOW = Color3.fromRGB(255, 100, 100)
-local BG = Color3.fromRGB(10, 10, 12)
-local GLASS_COLOR = Color3.fromRGB(20, 20, 25)
-local GLASS_TRANSPARENCY = 0.3
-
--- Cleanup old UI
-if playerGui:FindFirstChild("NeonDashboard") then
-    playerGui.NeonDashboard:Destroy()
-end
+local BG_DARK = Color3.fromRGB(10, 10, 12)
+local BG_LIGHT = Color3.fromRGB(20, 20, 25)
+local TEXT_WHITE = Color3.fromRGB(240, 240, 255)
+local TEXT_GRAY = Color3.fromRGB(180, 180, 200)
+local SUCCESS_COLOR = Color3.fromRGB(100, 255, 100)
+local WARNING_COLOR = Color3.fromRGB(255, 200, 100)
+local ERROR_COLOR = Color3.fromRGB(255, 100, 100)
 
 -- ============================================
--- SECURITY LOADER INTEGRATION
+-- LOAD SECURITY LOADER & TELEPORT SYSTEM
 -- ============================================
 local SecurityLoader
-local TeleportModule, TeleportToPlayer, SavedLocation, Notify
+local teleportSystem
+local teleportLoaded = false
 
-local function loadModules()
-    print("🔄 Loading modules via SecurityLoader...")
+local function loadTeleportSystem()
+    print("🔄 Loading Teleport System via SecurityLoader...")
     
-    -- URL untuk SecurityLoader
     local loaderURL = "https://raw.githubusercontent.com/DanzxxHosting/fishing-system-v2/refs/heads/main/Main/SecurityLoader.lua"
     
-    -- Load SecurityLoader terlebih dahulu
     local success, result = pcall(function()
-        local loaderCode = game:HttpGet(loaderURL)
-        local loaderFunc = loadstring(loaderCode)
-        SecurityLoader = loaderFunc()
+        local code = game:HttpGet(loaderURL)
+        local func = loadstring(code)
+        SecurityLoader = func()
         return SecurityLoader
     end)
     
@@ -52,64 +50,16 @@ local function loadModules()
         return false
     end
     
-    print("✅ SecurityLoader loaded successfully!")
-    
-    -- Enable anti-dump protection
-    if SecurityLoader.EnableAntiDump then
-        SecurityLoader.EnableAntiDump()
+    if SecurityLoader and SecurityLoader.LoadTeleportSystem then
+        teleportSystem = SecurityLoader.LoadTeleportSystem()
+        teleportLoaded = teleportSystem ~= nil
     end
     
-    -- Load modules via SecurityLoader
-    TeleportModule = SecurityLoader.LoadModule("TeleportModule")
-    TeleportToPlayer = SecurityLoader.LoadModule("TeleportToPlayer")
-    SavedLocation = SecurityLoader.LoadModule("SavedLocation")
-    Notify = SecurityLoader.LoadModule("Notify")
-    
-    -- Fallback jika Notify tidak ada
-    if not Notify then
-        Notify = {}
-        function Notify.Send(title, message, duration)
-            print("[Notify] " .. title .. ": " .. message)
-        end
-        function Notify:__call(title, message, duration)
-            self.Send(title, message, duration)
-        end
-    end
-    
-    -- Fallback jika TeleportModule tidak ada
-    if not TeleportModule then
-        warn("⚠️ TeleportModule not found via SecurityLoader, using fallback...")
-        TeleportModule = {}
-        TeleportModule.Locations = {}
-        function TeleportModule.TeleportTo(name)
-            warn("Fallback teleport:", name)
-            return true
-        end
-    end
-    
-    -- Fallback untuk TeleportToPlayer
-    if not TeleportToPlayer then
-        TeleportToPlayer = {}
-        function TeleportToPlayer.TeleportTo(playerName)
-            warn("Fallback player teleport:", playerName)
-            return true
-        end
-    end
-    
-    -- Fallback untuk SavedLocation
-    if not SavedLocation then
-        SavedLocation = {}
-        function SavedLocation.Save() warn("SavedLocation.Save fallback") return true end
-        function SavedLocation.Teleport() warn("SavedLocation.Teleport fallback") return true end
-        function SavedLocation.Reset() warn("SavedLocation.Reset fallback") return true end
-    end
-    
-    print("✅ All modules loaded!")
-    return true
+    return teleportLoaded
 end
 
--- Panggil fungsi load
-local modulesLoaded = loadModules()
+-- Load teleport system
+teleportLoaded = loadTeleportSystem()
 
 -- ============================================
 -- UI COMPONENT FUNCTIONS
@@ -142,7 +92,7 @@ local function makeButton(parent, text, onClick, options)
     label.Font = Enum.Font.Gotham
     label.TextSize = 12
     label.Text = text
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextColor3 = TEXT_WHITE
     label.Parent = btn
     
     -- Hover effects
@@ -181,171 +131,8 @@ local function makeButton(parent, text, onClick, options)
     return btn
 end
 
-local function makeDropdown(parent, title, icon, items, callback, id)
-    local container = Instance.new("Frame")
-    container.Name = id or "Dropdown"
-    container.Size = UDim2.new(1, -20, 0, 40)
-    container.BackgroundTransparency = 1
-    container.Parent = parent
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(0.4, 0, 1, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
-    titleLabel.Text = icon .. " " .. title
-    titleLabel.Font = Enum.Font.GothamMedium
-    titleLabel.TextSize = 12
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = container
-    
-    local dropdownBtn = Instance.new("TextButton")
-    dropdownBtn.Size = UDim2.new(0.6, 0, 1, 0)
-    dropdownBtn.Position = UDim2.new(0.4, 0, 0, 0)
-    dropdownBtn.BackgroundColor3 = Color3.fromRGB(50, 60, 90)
-    dropdownBtn.BorderSizePixel = 0
-    dropdownBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    dropdownBtn.Text = "Select..."
-    dropdownBtn.Font = Enum.Font.Gotham
-    dropdownBtn.TextSize = 11
-    dropdownBtn.AutoButtonColor = false
-    dropdownBtn.Parent = container
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
-    corner.Parent = dropdownBtn
-    
-    local dropdownFrame = Instance.new("Frame")
-    dropdownFrame.Size = UDim2.new(1, 0, 0, 100)
-    dropdownFrame.Position = UDim2.new(0, 0, 1, 2)
-    dropdownFrame.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
-    dropdownFrame.BorderSizePixel = 0
-    dropdownFrame.Visible = false
-    dropdownFrame.ZIndex = 10
-    dropdownFrame.ClipsDescendants = true
-    dropdownFrame.Parent = dropdownBtn
-    
-    local corner2 = Instance.new("UICorner")
-    corner2.CornerRadius = UDim.new(0, 4)
-    corner2.Parent = dropdownFrame
-    
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 3
-    scrollFrame.ScrollBarImageColor3 = ACCENT
-    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    scrollFrame.Parent = dropdownFrame
-    
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.Padding = UDim.new(0, 2)
-    listLayout.Parent = scrollFrame
-    
-    -- Populate items
-    for _, item in ipairs(items) do
-        local option = Instance.new("TextButton")
-        option.Size = UDim2.new(1, -6, 0, 28)
-        option.Position = UDim2.new(0, 3, 0, 0)
-        option.BackgroundColor3 = Color3.fromRGB(60, 70, 100)
-        option.BorderSizePixel = 0
-        option.TextColor3 = Color3.fromRGB(255, 255, 255)
-        option.Text = item
-        option.Font = Enum.Font.Gotham
-        option.TextSize = 11
-        option.AutoButtonColor = false
-        option.Parent = scrollFrame
-        
-        local corner3 = Instance.new("UICorner")
-        corner3.CornerRadius = UDim.new(0, 3)
-        corner3.Parent = option
-        
-        option.MouseButton1Click:Connect(function()
-            dropdownBtn.Text = item
-            dropdownFrame.Visible = false
-            if callback then callback(item) end
-        end)
-        
-        -- Hover effect
-        option.MouseEnter:Connect(function()
-            TweenService:Create(option, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(80, 90, 120)
-            }):Play()
-        end)
-        
-        option.MouseLeave:Connect(function()
-            TweenService:Create(option, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(60, 70, 100)
-            }):Play()
-        end)
-    end
-    
-    -- Toggle dropdown
-    dropdownBtn.MouseButton1Click:Connect(function()
-        dropdownFrame.Visible = not dropdownFrame.Visible
-    end)
-    
-    -- Close dropdown when clicking elsewhere
-    game:GetService("UserInputService").InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            if dropdownFrame.Visible then
-                local mousePos = UserInputService:GetMouseLocation()
-                local dropdownPos = dropdownFrame.AbsolutePosition
-                local dropdownSize = dropdownFrame.AbsoluteSize
-                
-                if not (mousePos.X >= dropdownPos.X and mousePos.X <= dropdownPos.X + dropdownSize.X and
-                       mousePos.Y >= dropdownPos.Y and mousePos.Y <= dropdownPos.Y + dropdownSize.Y) then
-                    dropdownFrame.Visible = false
-                end
-            end
-        end
-    end)
-    
-    return container
-end
-
-local function makeCategory(parent, title, icon)
-    local category = Instance.new("Frame")
-    category.Size = UDim2.new(1, -20, 0, 120)
-    category.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
-    category.BorderSizePixel = 0
-    category.Parent = parent
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = category
-    
-    local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 25)
-    titleBar.BackgroundColor3 = Color3.fromRGB(50, 60, 85)
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = category
-    
-    local corner2 = Instance.new("UICorner")
-    corner2.CornerRadius = UDim.new(0, 8, 0, 0)
-    corner2.Parent = titleBar
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -10, 1, 0)
-    titleLabel.Position = UDim2.new(0, 10, 0, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.Text = icon .. " " .. title
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextSize = 13
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = titleBar
-    
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Size = UDim2.new(1, 0, 1, -30)
-    contentFrame.Position = UDim2.new(0, 0, 0, 30)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Parent = category
-    
-    return contentFrame
-end
-
 -- ============================================
--- CREATE UI
+-- CREATE MAIN UI
 -- ============================================
 local screen = Instance.new("ScreenGui")
 screen.Name = "NeonDashboard"
@@ -373,8 +160,8 @@ local glass = Instance.new("Frame")
 glass.Name = "GlassPanel"
 glass.Size = UDim2.new(0, WIDTH, 0, HEIGHT)
 glass.Position = UDim2.new(0, 0, 0, 0)
-glass.BackgroundColor3 = GLASS_COLOR
-glass.BackgroundTransparency = GLASS_TRANSPARENCY
+glass.BackgroundColor3 = BG_LIGHT
+glass.BackgroundTransparency = 0.3
 glass.BorderSizePixel = 0
 glass.Parent = container
 
@@ -408,6 +195,7 @@ inner.Position = UDim2.new(0, 8, 0, 8)
 inner.BackgroundTransparency = 1
 inner.Parent = glass
 
+-- Header
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 35)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
@@ -431,8 +219,8 @@ statusIndicator.Position = UDim2.new(0.6, 8, 0, 0)
 statusIndicator.BackgroundTransparency = 1
 statusIndicator.Font = Enum.Font.Gotham
 statusIndicator.TextSize = 10
-statusIndicator.Text = modulesLoaded and "✅ Modules Loaded" or "⚠️ Loading Modules..."
-statusIndicator.TextColor3 = modulesLoaded and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 150, 50)
+statusIndicator.Text = teleportLoaded and "✅ READY" or "⚠️ LOADING"
+statusIndicator.TextColor3 = teleportLoaded and SUCCESS_COLOR or WARNING_COLOR
 statusIndicator.TextXAlignment = Enum.TextXAlignment.Right
 statusIndicator.Parent = titleBar
 
@@ -441,7 +229,7 @@ local sidebar = Instance.new("Frame")
 sidebar.Name = "Sidebar"
 sidebar.Size = UDim2.new(0, SIDEBAR_W, 1, -55)
 sidebar.Position = UDim2.new(0, 0, 0, 45)
-sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+sidebar.BackgroundColor3 = BG_DARK
 sidebar.BackgroundTransparency = 0.2
 sidebar.BorderSizePixel = 0
 sidebar.Parent = inner
@@ -455,7 +243,7 @@ sidebarStroke.Color = Color3.fromRGB(40, 40, 50)
 sidebarStroke.Thickness = 1
 sidebarStroke.Parent = sidebar
 
--- Navigation buttons
+-- Navigation container
 local navContainer = Instance.new("ScrollingFrame")
 navContainer.Size = UDim2.new(1, -8, 1, -16)
 navContainer.Position = UDim2.new(0, 4, 0, 8)
@@ -471,6 +259,7 @@ navLayout.SortOrder = Enum.SortOrder.LayoutOrder
 navLayout.Padding = UDim.new(0, 5)
 navLayout.Parent = navContainer
 
+-- Navigation buttons
 local navBtns = {}
 
 local function createNavBtn(text, icon, id)
@@ -501,7 +290,7 @@ local function createNavBtn(text, icon, id)
     iconLabel.Font = Enum.Font.GothamBold
     iconLabel.TextSize = 16
     iconLabel.Text = icon
-    iconLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+    iconLabel.TextColor3 = TEXT_GRAY
     iconLabel.TextXAlignment = Enum.TextXAlignment.Center
     iconLabel.TextYAlignment = Enum.TextYAlignment.Center
     iconLabel.Parent = btn
@@ -513,7 +302,7 @@ local function createNavBtn(text, icon, id)
     textLabel.Font = Enum.Font.GothamSemibold
     textLabel.TextSize = 12
     textLabel.Text = text
-    textLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+    textLabel.TextColor3 = TEXT_WHITE
     textLabel.TextXAlignment = Enum.TextXAlignment.Left
     textLabel.Parent = btn
     
@@ -535,7 +324,7 @@ local content = Instance.new("Frame")
 content.Name = "Content"
 content.Size = UDim2.new(1, -SIDEBAR_W - 12, 1, -55)
 content.Position = UDim2.new(0, SIDEBAR_W + 8, 0, 45)
-content.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+content.BackgroundColor3 = BG_DARK
 content.BackgroundTransparency = 0.2
 content.BorderSizePixel = 0
 content.Parent = inner
@@ -562,7 +351,7 @@ contentTitle.BackgroundTransparency = 1
 contentTitle.Font = Enum.Font.GothamBold
 contentTitle.TextSize = 14
 contentTitle.Text = "DASHBOARD"
-contentTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+contentTitle.TextColor3 = TEXT_WHITE
 contentTitle.TextXAlignment = Enum.TextXAlignment.Left
 contentTitle.Parent = contentHeader
 
@@ -573,7 +362,7 @@ contentSubtitle.BackgroundTransparency = 1
 contentSubtitle.Font = Enum.Font.Gotham
 contentSubtitle.TextSize = 10
 contentSubtitle.Text = "Welcome"
-contentSubtitle.TextColor3 = Color3.fromRGB(180, 180, 200)
+contentSubtitle.TextColor3 = TEXT_GRAY
 contentSubtitle.TextXAlignment = Enum.TextXAlignment.Right
 contentSubtitle.Parent = contentHeader
 
@@ -646,7 +435,7 @@ local function switchPage(pageId, title)
                 Color = Color3.fromRGB(40, 40, 50)
             }):Play()
             TweenService:Create(btnData.icon, TweenInfo.new(0.2), {
-                TextColor3 = Color3.fromRGB(180, 180, 200)
+                TextColor3 = TEXT_GRAY
             }):Play()
         end
     end
@@ -658,11 +447,29 @@ local function switchPage(pageId, title)
             TweenService:Create(page, TweenInfo.new(0.3), {
                 Position = UDim2.new(0, 0, 0, 0)
             }):Play()
+            
+            -- Load specific page content
+            if id == "Teleport" then
+                loadTeleportPageContent(page)
+            elseif id == "Main" then
+                loadMainPageContent(page)
+            end
         else
             page.Visible = false
             page.Position = UDim2.new(1, 0, 0, 0)
         end
     end
+    
+    -- Content animation
+    TweenService:Create(contentStroke, TweenInfo.new(0.3), {
+        Color = ACCENT
+    }):Play()
+    
+    task.wait(0.1)
+    
+    TweenService:Create(contentStroke, TweenInfo.new(0.3), {
+        Color = Color3.fromRGB(40, 40, 50)
+    }):Play()
 end
 
 -- Connect navigation buttons
@@ -675,126 +482,522 @@ end
 -- ============================================
 -- TELEPORT PAGE CONTENT
 -- ============================================
-if TeleportModule and TeleportModule.Locations then
-    -- Location teleport
-    local locationItems = {}
-    for name, _ in pairs(TeleportModule.Locations) do
-        table.insert(locationItems, name)
+local function loadTeleportPageContent(page)
+    -- Clear existing content
+    for _, child in ipairs(page:GetChildren()) do
+        child:Destroy()
     end
-    table.sort(locationItems)
     
-    makeDropdown(teleportPage, "Teleport to Location", "📍", locationItems, function(selected)
-        if TeleportModule.TeleportTo then
-            TeleportModule.TeleportTo(selected)
-            if Notify then
-                Notify.Send("Teleported", "Teleported to: " .. selected, 3)
+    local mainContainer = Instance.new("Frame")
+    mainContainer.Size = UDim2.new(1, 0, 0, 400)
+    mainContainer.BackgroundTransparency = 1
+    mainContainer.Parent = page
+    
+    -- Header
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, -20, 0, 50)
+    header.Position = UDim2.new(0, 10, 0, 10)
+    header.BackgroundColor3 = BG_DARK
+    header.BackgroundTransparency = 0.2
+    header.Parent = mainContainer
+    
+    local headerCorner = Instance.new("UICorner")
+    headerCorner.CornerRadius = UDim.new(0, 8)
+    headerCorner.Parent = header
+    
+    local headerStroke = Instance.new("UIStroke")
+    headerStroke.Color = ACCENT
+    headerStroke.Thickness = 1
+    headerStroke.Transparency = 0.5
+    headerStroke.Parent = header
+    
+    local headerTitle = Instance.new("TextLabel")
+    headerTitle.Size = UDim2.new(1, -20, 0, 25)
+    headerTitle.Position = UDim2.new(0, 10, 0, 5)
+    headerTitle.BackgroundTransparency = 1
+    headerTitle.Font = Enum.Font.GothamBold
+    headerTitle.TextSize = 16
+    headerTitle.Text = teleportLoaded and "🌍 TELEPORT SYSTEM" or "⚠️ SYSTEM LOADING"
+    headerTitle.TextColor3 = teleportLoaded and ACCENT or WARNING_COLOR
+    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
+    headerTitle.Parent = header
+    
+    local headerSubtitle = Instance.new("TextLabel")
+    headerSubtitle.Size = UDim2.new(1, -20, 0, 20)
+    headerSubtitle.Position = UDim2.new(0, 10, 0, 30)
+    headerSubtitle.BackgroundTransparency = 1
+    headerSubtitle.Font = Enum.Font.Gotham
+    headerSubtitle.TextSize = 12
+    headerSubtitle.Text = teleportLoaded and "Instant teleport to locations and players" or "Loading modules via SecurityLoader..."
+    headerSubtitle.TextColor3 = TEXT_GRAY
+    headerSubtitle.TextXAlignment = Enum.TextXAlignment.Left
+    headerSubtitle.Parent = header
+    
+    if not teleportLoaded or not teleportSystem then
+        -- Show loading message
+        local loadingMsg = Instance.new("TextLabel")
+        loadingMsg.Size = UDim2.new(1, -40, 0, 100)
+        loadingMsg.Position = UDim2.new(0, 20, 0, 70)
+        loadingMsg.BackgroundTransparency = 1
+        loadingMsg.Font = Enum.Font.Gotham
+        loadingMsg.TextSize = 14
+        loadingMsg.Text = "🔒 Loading Teleport System...\n\nPlease wait while modules are loaded\nvia SecurityLoader"
+        loadingMsg.TextColor3 = WARNING_COLOR
+        loadingMsg.TextYAlignment = Enum.TextYAlignment.Center
+        loadingMsg.TextXAlignment = Enum.TextXAlignment.Center
+        loadingMsg.Parent = mainContainer
+        return
+    end
+    
+    -- Content grid
+    local contentGrid = Instance.new("Frame")
+    contentGrid.Size = UDim2.new(1, -20, 0, 320)
+    contentGrid.Position = UDim2.new(0, 10, 0, 70)
+    contentGrid.BackgroundTransparency = 1
+    contentGrid.Parent = mainContainer
+    
+    local gridLayout = Instance.new("UIGridLayout")
+    gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+    gridLayout.CellSize = UDim2.new(0.5, -5, 0, 150)
+    gridLayout.Parent = contentGrid
+    
+    -- Location Teleport Card
+    local locationCard = Instance.new("Frame")
+    locationCard.BackgroundColor3 = BG_LIGHT
+    locationCard.BackgroundTransparency = 0.1
+    locationCard.Parent = contentGrid
+    
+    local cardCorner = Instance.new("UICorner")
+    cardCorner.CornerRadius = UDim.new(0, 10)
+    cardCorner.Parent = locationCard
+    
+    local cardStroke = Instance.new("UIStroke")
+    cardStroke.Color = ACCENT
+    cardStroke.Thickness = 1
+    cardStroke.Transparency = 0.7
+    cardStroke.Parent = locationCard
+    
+    -- Card header
+    local cardHeader = Instance.new("Frame")
+    cardHeader.Size = UDim2.new(1, 0, 0, 40)
+    cardHeader.BackgroundColor3 = Color3.fromRGB(30, 10, 10)
+    cardHeader.BackgroundTransparency = 0.3
+    cardHeader.Parent = locationCard
+    
+    local headerCorner2 = Instance.new("UICorner")
+    headerCorner2.CornerRadius = UDim.new(0, 10, 0, 0)
+    headerCorner2.Parent = cardHeader
+    
+    local cardTitle = Instance.new("TextLabel")
+    cardTitle.Size = UDim2.new(1, -20, 1, 0)
+    cardTitle.Position = UDim2.new(0, 10, 0, 0)
+    cardTitle.BackgroundTransparency = 1
+    cardTitle.Font = Enum.Font.GothamBold
+    cardTitle.TextSize = 14
+    cardTitle.Text = "📍 LOCATION TELEPORT"
+    cardTitle.TextColor3 = ACCENT
+    cardTitle.TextXAlignment = Enum.TextXAlignment.Left
+    cardTitle.Parent = cardHeader
+    
+    -- Teleport button
+    local teleportBtn = Instance.new("TextButton")
+    teleportBtn.Size = UDim2.new(1, -20, 0, 35)
+    teleportBtn.Position = UDim2.new(0, 10, 0, 50)
+    teleportBtn.BackgroundColor3 = ACCENT
+    teleportBtn.AutoButtonColor = false
+    teleportBtn.Text = "SELECT LOCATION"
+    teleportBtn.Font = Enum.Font.GothamBold
+    teleportBtn.TextSize = 12
+    teleportBtn.TextColor3 = TEXT_WHITE
+    teleportBtn.Parent = locationCard
+    
+    local teleportCorner = Instance.new("UICorner")
+    teleportCorner.CornerRadius = UDim.new(0, 6)
+    teleportCorner.Parent = teleportBtn
+    
+    teleportBtn.MouseButton1Click:Connect(function()
+        if teleportSystem.TeleportModule and teleportSystem.TeleportModule.Locations then
+            local locationNames = {}
+            for name, _ in pairs(teleportSystem.TeleportModule.Locations) do
+                table.insert(locationNames, name)
+            end
+            table.sort(locationNames)
+            
+            -- Show location selection (simple version)
+            teleportBtn.Text = #locationNames .. " LOCATIONS"
+            if #locationNames > 0 and teleportSystem.TeleportModule.TeleportTo then
+                teleportSystem.TeleportModule.TeleportTo(locationNames[1])
+                if teleportSystem.Notify then
+                    teleportSystem.Notify("Teleported", "📍 To: " .. locationNames[1], 3)
+                end
+                
+                teleportBtn.Text = "✓ TELEPORTED!"
+                teleportBtn.BackgroundColor3 = SUCCESS_COLOR
+                task.wait(1)
+                teleportBtn.Text = "SELECT LOCATION"
+                teleportBtn.BackgroundColor3 = ACCENT
             end
         end
-    end, "LocationTeleport")
+    end)
     
-    -- Player teleport
-    local playerDropdown
-    local localPlayer = Players.LocalPlayer
+    -- Player Teleport Card
+    local playerCard = Instance.new("Frame")
+    playerCard.BackgroundColor3 = BG_LIGHT
+    playerCard.BackgroundTransparency = 0.1
+    playerCard.Parent = contentGrid
     
-    local function updatePlayerList()
-        local playerItems = {}
+    local playerCorner = Instance.new("UICorner")
+    playerCorner.CornerRadius = UDim.new(0, 10)
+    playerCorner.Parent = playerCard
+    
+    local playerStroke = Instance.new("UIStroke")
+    playerStroke.Color = Color3.fromRGB(100, 150, 255)
+    playerStroke.Thickness = 1
+    playerStroke.Transparency = 0.7
+    playerStroke.Parent = playerCard
+    
+    -- Player card header
+    local playerHeader = Instance.new("Frame")
+    playerHeader.Size = UDim2.new(1, 0, 0, 40)
+    playerHeader.BackgroundColor3 = Color3.fromRGB(10, 10, 30)
+    playerHeader.BackgroundTransparency = 0.3
+    playerHeader.Parent = playerCard
+    
+    local playerHeaderCorner = Instance.new("UICorner")
+    playerHeaderCorner.CornerRadius = UDim.new(0, 10, 0, 0)
+    playerHeaderCorner.Parent = playerHeader
+    
+    local playerTitle = Instance.new("TextLabel")
+    playerTitle.Size = UDim2.new(1, -20, 1, 0)
+    playerTitle.Position = UDim2.new(0, 10, 0, 0)
+    playerTitle.BackgroundTransparency = 1
+    playerTitle.Font = Enum.Font.GothamBold
+    playerTitle.TextSize = 14
+    playerTitle.Text = "👤 PLAYER TELEPORT"
+    playerTitle.TextColor3 = Color3.fromRGB(100, 150, 255)
+    playerTitle.TextXAlignment = Enum.TextXAlignment.Left
+    playerTitle.Parent = playerHeader
+    
+    -- Player teleport button
+    local teleportToPlayerBtn = Instance.new("TextButton")
+    teleportToPlayerBtn.Size = UDim2.new(1, -20, 0, 35)
+    teleportToPlayerBtn.Position = UDim2.new(0, 10, 0, 50)
+    teleportToPlayerBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+    teleportToPlayerBtn.AutoButtonColor = false
+    teleportToPlayerBtn.Text = "TELEPORT TO PLAYER"
+    teleportToPlayerBtn.Font = Enum.Font.GothamBold
+    teleportToPlayerBtn.TextSize = 12
+    teleportToPlayerBtn.TextColor3 = TEXT_WHITE
+    teleportToPlayerBtn.Parent = playerCard
+    
+    local playerTeleportCorner = Instance.new("UICorner")
+    playerTeleportCorner.CornerRadius = UDim.new(0, 6)
+    playerTeleportCorner.Parent = teleportToPlayerBtn
+    
+    teleportToPlayerBtn.MouseButton1Click:Connect(function()
+        local playerCount = 0
+        local localPlayer = Players.LocalPlayer
+        local playerNames = {}
+        
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= localPlayer then
-                table.insert(playerItems, player.Name)
+                table.insert(playerNames, player.Name)
+                playerCount += 1
             end
-        end
-        table.sort(playerItems)
-        
-        -- Remove old dropdown
-        local oldDropdown = teleportPage:FindFirstChild("PlayerTeleport")
-        if oldDropdown then
-            oldDropdown:Destroy()
         end
         
-        -- Create new dropdown
-        playerDropdown = makeDropdown(teleportPage, "Teleport to Player", "👤", playerItems, function(selected)
-            if TeleportToPlayer and TeleportToPlayer.TeleportTo then
-                TeleportToPlayer.TeleportTo(selected)
-                if Notify then
-                    Notify.Send("Teleported", "Teleported to player: " .. selected, 3)
-                end
-            else
-                warn("TeleportToPlayer module not available")
+        teleportToPlayerBtn.Text = playerCount .. " PLAYERS ONLINE"
+        
+        if playerCount > 0 and teleportSystem.TeleportToPlayer and teleportSystem.TeleportToPlayer.TeleportTo then
+            teleportSystem.TeleportToPlayer.TeleportTo(playerNames[1])
+            if teleportSystem.Notify then
+                teleportSystem.Notify("Teleported", "👤 To: " .. playerNames[1], 3)
             end
-        end, "PlayerTeleport")
-    end
-    
-    -- Initial update
-    updatePlayerList()
-    
-    -- Auto refresh
-    Players.PlayerAdded:Connect(function(player)
-        task.wait(0.5)
-        updatePlayerList()
+            
+            teleportToPlayerBtn.Text = "✓ TELEPORTED!"
+            teleportToPlayerBtn.BackgroundColor3 = SUCCESS_COLOR
+            task.wait(1)
+            teleportToPlayerBtn.Text = "TELEPORT TO PLAYER"
+            teleportToPlayerBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+        end
     end)
     
-    Players.PlayerRemoving:Connect(function(player)
-        task.wait(0.1)
-        updatePlayerList()
+    -- Saved Locations Card
+    local savedCard = Instance.new("Frame")
+    savedCard.BackgroundColor3 = BG_LIGHT
+    savedCard.BackgroundTransparency = 0.1
+    savedCard.Parent = contentGrid
+    
+    local savedCorner = Instance.new("UICorner")
+    savedCorner.CornerRadius = UDim.new(0, 10)
+    savedCorner.Parent = savedCard
+    
+    local savedStroke = Instance.new("UIStroke")
+    savedStroke.Color = Color3.fromRGB(255, 200, 50)
+    savedStroke.Thickness = 1
+    savedStroke.Transparency = 0.7
+    savedStroke.Parent = savedCard
+    
+    -- Saved card header
+    local savedHeader = Instance.new("Frame")
+    savedHeader.Size = UDim2.new(1, 0, 0, 40)
+    savedHeader.BackgroundColor3 = Color3.fromRGB(30, 30, 10)
+    savedHeader.BackgroundTransparency = 0.3
+    savedHeader.Parent = savedCard
+    
+    local savedHeaderCorner = Instance.new("UICorner")
+    savedHeaderCorner.CornerRadius = UDim.new(0, 10, 0, 0)
+    savedHeaderCorner.Parent = savedHeader
+    
+    local savedTitle = Instance.new("TextLabel")
+    savedTitle.Size = UDim2.new(1, -20, 1, 0)
+    savedTitle.Position = UDim2.new(0, 10, 0, 0)
+    savedTitle.BackgroundTransparency = 1
+    savedTitle.Font = Enum.Font.GothamBold
+    savedTitle.TextSize = 14
+    savedTitle.Text = "⭐ SAVED LOCATIONS"
+    savedTitle.TextColor3 = Color3.fromRGB(255, 200, 50)
+    savedTitle.TextXAlignment = Enum.TextXAlignment.Left
+    savedTitle.Parent = savedHeader
+    
+    -- Saved buttons container
+    local savedButtons = Instance.new("Frame")
+    savedButtons.Size = UDim2.new(1, -20, 0, 90)
+    savedButtons.Position = UDim2.new(0, 10, 0, 50)
+    savedButtons.BackgroundTransparency = 1
+    savedButtons.Parent = savedCard
+    
+    local savedLayout = Instance.new("UIListLayout")
+    savedLayout.Padding = UDim.new(0, 8)
+    savedLayout.FillDirection = Enum.FillDirection.Vertical
+    savedLayout.Parent = savedButtons
+    
+    -- Save Location Button
+    local saveBtn = Instance.new("TextButton")
+    saveBtn.Size = UDim2.new(1, 0, 0, 35)
+    saveBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+    saveBtn.AutoButtonColor = false
+    saveBtn.Text = "💾 SAVE LOCATION"
+    saveBtn.Font = Enum.Font.GothamSemibold
+    saveBtn.TextSize = 11
+    saveBtn.TextColor3 = TEXT_WHITE
+    saveBtn.Parent = savedButtons
+    
+    local saveCorner = Instance.new("UICorner")
+    saveCorner.CornerRadius = UDim.new(0, 6)
+    saveCorner.Parent = saveBtn
+    
+    saveBtn.MouseButton1Click:Connect(function()
+        if teleportSystem.SavedLocation and teleportSystem.SavedLocation.Save then
+            teleportSystem.SavedLocation.Save()
+            if teleportSystem.Notify then
+                teleportSystem.Notify("Saved", "💾 Location saved!", 3)
+            end
+            
+            saveBtn.Text = "✓ SAVED!"
+            saveBtn.BackgroundColor3 = SUCCESS_COLOR
+            task.wait(1)
+            saveBtn.Text = "💾 SAVE LOCATION"
+            saveBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+        end
     end)
     
-    -- Saved locations category
-    local savedCat = makeCategory(teleportPage, "Saved Location", "⭐")
+    -- Teleport to Saved Button
+    local teleportSavedBtn = Instance.new("TextButton")
+    teleportSavedBtn.Size = UDim2.new(1, 0, 0, 35)
+    teleportSavedBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 100)
+    teleportSavedBtn.AutoButtonColor = false
+    teleportSavedBtn.Text = "🚀 TELEPORT TO SAVED"
+    teleportSavedBtn.Font = Enum.Font.GothamSemibold
+    teleportSavedBtn.TextSize = 11
+    teleportSavedBtn.TextColor3 = TEXT_WHITE
+    teleportSavedBtn.Parent = savedButtons
     
-    makeButton(savedCat, "Save Current Location", function()
-        if SavedLocation and SavedLocation.Save then
-            if SavedLocation.Save() then
-                if Notify then
-                    Notify.Send("Saved", "Location saved successfully!", 3)
-                end
-            end
-        end
-    end, {
-        BackgroundColor = Color3.fromRGB(70, 120, 200)
-    })
+    local teleportSavedCorner = Instance.new("UICorner")
+    teleportSavedCorner.CornerRadius = UDim.new(0, 6)
+    teleportSavedCorner.Parent = teleportSavedBtn
     
-    makeButton(savedCat, "Teleport to Saved", function()
-        if SavedLocation and SavedLocation.Teleport then
-            if SavedLocation.Teleport() then
-                if Notify then
-                    Notify.Send("Teleported", "Teleported to saved location!", 3)
+    teleportSavedBtn.MouseButton1Click:Connect(function()
+        if teleportSystem.SavedLocation and teleportSystem.SavedLocation.Teleport then
+            local success = teleportSystem.SavedLocation.Teleport()
+            if success then
+                if teleportSystem.Notify then
+                    teleportSystem.Notify("Teleported", "🚀 To saved location!", 3)
                 end
+                
+                teleportSavedBtn.Text = "✓ TELEPORTED!"
+                teleportSavedBtn.BackgroundColor3 = SUCCESS_COLOR
             else
-                if Notify then
-                    Notify.Send("Error", "No saved location found!", 3)
-                end
+                teleportSavedBtn.Text = "❌ NO LOCATION"
+                teleportSavedBtn.BackgroundColor3 = ERROR_COLOR
             end
+            task.wait(1)
+            teleportSavedBtn.Text = "🚀 TELEPORT TO SAVED"
+            teleportSavedBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 100)
         end
-    end, {
-        BackgroundColor = Color3.fromRGB(70, 180, 80)
-    })
+    end)
     
-    makeButton(savedCat, "Reset Saved Location", function()
-        if SavedLocation and SavedLocation.Reset then
-            SavedLocation.Reset()
-            if Notify then
-                Notify.Send("Reset", "Saved location cleared!", 3)
+    -- Quick Teleport Card
+    local quickCard = Instance.new("Frame")
+    quickCard.BackgroundColor3 = BG_LIGHT
+    quickCard.BackgroundTransparency = 0.1
+    quickCard.Parent = contentGrid
+    
+    local quickCorner = Instance.new("UICorner")
+    quickCorner.CornerRadius = UDim.new(0, 10)
+    quickCorner.Parent = quickCard
+    
+    local quickStroke = Instance.new("UIStroke")
+    quickStroke.Color = Color3.fromRGB(150, 100, 255)
+    quickStroke.Thickness = 1
+    quickStroke.Transparency = 0.7
+    quickStroke.Parent = quickCard
+    
+    -- Quick card header
+    local quickHeader = Instance.new("Frame")
+    quickHeader.Size = UDim2.new(1, 0, 0, 40)
+    quickHeader.BackgroundColor3 = Color3.fromRGB(20, 10, 40)
+    quickHeader.BackgroundTransparency = 0.3
+    quickHeader.Parent = quickCard
+    
+    local quickHeaderCorner = Instance.new("UICorner")
+    quickHeaderCorner.CornerRadius = UDim.new(0, 10, 0, 0)
+    quickHeaderCorner.Parent = quickHeader
+    
+    local quickTitle = Instance.new("TextLabel")
+    quickTitle.Size = UDim2.new(1, -20, 1, 0)
+    quickTitle.Position = UDim2.new(0, 10, 0, 0)
+    quickTitle.BackgroundTransparency = 1
+    quickTitle.Font = Enum.Font.GothamBold
+    quickTitle.TextSize = 14
+    quickTitle.Text = "⚡ QUICK TELEPORT"
+    quickTitle.TextColor3 = Color3.fromRGB(150, 100, 255)
+    quickTitle.TextXAlignment = Enum.TextXAlignment.Left
+    quickTitle.Parent = quickHeader
+    
+    -- Quick buttons grid
+    local quickGrid = Instance.new("Frame")
+    quickGrid.Size = UDim2.new(1, -20, 0, 90)
+    quickGrid.Position = UDim2.new(0, 10, 0, 50)
+    quickGrid.BackgroundTransparency = 1
+    quickGrid.Parent = quickCard
+    
+    local quickGridLayout = Instance.new("UIGridLayout")
+    quickGridLayout.CellPadding = UDim2.new(0, 5, 0, 5)
+    quickGridLayout.CellSize = UDim2.new(0.5, -2.5, 0, 40)
+    quickGridLayout.Parent = quickGrid
+    
+    -- Spawn button
+    local spawnBtn = Instance.new("TextButton")
+    spawnBtn.BackgroundColor3 = Color3.fromRGB(80, 60, 120)
+    spawnBtn.AutoButtonColor = false
+    spawnBtn.Text = "🏠 SPAWN"
+    spawnBtn.Font = Enum.Font.GothamSemibold
+    spawnBtn.TextSize = 11
+    spawnBtn.TextColor3 = TEXT_WHITE
+    spawnBtn.Parent = quickGrid
+    
+    local spawnCorner = Instance.new("UICorner")
+    spawnCorner.CornerRadius = UDim.new(0, 6)
+    spawnCorner.Parent = spawnBtn
+    
+    spawnBtn.MouseButton1Click:Connect(function()
+        if teleportSystem.TeleportModule and teleportSystem.TeleportModule.TeleportTo then
+            teleportSystem.TeleportModule.TeleportTo("Spawn Point")
+            if teleportSystem.Notify then
+                teleportSystem.Notify("Teleported", "🏠 To Spawn", 2)
             end
         end
-    end, {
-        BackgroundColor = Color3.fromRGB(200, 100, 80)
-    })
+    end)
+    
+    -- Market button
+    local marketBtn = Instance.new("TextButton")
+    marketBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 60)
+    marketBtn.AutoButtonColor = false
+    marketBtn.Text = "🛒 MARKET"
+    marketBtn.Font = Enum.Font.GothamSemibold
+    marketBtn.TextSize = 11
+    marketBtn.TextColor3 = TEXT_WHITE
+    marketBtn.Parent = quickGrid
+    
+    local marketCorner = Instance.new("UICorner")
+    marketCorner.CornerRadius = UDim.new(0, 6)
+    marketCorner.Parent = marketBtn
+    
+    marketBtn.MouseButton1Click:Connect(function()
+        if teleportSystem.TeleportModule and teleportSystem.TeleportModule.TeleportTo then
+            teleportSystem.TeleportModule.TeleportTo("Market Center")
+            if teleportSystem.Notify then
+                teleportSystem.Notify("Teleported", "🛒 To Market", 2)
+            end
+        end
+    end)
+    
+    -- Bank button
+    local bankBtn = Instance.new("TextButton")
+    bankBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 80)
+    bankBtn.AutoButtonColor = false
+    bankBtn.Text = "🏦 BANK"
+    bankBtn.Font = Enum.Font.GothamSemibold
+    bankBtn.TextSize = 11
+    bankBtn.TextColor3 = TEXT_WHITE
+    bankBtn.Parent = quickGrid
+    
+    local bankCorner = Instance.new("UICorner")
+    bankCorner.CornerRadius = UDim.new(0, 6)
+    bankCorner.Parent = bankBtn
+    
+    bankBtn.MouseButton1Click:Connect(function()
+        if teleportSystem.TeleportModule and teleportSystem.TeleportModule.TeleportTo then
+            teleportSystem.TeleportModule.TeleportTo("Bank")
+            if teleportSystem.Notify then
+                teleportSystem.Notify("Teleported", "🏦 To Bank", 2)
+            end
+        end
+    end)
+    
+    -- Warehouse button
+    local warehouseBtn = Instance.new("TextButton")
+    warehouseBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
+    warehouseBtn.AutoButtonColor = false
+    warehouseBtn.Text = "📦 WAREHOUSE"
+    warehouseBtn.Font = Enum.Font.GothamSemibold
+    warehouseBtn.TextSize = 11
+    warehouseBtn.TextColor3 = TEXT_WHITE
+    warehouseBtn.Parent = quickGrid
+    
+    local warehouseCorner = Instance.new("UICorner")
+    warehouseCorner.CornerRadius = UDim.new(0, 6)
+    warehouseCorner.Parent = warehouseBtn
+    
+    warehouseBtn.MouseButton1Click:Connect(function()
+        if teleportSystem.TeleportModule and teleportSystem.TeleportModule.TeleportTo then
+            teleportSystem.TeleportModule.TeleportTo("Warehouse")
+            if teleportSystem.Notify then
+                teleportSystem.Notify("Teleported", "📦 To Warehouse", 2)
+            end
+        end
+    end)
 end
 
 -- ============================================
 -- MAIN PAGE CONTENT
 -- ============================================
-local function createMainPage()
+local function loadMainPageContent(page)
+    for _, child in ipairs(page:GetChildren()) do
+        child:Destroy()
+    end
+    
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, 0, 0, 150)
+    container.Size = UDim2.new(1, 0, 0, 200)
     container.BackgroundTransparency = 1
-    container.Parent = mainPage
+    container.Parent = page
     
     -- Status panel
     local statusPanel = Instance.new("Frame")
     statusPanel.Size = UDim2.new(1, -20, 0, 60)
     statusPanel.Position = UDim2.new(0, 10, 0, 10)
-    statusPanel.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+    statusPanel.BackgroundColor3 = BG_DARK
     statusPanel.BackgroundTransparency = 0.2
     statusPanel.Parent = container
     
@@ -803,7 +1006,7 @@ local function createMainPage()
     corner.Parent = statusPanel
     
     local stroke = Instance.new("UIStroke")
-    stroke.Color = modulesLoaded and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(200, 100, 0)
+    stroke.Color = teleportLoaded and SUCCESS_COLOR or WARNING_COLOR
     stroke.Thickness = 1
     stroke.Parent = statusPanel
     
@@ -813,8 +1016,8 @@ local function createMainPage()
     statusText.BackgroundTransparency = 1
     statusText.Font = Enum.Font.GothamBold
     statusText.TextSize = 13
-    statusText.Text = modulesLoaded and "✅ SYSTEM READY" or "⚠️ LOADING MODULES"
-    statusText.TextColor3 = modulesLoaded and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(255, 200, 100)
+    statusText.Text = teleportLoaded and "✅ SYSTEM READY" or "⚠️ LOADING MODULES"
+    statusText.TextColor3 = teleportLoaded and SUCCESS_COLOR or WARNING_COLOR
     statusText.TextXAlignment = Enum.TextXAlignment.Left
     statusText.Parent = statusPanel
     
@@ -824,16 +1027,16 @@ local function createMainPage()
     descText.BackgroundTransparency = 1
     descText.Font = Enum.Font.Gotham
     descText.TextSize = 11
-    descText.Text = modulesLoaded and "All modules loaded successfully!" or "Loading modules via SecurityLoader..."
-    descText.TextColor3 = Color3.fromRGB(180, 180, 200)
+    descText.Text = teleportLoaded and "Teleport System loaded successfully!" or "Loading via SecurityLoader..."
+    descText.TextColor3 = TEXT_GRAY
     descText.TextXAlignment = Enum.TextXAlignment.Left
     descText.Parent = statusPanel
     
     -- Features panel
     local featuresPanel = Instance.new("Frame")
-    featuresPanel.Size = UDim2.new(1, -20, 0, 70)
+    featuresPanel.Size = UDim2.new(1, -20, 0, 120)
     featuresPanel.Position = UDim2.new(0, 10, 0, 80)
-    featuresPanel.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+    featuresPanel.BackgroundColor3 = BG_DARK
     featuresPanel.BackgroundTransparency = 0.2
     featuresPanel.Parent = container
     
@@ -858,8 +1061,8 @@ local function createMainPage()
     feature1.BackgroundTransparency = 1
     feature1.Font = Enum.Font.Gotham
     feature1.TextSize = 11
-    feature1.Text = "✓ Teleport System"
-    feature1.TextColor3 = Color3.fromRGB(180, 255, 180)
+    feature1.Text = teleportLoaded and "✓ Teleport System" or "⏳ Teleport System"
+    feature1.TextColor3 = teleportLoaded and SUCCESS_COLOR or TEXT_GRAY
     feature1.TextXAlignment = Enum.TextXAlignment.Left
     feature1.Parent = featuresPanel
     
@@ -869,8 +1072,8 @@ local function createMainPage()
     feature2.BackgroundTransparency = 1
     feature2.Font = Enum.Font.Gotham
     feature2.TextSize = 11
-    feature2.Text = "✓ Player Teleport"
-    feature2.TextColor3 = Color3.fromRGB(180, 255, 180)
+    feature2.Text = "✓ Premium UI"
+    feature2.TextColor3 = SUCCESS_COLOR
     feature2.TextXAlignment = Enum.TextXAlignment.Left
     feature2.Parent = featuresPanel
     
@@ -880,8 +1083,8 @@ local function createMainPage()
     feature3.BackgroundTransparency = 1
     feature3.Font = Enum.Font.Gotham
     feature3.TextSize = 11
-    feature3.Text = "✓ Save Locations"
-    feature3.TextColor3 = Color3.fromRGB(180, 255, 180)
+    feature3.Text = "✓ Security Loader"
+    feature3.TextColor3 = SUCCESS_COLOR
     feature3.TextXAlignment = Enum.TextXAlignment.Left
     feature3.Parent = featuresPanel
     
@@ -891,16 +1094,14 @@ local function createMainPage()
     feature4.BackgroundTransparency = 1
     feature4.Font = Enum.Font.Gotham
     feature4.TextSize = 11
-    feature4.Text = "✓ Security Loader"
-    feature4.TextColor3 = Color3.fromRGB(180, 255, 180)
+    feature4.Text = "✓ Player Teleport"
+    feature4.TextColor3 = SUCCESS_COLOR
     feature4.TextXAlignment = Enum.TextXAlignment.Left
     feature4.Parent = featuresPanel
 end
 
-createMainPage()
-
 -- ============================================
--- OTHER PAGES (PLACEHOLDER)
+-- OTHER PAGES
 -- ============================================
 -- Shop page
 local shopText = Instance.new("TextLabel")
@@ -910,7 +1111,7 @@ shopText.BackgroundTransparency = 1
 shopText.Font = Enum.Font.Gotham
 shopText.TextSize = 14
 shopText.Text = "🛒 Shop Features\n\nComing soon..."
-shopText.TextColor3 = Color3.fromRGB(200, 200, 220)
+shopText.TextColor3 = TEXT_GRAY
 shopText.TextYAlignment = Enum.TextYAlignment.Center
 shopText.TextXAlignment = Enum.TextXAlignment.Center
 shopText.Parent = shopPage
@@ -923,7 +1124,7 @@ settingsText.BackgroundTransparency = 1
 settingsText.Font = Enum.Font.Gotham
 settingsText.TextSize = 14
 settingsText.Text = "⚙️ Settings\n\nComing soon..."
-settingsText.TextColor3 = Color3.fromRGB(200, 200, 220)
+settingsText.TextColor3 = TEXT_GRAY
 settingsText.TextYAlignment = Enum.TextYAlignment.Center
 settingsText.TextXAlignment = Enum.TextXAlignment.Center
 settingsText.Parent = settingsPage
@@ -935,21 +1136,21 @@ infoText.Position = UDim2.new(0, 10, 0, 10)
 infoText.BackgroundTransparency = 1
 infoText.Font = Enum.Font.Gotham
 infoText.TextSize = 12
-infoText.Text = [[⚡ NEON UI v2.0
+infoText.Text = string.format([[
+⚡ NEON UI v2.4
 ━━━━━━━━━━━━━━━
 • Developer: Kaitun
-• Security: Lynx Loader v2.3.0
-• Features: Teleport, Security
-• Status: Active
+• Security: Lynx Loader
+• Status: %s
 
-🔒 Modules Loaded:
-✓ TeleportModule
-✓ TeleportToPlayer  
-✓ SavedLocation
-✓ Notify System
+📌 Features:
+✓ Premium Glass UI
+✓ Teleport System
+✓ Security Integration
+✓ Smooth Animations
 
-📌 Press G to toggle UI]]
-infoText.TextColor3 = Color3.fromRGB(220, 220, 240)
+🔑 Toggle: [G] Key]], teleportLoaded and "ACTIVE" or "LOADING")
+infoText.TextColor3 = TEXT_WHITE
 infoText.TextXAlignment = Enum.TextXAlignment.Left
 infoText.TextYAlignment = Enum.TextYAlignment.Top
 infoText.Parent = infoPage
@@ -997,10 +1198,9 @@ local function toggleUI(show)
             ImageTransparency = 0.9
         }):Play()
         
-        delay(0.3, function()
-            container.Visible = false
-            blur.Visible = false
-        end)
+        task.wait(0.3)
+        container.Visible = false
+        blur.Visible = false
     end
 end
 
@@ -1021,7 +1221,7 @@ switchPage("Main", "Dashboard")
 
 print("=======================================")
 print("⚡ NEON UI LOADED SUCCESSFULLY")
-print("🔒 SecurityLoader: " .. (modulesLoaded and "ACTIVE" or "FAILED"))
+print("🔒 SecurityLoader: " .. (teleportLoaded and "ACTIVE" or "FAILED"))
 print("📌 Press G to toggle UI")
 print("=======================================")
 
@@ -1049,12 +1249,14 @@ return {
         return SecurityLoader
     end,
     
-    GetModules = function()
-        return {
-            TeleportModule = TeleportModule,
-            TeleportToPlayer = TeleportToPlayer,
-            SavedLocation = SavedLocation,
-            Notify = Notify
-        }
+    GetTeleportSystem = function()
+        return teleportSystem
+    end,
+    
+    ReloadTeleportSystem = function()
+        teleportLoaded = loadTeleportSystem()
+        statusIndicator.Text = teleportLoaded and "✅ READY" or "⚠️ LOADING"
+        statusIndicator.TextColor3 = teleportLoaded and SUCCESS_COLOR or WARNING_COLOR
+        return teleportLoaded
     end
 }
