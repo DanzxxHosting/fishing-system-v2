@@ -19,7 +19,7 @@ end
 print("=== Fish It Hub Loader ===")
 
 -- Load UI
-local UI = loadModule("https://raw.githubusercontent.com/DanzxxHosting/fishing-system-v2/refs/heads/main/UI.lua")
+local UI = loadModule("https://github.com/DanzxxHosting/fishing-system-v2/blob/main/NeonUI.lua")
 
 -- Atau untuk load local:
 -- local UI = require(script.Parent.UI)
