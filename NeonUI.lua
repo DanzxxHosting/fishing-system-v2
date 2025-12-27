@@ -1,7 +1,7 @@
 -- Neon Dashboard UI Premium
 -- Tema: Glass Effect + Neon Red
 -- Keybind: G untuk toggle
--- Safe: UI only
+-- Navigation System: Dashboard, Teleport, Shop, Settings, About
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -12,8 +12,8 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- CONFIG
-local WIDTH = 900
-local HEIGHT = 500
+local WIDTH = 520
+local HEIGHT = 280
 local SIDEBAR_W = 200
 local ACCENT = Color3.fromRGB(255, 62, 62) -- neon merah
 local ACCENT_GLOW = Color3.fromRGB(255, 100, 100)
@@ -107,7 +107,7 @@ title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextSize = 20
-title.Text = "⚡ KAITUN FISH IT"
+title.Text = "⚡ NEON UI"
 title.TextColor3 = Color3.fromRGB(255, 220, 220)
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = titleBar
@@ -208,7 +208,7 @@ sTitle.Position = UDim2.new(0, 88, 0, 15)
 sTitle.BackgroundTransparency = 1
 sTitle.Font = Enum.Font.GothamBold
 sTitle.TextSize = 18
-sTitle.Text = "KAITUN"
+sTitle.Text = "NAVIGATION"
 sTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 sTitle.TextXAlignment = Enum.TextXAlignment.Left
 sTitle.Parent = sbHeader
@@ -219,7 +219,7 @@ sSubtitle.Position = UDim2.new(0, 88, 0, 45)
 sSubtitle.BackgroundTransparency = 1
 sSubtitle.Font = Enum.Font.Gotham
 sSubtitle.TextSize = 12
-sSubtitle.Text = "Premium Hub"
+sSubtitle.Text = "Select Feature"
 sSubtitle.TextColor3 = Color3.fromRGB(180, 180, 200)
 sSubtitle.TextXAlignment = Enum.TextXAlignment.Left
 sSubtitle.Parent = sbHeader
@@ -240,26 +240,27 @@ menuLayout.SortOrder = Enum.SortOrder.LayoutOrder
 menuLayout.Padding = UDim.new(0, 8)
 menuLayout.Parent = menuContainer
 
--- Menu item function
-local function createMenuItem(name, icon)
-    local item = Instance.new("TextButton")
-    item.Size = UDim2.new(1, 0, 0, 46)
-    item.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    item.BackgroundTransparency = 0.3
-    item.AutoButtonColor = false
-    item.BorderSizePixel = 0
-    item.Text = ""
-    item.LayoutOrder = #menuContainer:GetChildren()
-    item.Parent = menuContainer
+-- Function to create navigation button
+local function createNavButton(text, icon, id, order)
+    local btn = Instance.new("TextButton")
+    btn.Name = "Btn" .. id
+    btn.Size = UDim2.new(1, 0, 0, 46)
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    btn.BackgroundTransparency = 0.3
+    btn.AutoButtonColor = false
+    btn.BorderSizePixel = 0
+    btn.Text = ""
+    btn.LayoutOrder = order
+    btn.Parent = menuContainer
     
-    local itemCorner = Instance.new("UICorner")
-    itemCorner.CornerRadius = UDim.new(0, 10)
-    itemCorner.Parent = item
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 10)
+    btnCorner.Parent = btn
     
-    local itemStroke = Instance.new("UIStroke")
-    itemStroke.Color = Color3.fromRGB(40, 40, 50)
-    itemStroke.Thickness = 1
-    itemStroke.Parent = item
+    local btnStroke = Instance.new("UIStroke")
+    btnStroke.Color = Color3.fromRGB(40, 40, 50)
+    btnStroke.Thickness = 1
+    btnStroke.Parent = btn
     
     -- Icon
     local iconLabel = Instance.new("TextLabel")
@@ -267,12 +268,12 @@ local function createMenuItem(name, icon)
     iconLabel.Position = UDim2.new(0, 8, 0, 0)
     iconLabel.BackgroundTransparency = 1
     iconLabel.Font = Enum.Font.GothamBold
-    iconLabel.TextSize = 18
+    iconLabel.TextSize = 20
     iconLabel.Text = icon
-    iconLabel.TextColor3 = ACCENT
+    iconLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
     iconLabel.TextXAlignment = Enum.TextXAlignment.Center
     iconLabel.TextYAlignment = Enum.TextYAlignment.Center
-    iconLabel.Parent = item
+    iconLabel.Parent = btn
     
     -- Text
     local textLabel = Instance.new("TextLabel")
@@ -281,54 +282,60 @@ local function createMenuItem(name, icon)
     textLabel.BackgroundTransparency = 1
     textLabel.Font = Enum.Font.GothamSemibold
     textLabel.TextSize = 14
-    textLabel.Text = name
+    textLabel.Text = text
     textLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
     textLabel.TextXAlignment = Enum.TextXAlignment.Left
-    textLabel.Parent = item
+    textLabel.Parent = btn
     
     -- Hover effects
-    item.MouseEnter:Connect(function()
-        TweenService:Create(item, TweenInfo.new(0.2), {
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {
             BackgroundColor3 = Color3.fromRGB(35, 10, 10),
             BackgroundTransparency = 0.1
         }):Play()
-        TweenService:Create(itemStroke, TweenInfo.new(0.2), {
+        TweenService:Create(btnStroke, TweenInfo.new(0.2), {
             Color = ACCENT
         }):Play()
-    end)
-    
-    item.MouseLeave:Connect(function()
-        TweenService:Create(item, TweenInfo.new(0.2), {
-            BackgroundColor3 = Color3.fromRGB(25, 25, 35),
-            BackgroundTransparency = 0.3
-        }):Play()
-        TweenService:Create(itemStroke, TweenInfo.new(0.2), {
-            Color = Color3.fromRGB(40, 40, 50)
+        TweenService:Create(iconLabel, TweenInfo.new(0.2), {
+            TextColor3 = ACCENT
         }):Play()
     end)
     
-    return item
+    btn.MouseLeave:Connect(function()
+        local isActive = btn:GetAttribute("Active") or false
+        if not isActive then
+            TweenService:Create(btn, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(25, 25, 35),
+                BackgroundTransparency = 0.3
+            }):Play()
+            TweenService:Create(btnStroke, TweenInfo.new(0.2), {
+                Color = Color3.fromRGB(40, 40, 50)
+            }):Play()
+            TweenService:Create(iconLabel, TweenInfo.new(0.2), {
+                TextColor3 = Color3.fromRGB(180, 180, 200)
+            }):Play()
+        end
+    end)
+    
+    return btn, iconLabel, btnStroke
 end
 
--- Create menu items
-local menuItems = {
-    {"Main", "★"},
-    {"Spawn Boat", "⛵"},
-    {"Buy Rod", "🎣"},
-    {"Buy Weather", "☁️"},
-    {"Buy Bait", "🪱"},
-    {"Teleport", "📍"},
-    {"Settings", "⚙️"},
-}
+-- Create navigation buttons
+local btnMain, iconMain, strokeMain = createNavButton("Dashboard", "🏠", "Main", 1)
+local btnTeleport, iconTeleport, strokeTeleport = createNavButton("Teleport", "🌍", "Teleport", 2)
+local btnShop, iconShop, strokeShop = createNavButton("Shop", "🛒", "Shop", 3)
+local btnSettings, iconSettings, strokeSettings = createNavButton("Settings", "⚙️", "Settings", 4)
+local btnInfo, iconInfo, strokeInfo = createNavButton("About", "ℹ️", "Info", 5)
 
-local menuButtons = {}
-for _, item in ipairs(menuItems) do
-    local btn = createMenuItem(item[1], item[2])
-    menuButtons[item[1]] = btn
-end
+-- Set Dashboard as active by default
+btnMain:SetAttribute("Active", true)
+btnMain.BackgroundColor3 = Color3.fromRGB(35, 10, 10)
+btnMain.BackgroundTransparency = 0.1
+strokeMain.Color = ACCENT
+iconMain.TextColor3 = ACCENT
 
 -- Update canvas size
-menuContainer.CanvasSize = UDim2.new(0, 0, 0, #menuItems * 54)
+menuContainer.CanvasSize = UDim2.new(0, 0, 0, 5 * 54)
 
 -- Content area (Glass)
 local content = Instance.new("Frame")
@@ -359,50 +366,176 @@ contentHeader.Parent = content
 local contentTitle = Instance.new("TextLabel")
 contentTitle.Size = UDim2.new(0.6, 0, 1, 0)
 contentTitle.Position = UDim2.new(0, 0, 0, 0)
-contentHeader.BackgroundTransparency = 1
+contentTitle.BackgroundTransparency = 1
 contentTitle.Font = Enum.Font.GothamBold
 contentTitle.TextSize = 18
-contentTitle.Text = "DASHBOARD"
+contentTitle.Text = "MAIN DASHBOARD"
 contentTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 contentTitle.TextXAlignment = Enum.TextXAlignment.Left
 contentTitle.Parent = contentHeader
 
--- Demo panel
-local demoPanel = Instance.new("Frame")
-demoPanel.Size = UDim2.new(1, -24, 0.6, 0)
-demoPanel.Position = UDim2.new(0, 12, 0, 74)
-demoPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-demoPanel.BackgroundTransparency = 0.2
-demoPanel.Parent = content
+local contentSubtitle = Instance.new("TextLabel")
+contentSubtitle.Size = UDim2.new(0.4, -10, 1, 0)
+contentSubtitle.Position = UDim2.new(0.6, 10, 0, 0)
+contentSubtitle.BackgroundTransparency = 1
+contentSubtitle.Font = Enum.Font.Gotham
+contentSubtitle.TextSize = 12
+contentSubtitle.Text = "Welcome to Neon UI"
+contentSubtitle.TextColor3 = Color3.fromRGB(180, 180, 200)
+contentSubtitle.TextXAlignment = Enum.TextXAlignment.Right
+contentSubtitle.Parent = contentHeader
 
-local demoCorner = Instance.new("UICorner")
-demoCorner.CornerRadius = UDim.new(0, 12)
-demoCorner.Parent = demoPanel
+-- Content pages container
+local pagesContainer = Instance.new("Frame")
+pagesContainer.Name = "Pages"
+pagesContainer.Size = UDim2.new(1, -24, 1, -80)
+pagesContainer.Position = UDim2.new(0, 12, 0, 64)
+pagesContainer.BackgroundTransparency = 1
+pagesContainer.ClipsDescendants = true
+pagesContainer.Parent = content
 
-local demoStroke = Instance.new("UIStroke")
-demoStroke.Color = ACCENT
-demoStroke.Transparency = 0.7
-demoStroke.Thickness = 1
-demoStroke.Parent = demoPanel
+-- Function to switch pages
+local currentPage = "Main"
+local pages = {}
 
--- Panel title
-local panelTitle = Instance.new("TextLabel")
-panelTitle.Size = UDim2.new(1, -24, 0, 40)
-panelTitle.Position = UDim2.new(0, 12, 0, 8)
-panelTitle.BackgroundTransparency = 1
-panelTitle.Font = Enum.Font.GothamBold
-panelTitle.TextSize = 16
-panelTitle.Text = "⚡ PREMIUM FEATURES"
-panelTitle.TextColor3 = Color3.fromRGB(255, 220, 220)
-panelTitle.TextXAlignment = Enum.TextXAlignment.Left
-panelTitle.Parent = demoPanel
+local function switchPage(pageId, titleText)
+    -- Update current page
+    currentPage = pageId
+    
+    -- Update content title
+    contentTitle.Text = titleText:upper()
+    
+    -- Update all buttons active state
+    local buttons = {
+        Main = {btn = btnMain, icon = iconMain, stroke = strokeMain},
+        Teleport = {btn = btnTeleport, icon = iconTeleport, stroke = strokeTeleport},
+        Shop = {btn = btnShop, icon = iconShop, stroke = strokeShop},
+        Settings = {btn = btnSettings, icon = iconSettings, stroke = strokeSettings},
+        Info = {btn = btnInfo, icon = iconInfo, stroke = strokeInfo}
+    }
+    
+    for name, data in pairs(buttons) do
+        local isActive = (name == pageId)
+        data.btn:SetAttribute("Active", isActive)
+        
+        if isActive then
+            -- Active button
+            TweenService:Create(data.btn, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(35, 10, 10),
+                BackgroundTransparency = 0.1
+            }):Play()
+            TweenService:Create(data.stroke, TweenInfo.new(0.2), {
+                Color = ACCENT
+            }):Play()
+            TweenService:Create(data.icon, TweenInfo.new(0.2), {
+                TextColor3 = ACCENT
+            }):Play()
+        else
+            -- Inactive button
+            TweenService:Create(data.btn, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(25, 25, 35),
+                BackgroundTransparency = 0.3
+            }):Play()
+            TweenService:Create(data.stroke, TweenInfo.new(0.2), {
+                Color = Color3.fromRGB(40, 40, 50)
+            }):Play()
+            TweenService:Create(data.icon, TweenInfo.new(0.2), {
+                TextColor3 = Color3.fromRGB(180, 180, 200)
+            }):Play()
+        end
+    end
+    
+    -- Show selected page, hide others
+    for pageName, pageFrame in pairs(pages) do
+        if pageName == pageId then
+            pageFrame.Visible = true
+            TweenService:Create(pageFrame, TweenInfo.new(0.3), {
+                Position = UDim2.new(0, 0, 0, 0)
+            }):Play()
+        else
+            pageFrame.Visible = false
+            pageFrame.Position = UDim2.new(1, 0, 0, 0)
+        end
+    end
+    
+    -- Content animation
+    TweenService:Create(contentStroke, TweenInfo.new(0.3), {
+        Color = ACCENT
+    }):Play()
+    
+    wait(0.1)
+    
+    TweenService:Create(contentStroke, TweenInfo.new(0.3), {
+        Color = Color3.fromRGB(40, 40, 50)
+    }):Play()
+    
+    print("[Neon UI] Switched to page:", pageId)
+end
+
+-- Function to create page
+local function createPage(pageId, title)
+    local page = Instance.new("Frame")
+    page.Name = "Page_" .. pageId
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.Position = UDim2.new(1, 0, 0, 0)
+    page.BackgroundTransparency = 1
+    page.Visible = false
+    page.Parent = pagesContainer
+    
+    -- Page title
+    local pageTitle = Instance.new("TextLabel")
+    pageTitle.Size = UDim2.new(1, 0, 0, 40)
+    pageTitle.Position = UDim2.new(0, 0, 0, 0)
+    pageTitle.BackgroundTransparency = 1
+    pageTitle.Font = Enum.Font.GothamBold
+    pageTitle.TextSize = 16
+    pageTitle.Text = title
+    pageTitle.TextColor3 = Color3.fromRGB(255, 220, 220)
+    pageTitle.TextXAlignment = Enum.TextXAlignment.Left
+    pageTitle.Parent = page
+    
+    -- Page content
+    local pageContent = Instance.new("Frame")
+    pageContent.Size = UDim2.new(1, 0, 1, -50)
+    pageContent.Position = UDim2.new(0, 0, 0, 50)
+    pageContent.BackgroundTransparency = 1
+    pageContent.Parent = page
+    
+    pages[pageId] = page
+    return pageContent
+end
+
+-- Create all pages
+local mainContent = createPage("Main", "Dashboard Overview")
+local teleportContent = createPage("Teleport", "Teleport System")
+local shopContent = createPage("Shop", "Shop Features")
+local settingsContent = createPage("Settings", "Settings Panel")
+local infoContent = createPage("Info", "About Neon UI")
+
+-- Main Page Content
+local mainPanel = Instance.new("Frame")
+mainPanel.Size = UDim2.new(1, 0, 0.6, 0)
+mainPanel.Position = UDim2.new(0, 0, 0, 0)
+mainPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+mainPanel.BackgroundTransparency = 0.2
+mainPanel.Parent = mainContent
+
+local mainPanelCorner = Instance.new("UICorner")
+mainPanelCorner.CornerRadius = UDim.new(0, 12)
+mainPanelCorner.Parent = mainPanel
+
+local mainPanelStroke = Instance.new("UIStroke")
+mainPanelStroke.Color = ACCENT
+mainPanelStroke.Transparency = 0.7
+mainPanelStroke.Thickness = 1
+mainPanelStroke.Parent = mainPanel
 
 -- Status indicator
 local statusContainer = Instance.new("Frame")
 statusContainer.Size = UDim2.new(1, -24, 0, 80)
-statusContainer.Position = UDim2.new(0, 12, 0, 60)
+statusContainer.Position = UDim2.new(0, 12, 0, 12)
 statusContainer.BackgroundTransparency = 1
-statusContainer.Parent = demoPanel
+statusContainer.Parent = mainPanel
 
 local statusDot = Instance.new("Frame")
 statusDot.Size = UDim2.new(0, 12, 0, 12)
@@ -443,11 +576,154 @@ statusDesc.Position = UDim2.new(0, 30, 0, 30)
 statusDesc.BackgroundTransparency = 1
 statusDesc.Font = Enum.Font.Gotham
 statusDesc.TextSize = 12
-statusDesc.Text = "Premium UI loaded successfully. Press G to toggle visibility."
+statusDesc.Text = "Neon UI Premium Edition loaded successfully. Select a feature from the navigation panel."
 statusDesc.TextColor3 = Color3.fromRGB(180, 180, 200)
 statusDesc.TextXAlignment = Enum.TextXAlignment.Left
 statusDesc.TextYAlignment = Enum.TextYAlignment.Top
 statusDesc.Parent = statusContainer
+
+-- Feature grid
+local featuresGrid = Instance.new("Frame")
+featuresGrid.Size = UDim2.new(1, -24, 0, 120)
+featuresGrid.Position = UDim2.new(0, 12, 0, 104)
+featuresGrid.BackgroundTransparency = 1
+featuresGrid.Parent = mainPanel
+
+local featuresTitle = Instance.new("TextLabel")
+featuresTitle.Size = UDim2.new(1, 0, 0, 25)
+featuresTitle.Position = UDim2.new(0, 0, 0, 0)
+featuresTitle.BackgroundTransparency = 1
+featuresTitle.Font = Enum.Font.GothamBold
+featuresTitle.TextSize = 14
+featuresTitle.Text = "Available Features:"
+featuresTitle.TextColor3 = Color3.fromRGB(255, 220, 220)
+featuresTitle.TextXAlignment = Enum.TextXAlignment.Left
+featuresTitle.Parent = featuresGrid
+
+local feature1 = Instance.new("TextLabel")
+feature1.Size = UDim2.new(0.5, -10, 0, 25)
+feature1.Position = UDim2.new(0, 0, 0, 35)
+feature1.BackgroundTransparency = 1
+feature1.Font = Enum.Font.Gotham
+feature1.TextSize = 13
+feature1.Text = "✓ Teleport System"
+feature1.TextColor3 = Color3.fromRGB(180, 255, 180)
+feature1.TextXAlignment = Enum.TextXAlignment.Left
+feature1.Parent = featuresGrid
+
+local feature2 = Instance.new("TextLabel")
+feature2.Size = UDim2.new(0.5, -10, 0, 25)
+feature2.Position = UDim2.new(0.5, 10, 0, 35)
+feature2.BackgroundTransparency = 1
+feature2.Font = Enum.Font.Gotham
+feature2.TextSize = 13
+feature2.Text = "✓ Shop Features"
+feature2.TextColor3 = Color3.fromRGB(180, 255, 180)
+feature2.TextXAlignment = Enum.TextXAlignment.Left
+feature2.Parent = featuresGrid
+
+local feature3 = Instance.new("TextLabel")
+feature3.Size = UDim2.new(0.5, -10, 0, 25)
+feature3.Position = UDim2.new(0, 0, 0, 65)
+feature3.BackgroundTransparency = 1
+feature3.Font = Enum.Font.Gotham
+feature3.TextSize = 13
+feature3.Text = "✓ Settings Panel"
+feature3.TextColor3 = Color3.fromRGB(180, 255, 180)
+feature3.TextXAlignment = Enum.TextXAlignment.Left
+feature3.Parent = featuresGrid
+
+local feature4 = Instance.new("TextLabel")
+feature4.Size = UDim2.new(0.5, -10, 0, 25)
+feature4.Position = UDim2.new(0.5, 10, 0, 65)
+feature4.BackgroundTransparency = 1
+feature4.Font = Enum.Font.Gotham
+feature4.TextSize = 13
+feature4.Text = "✓ Premium UI"
+feature4.TextColor3 = Color3.fromRGB(180, 255, 180)
+feature4.TextXAlignment = Enum.TextXAlignment.Left
+feature4.Parent = featuresGrid
+
+-- Teleport Page Content (Placeholder)
+local teleportTitle = Instance.new("TextLabel")
+teleportTitle.Size = UDim2.new(1, 0, 0, 40)
+teleportTitle.Position = UDim2.new(0, 0, 0, 0)
+teleportTitle.BackgroundTransparency = 1
+teleportTitle.Font = Enum.Font.GothamBold
+teleportTitle.TextSize = 14
+teleportTitle.Text = "Teleport System - Coming Soon"
+teleportTitle.TextColor3 = Color3.fromRGB(255, 200, 200)
+teleportTitle.TextXAlignment = Enum.TextXAlignment.Center
+teleportTitle.Parent = teleportContent
+
+-- Shop Page Content (Placeholder)
+local shopTitle = Instance.new("TextLabel")
+shopTitle.Size = UDim2.new(1, 0, 0, 40)
+shopTitle.Position = UDim2.new(0, 0, 0, 0)
+shopTitle.BackgroundTransparency = 1
+shopTitle.Font = Enum.Font.GothamBold
+shopTitle.TextSize = 14
+shopTitle.Text = "Shop Features - Coming Soon"
+shopTitle.TextColor3 = Color3.fromRGB(255, 200, 200)
+shopTitle.TextXAlignment = Enum.TextXAlignment.Center
+shopTitle.Parent = shopContent
+
+-- Settings Page Content (Placeholder)
+local settingsTitle = Instance.new("TextLabel")
+settingsTitle.Size = UDim2.new(1, 0, 0, 40)
+settingsTitle.Position = UDim2.new(0, 0, 0, 0)
+settingsTitle.BackgroundTransparency = 1
+settingsTitle.Font = Enum.Font.GothamBold
+settingsTitle.TextSize = 14
+settingsTitle.Text = "Settings Panel - Coming Soon"
+settingsTitle.TextColor3 = Color3.fromRGB(255, 200, 200)
+settingsTitle.TextXAlignment = Enum.TextXAlignment.Center
+settingsTitle.Parent = settingsContent
+
+-- Info Page Content
+local infoPanel = Instance.new("Frame")
+infoPanel.Size = UDim2.new(1, 0, 0.7, 0)
+infoPanel.Position = UDim2.new(0, 0, 0, 0)
+infoPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+infoPanel.BackgroundTransparency = 0.2
+infoPanel.Parent = infoContent
+
+local infoPanelCorner = Instance.new("UICorner")
+infoPanelCorner.CornerRadius = UDim.new(0, 12)
+infoPanelCorner.Parent = infoPanel
+
+local infoPanelStroke = Instance.new("UIStroke")
+infoPanelStroke.Color = ACCENT
+infoPanelStroke.Transparency = 0.7
+infoPanelStroke.Thickness = 1
+infoPanelStroke.Parent = infoPanel
+
+local infoText = Instance.new("TextLabel")
+infoText.Size = UDim2.new(1, -24, 1, -24)
+infoText.Position = UDim2.new(0, 12, 0, 12)
+infoText.BackgroundTransparency = 1
+infoText.Font = Enum.Font.Gotham
+infoText.TextSize = 13
+infoText.Text = [[
+⚡ NEON UI PREMIUM EDITION
+
+Version: 2.0
+Developer: Kaitun Team
+Status: Active
+
+Features:
+• Premium Glass UI Design
+• Smooth Animations
+• Navigation System
+• Performance Monitor
+• Custom Keybinds
+
+Press G to toggle interface
+]]
+infoText.TextColor3 = Color3.fromRGB(220, 220, 240)
+infoText.TextXAlignment = Enum.TextXAlignment.Left
+infoText.TextYAlignment = Enum.TextYAlignment.Top
+infoText.Parent = infoPanel
 
 -- Bottom info
 local bottomInfo = Instance.new("Frame")
@@ -478,36 +754,26 @@ keybindText.TextColor3 = ACCENT
 keybindText.TextXAlignment = Enum.TextXAlignment.Right
 keybindText.Parent = bottomInfo
 
--- Menu navigation
-local activeMenu = "Main"
-for name, btn in pairs(menuButtons) do
-    btn.MouseButton1Click:Connect(function()
-        activeMenu = name
-        
-        -- Update all buttons
-        for n, b in pairs(menuButtons) do
-            local stroke = b:FindFirstChild("UIStroke")
-            if stroke then
-                TweenService:Create(stroke, TweenInfo.new(0.2), {
-                    Color = (n == name) and ACCENT or Color3.fromRGB(40, 40, 50)
-                }):Play()
-            end
-        end
-        
-        -- Update content title
-        contentTitle.Text = name:upper()
-        
-        -- Animate content change
-        TweenService:Create(contentStroke, TweenInfo.new(0.3), {
-            Color = ACCENT
-        }):Play()
-        
-        wait(0.1)
-        TweenService:Create(contentStroke, TweenInfo.new(0.3), {
-            Color = Color3.fromRGB(40, 40, 50)
-        }):Play()
-    end)
-end
+-- Connect button click events
+btnMain.MouseButton1Click:Connect(function() 
+    switchPage("Main", "Main Dashboard") 
+end)
+
+btnTeleport.MouseButton1Click:Connect(function() 
+    switchPage("Teleport", "Teleport System") 
+end)
+
+btnShop.MouseButton1Click:Connect(function() 
+    switchPage("Shop", "Shop Features") 
+end)
+
+btnSettings.MouseButton1Click:Connect(function() 
+    switchPage("Settings", "Settings") 
+end)
+
+btnInfo.MouseButton1Click:Connect(function() 
+    switchPage("Info", "About Neon") 
+end)
 
 -- UI Toggle System
 local uiVisible = false
@@ -590,6 +856,7 @@ end)
 
 -- Initial state
 toggleUI(false)
+switchPage("Main", "Main Dashboard")
 
 -- Loading animation
 spawn(function()
@@ -603,7 +870,7 @@ end)
 print("=======================================")
 print("⚡ NEON UI LOADED SUCCESSFULLY")
 print("📌 Press G to toggle the interface")
-print("🎮 Premium Glass Effect Activated")
+print("🎮 Navigation System: Dashboard, Teleport, Shop, Settings, About")
 print("=======================================")
 
 -- Return UI controller
@@ -618,5 +885,11 @@ return {
     
     Hide = function()
         toggleUI(false)
-    end
+    end,
+    
+    Destroy = function()
+        screen:Destroy()
+    end,
+    
+    SwitchPage = switchPage
 }
