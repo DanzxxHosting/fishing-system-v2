@@ -618,9 +618,5 @@ return {
     
     Hide = function()
         toggleUI(false)
-    end,
-    
-    Destroy = function()
-        screen:Destroy()
     end
 }
